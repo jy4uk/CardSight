@@ -3,16 +3,23 @@ import { config } from '../config/index.js';
 import { markAsSold } from './inventoryService.js';
 import { query } from './db.js';
 
-const stripe = new Stripe(config.stripeSecret, { apiVersion: '2023-08-16' });
+// Only initialize Stripe if API key is provided
+const stripe = config.stripeSecret ? new Stripe(config.stripeSecret, { apiVersion: '2023-08-16' }) : null;
 
 // ─── Terminal Functions ───────────────────────────────────────────────────────
 
 export async function createConnectionToken() {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please provide STRIPE_SECRET_KEY.');
+  }
   const token = await stripe.terminal.connectionTokens.create();
   return token;
 }
 
 export async function listReaders(locationId) {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please provide STRIPE_SECRET_KEY.');
+  }
   const params = { limit: 100 };
   if (locationId) params.location = locationId;
   const readers = await stripe.terminal.readers.list(params);
@@ -20,6 +27,9 @@ export async function listReaders(locationId) {
 }
 
 export async function processPaymentIntent(readerId, paymentIntentId) {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please provide STRIPE_SECRET_KEY.');
+  }
   const reader = await stripe.terminal.readers.processPaymentIntent(readerId, {
     payment_intent: paymentIntentId,
   });
@@ -27,21 +37,31 @@ export async function processPaymentIntent(readerId, paymentIntentId) {
 }
 
 export async function cancelReaderAction(readerId) {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please provide STRIPE_SECRET_KEY.');
+  }
   const reader = await stripe.terminal.readers.cancelAction(readerId);
   return reader;
 }
 
 export async function getPaymentIntent(paymentIntentId) {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please provide STRIPE_SECRET_KEY.');
+  }
   return await stripe.paymentIntents.retrieve(paymentIntentId);
 }
 
 // ─── Payment Functions ────────────────────────────────────────────────────────
 
 export async function createPaymentIntent(amount, currency, metadata) {
+  if (!stripe) {
+    throw new Error('Stripe is not configured. Please provide STRIPE_SECRET_KEY.');
+  }
   return await stripe.paymentIntents.create({
     amount: Math.round(Number(amount) * 100),
     currency,
     payment_method_types: ['card_present', 'card'],
+    capture_method: 'manual',
     metadata,
   });
 }
