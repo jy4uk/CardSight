@@ -1,6 +1,6 @@
-# Card Safari Deployment Guide
+# Card Pilot Deployment Guide
 
-Deploy your Card Safari inventory system using **Vercel** (frontend) + **Railway** (backend + PostgreSQL).
+Deploy your Card Pilot inventory system using **Vercel** (frontend) + **Railway** (backend + PostgreSQL).
 
 ## Prerequisites
 
@@ -91,7 +91,7 @@ Click **"Deploy"** and wait for the build to complete.
 
 Your frontend URL will be:
 ```
-https://card-safari.vercel.app
+https://card-pilot.vercel.app
 ```
 
 ---
@@ -101,7 +101,7 @@ https://card-safari.vercel.app
 Go back to Railway and update the `FRONTEND_URL` environment variable:
 
 ```
-FRONTEND_URL=https://card-safari.vercel.app
+FRONTEND_URL=https://card-pilot.vercel.app
 ```
 
 This allows your backend to accept requests from your frontend.
