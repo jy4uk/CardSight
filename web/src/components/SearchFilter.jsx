@@ -1,0 +1,210 @@
+import { Search, SlidersHorizontal, X } from 'lucide-react';
+
+const GAMES = [
+  { id: 'pokemon', label: 'Pokémon' },
+  { id: 'onepiece', label: 'One Piece' },
+  { id: 'mtg', label: 'MTG' },
+  { id: 'yugioh', label: 'Yu-Gi-Oh!' },
+];
+
+const CARD_TYPES = [
+  { id: 'raw', label: 'Raw' },
+  { id: 'psa', label: 'PSA' },
+  { id: 'bgs', label: 'BGS' },
+  { id: 'cgc', label: 'CGC' },
+];
+
+export default function SearchFilter({ 
+  searchQuery, 
+  onSearchChange, 
+  filters, 
+  onFilterChange,
+  showFilters,
+  onToggleFilters 
+}) {
+  const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
+
+  return (
+    <div className="space-y-3">
+      {/* Search Bar */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search cards..."
+            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl 
+                       focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => onSearchChange('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          )}
+        </div>
+        <button
+          onClick={onToggleFilters}
+          className={`p-3 rounded-xl border transition-colors
+            ${showFilters 
+              ? 'bg-blue-50 border-blue-300 text-blue-600' 
+              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+            }`}
+        >
+          <SlidersHorizontal className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4">
+          {/* Game Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Game
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => onFilterChange({ ...filters, game: null })}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                  ${!filters.game
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                All
+              </button>
+              {GAMES.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => onFilterChange({ ...filters, game: g.id })}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                    ${filters.game === g.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Card Type Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Card Type
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => onFilterChange({ ...filters, cardType: null })}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                  ${!filters.cardType
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                All
+              </button>
+              {CARD_TYPES.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => onFilterChange({ ...filters, cardType: t.id })}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                    ${filters.cardType === t.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Condition Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Condition
+            </label>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => onFilterChange({ ...filters, condition: null })}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                  ${!filters.condition
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
+                All
+              </button>
+              {CONDITIONS.map((cond) => (
+                <button
+                  key={cond}
+                  onClick={() => onFilterChange({ ...filters, condition: cond })}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                    ${filters.condition === cond
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {cond}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Price Range */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Min Price
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                <input
+                  type="number"
+                  value={filters.minPrice || ''}
+                  onChange={(e) => onFilterChange({ ...filters, minPrice: e.target.value })}
+                  placeholder="0"
+                  min="0"
+                  className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm
+                             focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Max Price
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                <input
+                  type="number"
+                  value={filters.maxPrice || ''}
+                  onChange={(e) => onFilterChange({ ...filters, maxPrice: e.target.value })}
+                  placeholder="999"
+                  min="0"
+                  className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm
+                             focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Clear Filters */}
+          <button
+            onClick={() => onFilterChange({ condition: null, minPrice: '', maxPrice: '', game: null, cardType: null })}
+            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
