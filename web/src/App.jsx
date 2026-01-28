@@ -1,14 +1,46 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X } from 'lucide-react';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
 import SearchFilter from './components/SearchFilter';
 import AlertModal from './components/AlertModal';
 import Insights from './components/Insights';
+import LoginPage from './components/LoginPage';
+import LoginModal from './components/LoginModal';
+import { useAuth, FEATURES } from './context/AuthContext';
 import { fetchInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem } from './api';
 
 function App() {
+  const { user, loading: authLoading, logout, hasFeature, isAdmin, showLoginModal, openLoginModal, closeLoginModal, login } = useAuth();
+
+  // Show loading spinner while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Render main app content (always show inventory, login is via modal)
+  return (
+    <>
+      <AppContent 
+        logout={logout} 
+        hasFeature={hasFeature} 
+        isAdmin={isAdmin} 
+        user={user} 
+        openLoginModal={openLoginModal}
+      />
+      {showLoginModal && (
+        <LoginModal onClose={closeLoginModal} onLogin={login} />
+      )}
+    </>
+  );
+}
+
+function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -233,7 +265,17 @@ function App() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Package className="w-7 h-7 text-blue-600" />
-                <h1 className="text-xl font-bold text-gray-900">Card Safari</h1>
+                <h1 className="text-xl font-bold text-gray-900">Card Pilot</h1>
+                {isAdmin() && (
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                    Admin
+                  </span>
+                )}
+                {!isAdmin() && (
+                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                    Guest
+                  </span>
+                )}
               </div>
               
               {/* Navigation Tabs */}
@@ -248,17 +290,19 @@ function App() {
                 >
                   Inventory
                 </button>
-                <button
-                  onClick={() => setCurrentView('insights')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
-                    currentView === 'insights'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4" />
-                  Insights
-                </button>
+                {hasFeature(FEATURES.VIEW_INSIGHTS) && (
+                  <button
+                    onClick={() => setCurrentView('insights')}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                      currentView === 'insights'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    Insights
+                  </button>
+                )}
               </div>
             </div>
             
@@ -272,15 +316,17 @@ function App() {
                   >
                     <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
                   </button>
-                  <button
-                    onClick={() => setShowAddModal(true)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white 
-                               font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="w-5 h-5" />
-                    <span className="hidden sm:inline">Add Item</span>
-                  </button>
-                  {currentView === 'inventory' && (
+                  {hasFeature(FEATURES.ADD_ITEM) && (
+                    <button
+                      onClick={() => setShowAddModal(true)}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white 
+                                 font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      <Plus className="w-5 h-5" />
+                      <span className="hidden sm:inline">Add Item</span>
+                    </button>
+                  )}
+                  {hasFeature(FEATURES.BULK_ACTIONS) && (
                     <button
                       onClick={toggleMultiSelectMode}
                       className={`flex items-center gap-1.5 px-4 py-2 font-semibold rounded-lg transition-colors ${
@@ -294,6 +340,25 @@ function App() {
                     </button>
                   )}
                 </>
+              )}
+              {/* Admin Login / Logout Button */}
+              {isAdmin() ? (
+                <button
+                  onClick={logout}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600 hover:text-red-600"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
+              ) : (
+                <button
+                  onClick={openLoginModal}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                  title="Admin Login"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span className="hidden sm:inline">Admin</span>
+                </button>
               )}
             </div>
           </div>
@@ -394,10 +459,10 @@ function App() {
               key={item.id}
               item={item}
               onSelect={(item) => console.log('Selected:', item)}
-              onSell={openSellModal}
-              onEdit={openEditModal}
-              onFetchImage={handleFetchImage}
-              onDelete={handleDeleteItem}
+              onSell={hasFeature(FEATURES.SELL_ITEM) ? openSellModal : null}
+              onEdit={hasFeature(FEATURES.EDIT_ITEM) ? openEditModal : null}
+              onFetchImage={hasFeature(FEATURES.EDIT_ITEM) ? handleFetchImage : null}
+              onDelete={hasFeature(FEATURES.DELETE_ITEM) ? handleDeleteItem : null}
               isMultiSelectMode={isMultiSelectMode}
               isSelected={selectedItems.has(item.id)}
               onToggleSelect={toggleItemSelection}

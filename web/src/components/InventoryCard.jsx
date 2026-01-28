@@ -168,21 +168,25 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
 
           {menuOpen && (
             <div className="absolute right-0 top-8 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[120px] z-50">
-              <button
-                onClick={handleSell}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-green-600 font-medium"
-              >
-                <DollarSign className="w-4 h-4" />
-                Sell
-              </button>
-              <button
-                onClick={handleEdit}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700"
-              >
-                <Edit className="w-4 h-4" />
-                Edit
-              </button>
-              {!item.image_url && (
+              {onSell && (
+                <button
+                  onClick={handleSell}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-green-600 font-medium"
+                >
+                  <DollarSign className="w-4 h-4" />
+                  Sell
+                </button>
+              )}
+              {onEdit && (
+                <button
+                  onClick={handleEdit}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-gray-700"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit
+                </button>
+              )}
+              {onFetchImage && !item.image_url && (
                 <button
                   onClick={handleFetchImage}
                   className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-blue-600"
@@ -191,13 +195,15 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
                   Fetch Image
                 </button>
               )}
-              <button
-                onClick={handleDelete}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
+              {onDelete && (
+                <button
+                  onClick={handleDelete}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              )}
             </div>
           )}
         </div>
