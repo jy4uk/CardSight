@@ -27,9 +27,9 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
 
         {/* Card Details */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h3 className="text-lg font-bold text-gray-900">{item.card_name}</h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
                 {item.game?.toUpperCase() || 'UNKNOWN'}
               </span>
@@ -93,7 +93,7 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
 
           {/* Action Buttons */}
           {isAdmin && (
-            <div className="flex gap-2 pt-4">
+            <div className="flex gap-2 pt-4 flex-wrap">
               {onSell && (
                 <button
                   onClick={() => onSell(item)}
@@ -121,21 +121,21 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
 
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white w-full sm:max-w-xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Card Details</h2>
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Card Details</h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[70vh]">
+        <div className="p-4 sm:p-6 overflow-y-auto max-h-[75vh]">
           {renderDetails()}
         </div>
       </div>

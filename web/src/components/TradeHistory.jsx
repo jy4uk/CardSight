@@ -43,7 +43,7 @@ export default function TradeHistory({ trades = [], onDelete, onRefresh }) {
     <div className="space-y-4">
       {/* Stats Summary */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
           <div className="bg-purple-50 rounded-lg p-3">
             <div className="text-xs text-purple-600 font-medium">Total Trades</div>
             <div className="text-xl font-bold text-purple-800">{stats.totalTrades}</div>
@@ -80,50 +80,33 @@ export default function TradeHistory({ trades = [], onDelete, onRefresh }) {
             <div key={trade.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
               {/* Trade Header */}
               <div 
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
+                className="p-3 sm:p-4 cursor-pointer hover:bg-gray-50"
                 onClick={() => setExpandedTrade(expandedTrade === trade.id ? null : trade.id)}
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                    <ArrowLeftRight className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">
-                      {trade.customer_name || 'Anonymous Customer'}
+                {/* Mobile-first layout */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <ArrowLeftRight className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
                     </div>
-                    <div className="text-sm text-gray-500 flex items-center gap-2">
-                      <Calendar className="w-3 h-3" />
-                      {formatDate(trade.trade_date)}
-                      <span className="text-purple-600">@ {trade.trade_percentage}%</span>
+                    <div className="min-w-0">
+                      <div className="font-medium text-gray-900 truncate">
+                        {trade.customer_name || 'Anonymous'}
+                      </div>
+                      <div className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 sm:gap-2 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {formatDate(trade.trade_date)}
+                        </span>
+                        <span className="text-purple-600">@ {trade.trade_percentage}%</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-6">
-                  <div className="text-right">
-                    <div className="text-xs text-gray-500">Trade-In Value</div>
-                    <div className="font-semibold text-green-600">${parseFloat(trade.trade_in_value || 0).toFixed(2)}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-gray-500">Trade-Out Value</div>
-                    <div className="font-semibold text-blue-600">${parseFloat(trade.trade_out_total || 0).toFixed(2)}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs text-gray-500">Cash</div>
-                    <div className="font-semibold">
-                      {parseFloat(trade.cash_from_customer) > 0 ? (
-                        <span className="text-green-600">+${parseFloat(trade.cash_from_customer).toFixed(2)}</span>
-                      ) : parseFloat(trade.cash_to_customer) > 0 ? (
-                        <span className="text-red-600">-${parseFloat(trade.cash_to_customer).toFixed(2)}</span>
-                      ) : (
-                        <span className="text-gray-400">$0.00</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(trade.id); }}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                      className="p-1.5 sm:p-2 text-red-500 hover:bg-red-50 rounded-lg"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -132,6 +115,30 @@ export default function TradeHistory({ trades = [], onDelete, onRefresh }) {
                     ) : (
                       <ChevronDown className="w-5 h-5 text-gray-400" />
                     )}
+                  </div>
+                </div>
+
+                {/* Values Row - responsive grid */}
+                <div className="mt-2 sm:mt-3 grid grid-cols-3 gap-2 sm:gap-4 text-center sm:text-right">
+                  <div>
+                    <div className="text-[10px] sm:text-xs text-gray-500">Trade-In</div>
+                    <div className="text-sm sm:text-base font-semibold text-green-600">${parseFloat(trade.trade_in_value || 0).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] sm:text-xs text-gray-500">Trade-Out</div>
+                    <div className="text-sm sm:text-base font-semibold text-blue-600">${parseFloat(trade.trade_out_total || 0).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] sm:text-xs text-gray-500">Cash</div>
+                    <div className="text-sm sm:text-base font-semibold">
+                      {parseFloat(trade.cash_from_customer) > 0 ? (
+                        <span className="text-green-600">+${parseFloat(trade.cash_from_customer).toFixed(2)}</span>
+                      ) : parseFloat(trade.cash_to_customer) > 0 ? (
+                        <span className="text-red-600">-${parseFloat(trade.cash_to_customer).toFixed(2)}</span>
+                      ) : (
+                        <span className="text-gray-400">$0</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

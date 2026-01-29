@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Scan, Plus, Save, Search, Loader2, Check } from 'lucide-react';
-import { searchCardImages } from '../api';
+import { searchCardImages, fetchPSAData, isPSACertNumber } from '../api';
 import AlertModal from './AlertModal';
+import PSAMarketData from './PSAMarketData';
 
 const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
 
@@ -22,7 +23,7 @@ const CARD_TYPES = [
   { id: 'cgc', label: 'CGC Slab' },
 ];
 
-export default function AddItemModal({ isOpen, onClose, onAdd, editItem = null, onEdit }) {
+export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = [], editItem = null, onEdit }) {
   const isEditMode = !!editItem;
   
   const getInitialFormData = () => ({
@@ -43,13 +44,29 @@ export default function AddItemModal({ isOpen, onClose, onAdd, editItem = null, 
   });
 
   const [formData, setFormData] = useState(getInitialFormData);
-  const [scanning, setScanning] = useState(false);
   const [imageOptions, setImageOptions] = useState([]);
   const [searchingImages, setSearchingImages] = useState(false);
   const [alertModal, setAlertModal] = useState({ isOpen: false, type: 'error', message: '' });
+  const [psaData, setPsaData] = useState(null);
+  const [psaLoading, setPsaLoading] = useState(false);
+  const [psaError, setPsaError] = useState(null);
   const imageSearchAbortRef = useRef(null);
   const imageSearchTimeoutRef = useRef(null);
   const barcodeInputRef = useRef(null);
+  const psaFetchedRef = useRef(null);
+  const psaDebounceRef = useRef(null);
+
+  const duplicateBarcodeItem = useMemo(() => {
+    if (isEditMode) return null;
+    const barcode = (formData.barcode_id || '').toString().trim();
+    if (!barcode) return null;
+    return (inventoryItems || []).find((item) => {
+      const candidate = (item?.barcode_id ?? '').toString().trim();
+      return candidate && candidate === barcode;
+    }) || null;
+  }, [formData.barcode_id, inventoryItems, isEditMode]);
+
+  const isDuplicateBarcode = !!duplicateBarcodeItem;
 
   useEffect(() => {
     if (isOpen && barcodeInputRef.current) {
@@ -61,6 +78,14 @@ export default function AddItemModal({ isOpen, onClose, onAdd, editItem = null, 
     if (isOpen) {
       setFormData(getInitialFormData());
       setImageOptions([]);
+      setPsaData(null);
+      setPsaLoading(false);
+      setPsaError(null);
+      psaFetchedRef.current = null;
+      if (psaDebounceRef.current) {
+        clearTimeout(psaDebounceRef.current);
+        psaDebounceRef.current = null;
+      }
       if (imageSearchAbortRef.current) {
         imageSearchAbortRef.current.abort();
         imageSearchAbortRef.current = null;
@@ -75,6 +100,41 @@ export default function AddItemModal({ isOpen, onClose, onAdd, editItem = null, 
 
   const showAlert = (type, message) => {
     setAlertModal({ isOpen: true, type, message });
+  };
+
+  const handlePSALookup = async (certNumber) => {
+    // Don't re-fetch if we already fetched this cert
+    if (psaFetchedRef.current === certNumber) return;
+    
+    setPsaLoading(true);
+    setPsaError(null);
+    psaFetchedRef.current = certNumber;
+
+    try {
+      const result = await fetchPSAData(certNumber);
+      
+      if (result.success && result.psa) {
+        setPsaData(result);
+        
+        // Auto-fill form fields from PSA data
+        setFormData(prev => ({
+          ...prev,
+          card_type: 'psa',
+          cert_number: certNumber,
+          card_name: result.psa.name || prev.card_name,
+          set_name: result.psa.set || prev.set_name,
+          card_number: result.psa.number || prev.card_number,
+          grade: result.psa.grade || prev.grade,
+          image_url: result.psa.imageUrl || prev.image_url,
+        }));
+      } else {
+        setPsaError(result.error || 'PSA certification not found');
+      }
+    } catch (err) {
+      setPsaError(err.message || 'Failed to fetch PSA data');
+    } finally {
+      setPsaLoading(false);
+    }
   };
 
   const handleSearchImages = async () => {
@@ -166,6 +226,34 @@ export default function AddItemModal({ isOpen, onClose, onAdd, editItem = null, 
       // If barcode changes and it's a graded card, update cert number too
       const certNumber = formData.card_type !== 'raw' ? value : '';
       setFormData((prev) => ({ ...prev, barcode_id: value, cert_number: certNumber }));
+
+      const trimmed = (value || '').toString().trim();
+      const isDuplicate =
+        !isEditMode &&
+        !!trimmed &&
+        (inventoryItems || []).some((item) => {
+          const candidate = (item?.barcode_id ?? '').toString().trim();
+          return candidate && candidate === trimmed;
+        });
+      
+      // Debounce PSA lookup - only trigger after user stops typing for 1200ms
+      if (psaDebounceRef.current) {
+        clearTimeout(psaDebounceRef.current);
+      }
+      // Clear any pending lookup and previous data when input changes
+      setPsaError(null);
+      
+      if (!isDuplicate && isPSACertNumber(value)) {
+        const capturedValue = value;
+        psaDebounceRef.current = setTimeout(() => {
+          // Double-check the value hasn't changed (prevents stale lookups)
+          handlePSALookup(capturedValue);
+        }, 1200);
+      } else {
+        // Clear PSA data if input is no longer a valid cert number
+        setPsaData(null);
+        psaFetchedRef.current = null;
+      }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -174,6 +262,10 @@ export default function AddItemModal({ isOpen, onClose, onAdd, editItem = null, 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!isEditMode && !formData.barcode_id) return;
+    if (!isEditMode && isDuplicateBarcode) {
+      showAlert('error', 'This barcode already exists in your inventory.');
+      return;
+    }
     
     const data = {
       ...formData,
@@ -232,19 +324,40 @@ export default function AddItemModal({ isOpen, onClose, onAdd, editItem = null, 
                 onKeyDown={handleBarcodeKeyDown}
                 placeholder="Scan or enter barcode..."
                 disabled={isEditMode}
+                title={
+                  !isEditMode && isDuplicateBarcode
+                    ? `Barcode already exists in inventory${duplicateBarcodeItem?.card_name ? `: ${duplicateBarcodeItem.card_name}` : ''}`
+                    : undefined
+                }
                 className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 
                            focus:ring-blue-500 focus:border-blue-500 text-lg font-mono
-                           ${isEditMode ? 'bg-gray-100 text-gray-500' : ''}`}
+                           ${isEditMode ? 'bg-gray-100 text-gray-500' : ''}
+                           ${!isEditMode && isDuplicateBarcode ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
                 autoComplete="off"
               />
               <Scan className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             </div>
+            {!isEditMode && isDuplicateBarcode && (
+              <div className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                Barcode already exists in your inventory{duplicateBarcodeItem?.card_name ? `: ${duplicateBarcodeItem.card_name}` : ''}.
+              </div>
+            )}
             {!isEditMode && (
               <p className="text-xs text-gray-500 mt-1">
                 Use your barcode scanner or type manually
               </p>
             )}
           </div>
+
+          {/* PSA Market Data Panel */}
+          {(psaData || psaLoading || psaError) && (
+            <PSAMarketData
+              data={psaData}
+              loading={psaLoading}
+              error={psaError}
+              onRetry={() => formData.barcode_id && handlePSALookup(formData.barcode_id)}
+            />
+          )}
 
           {/* Card Name */}
           <div>
@@ -556,7 +669,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, editItem = null, 
           {/* Submit */}
           <button
             type="submit"
-            disabled={!isEditMode && !formData.barcode_id}
+            disabled={!isEditMode && (!formData.barcode_id || isDuplicateBarcode)}
             className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl
                        hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed
                        transition-colors flex items-center justify-center gap-2"

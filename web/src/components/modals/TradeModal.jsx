@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Plus, Trash2, ArrowRight, ArrowLeft, DollarSign, Percent, User, Calendar, Search, Loader2 } from 'lucide-react';
-import { searchCardImages } from '../../api';
+import { X, Plus, Trash2, ArrowRight, ArrowLeft, DollarSign, Percent, User, Calendar, Search, Loader2, Scan } from 'lucide-react';
+import { searchCardImages, fetchPSAData, isPSACertNumber } from '../../api';
+import PSAMarketData from '../PSAMarketData';
 
 const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
 const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
@@ -37,6 +38,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   // Trade-in form state (integrated add card form)
   const [showAddTradeInForm, setShowAddTradeInForm] = useState(false);
   const [tradeInForm, setTradeInForm] = useState({
+    barcode_id: '',
     card_name: '',
     set_name: '',
     card_number: '',
@@ -54,6 +56,14 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   });
   const [imageOptions, setImageOptions] = useState([]);
   const [searchingImages, setSearchingImages] = useState(false);
+  
+  // PSA lookup state
+  const [psaData, setPsaData] = useState(null);
+  const [psaLoading, setPsaLoading] = useState(false);
+  const [psaError, setPsaError] = useState(null);
+  const psaDebounceRef = useRef(null);
+  const psaFetchedRef = useRef(null);
+  const barcodeInputRef = useRef(null);
 
   // Available inventory items (IN_STOCK only, not already in trade-out)
   const availableItems = useMemo(() => {
@@ -111,7 +121,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   useEffect(() => {
     if (!isOpen) {
       setTradeInForm({
-        card_name: '', set_name: '', card_number: '', game: 'pokemon',
+        barcode_id: '', card_name: '', set_name: '', card_number: '', game: 'pokemon',
         card_type: 'raw', condition: 'NM', grade: '', grade_qualifier: '',
         card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null, image_url: '', cert_number: '', notes: ''
       });
@@ -119,8 +129,78 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       setShowAddTradeInForm(false);
       setTradeOutSearch('');
       setShowTradeOutDropdown(false);
+      // Reset PSA state
+      setPsaData(null);
+      setPsaLoading(false);
+      setPsaError(null);
+      psaFetchedRef.current = null;
+      if (psaDebounceRef.current) {
+        clearTimeout(psaDebounceRef.current);
+        psaDebounceRef.current = null;
+      }
     }
   }, [isOpen]);
+
+  // Focus barcode input when Add Card form is opened
+  useEffect(() => {
+    if (showAddTradeInForm && barcodeInputRef.current) {
+      barcodeInputRef.current.focus();
+    }
+  }, [showAddTradeInForm]);
+
+  const handlePSALookup = async (certNumber) => {
+    if (psaFetchedRef.current === certNumber) return;
+    
+    setPsaLoading(true);
+    setPsaError(null);
+    psaFetchedRef.current = certNumber;
+
+    try {
+      const result = await fetchPSAData(certNumber);
+      
+      if (result.success && result.psa) {
+        setPsaData(result);
+        
+        // Auto-fill form fields from PSA data
+        setTradeInForm(prev => ({
+          ...prev,
+          card_type: 'psa',
+          cert_number: certNumber,
+          card_name: result.psa.name || prev.card_name,
+          set_name: result.psa.set || prev.set_name,
+          card_number: result.psa.number || prev.card_number,
+          grade: result.psa.grade || prev.grade,
+          image_url: result.psa.imageUrl || prev.image_url,
+        }));
+      } else {
+        setPsaError(result.error || 'PSA certification not found');
+      }
+    } catch (err) {
+      setPsaError(err.message || 'Failed to fetch PSA data');
+    } finally {
+      setPsaLoading(false);
+    }
+  };
+
+  const handleBarcodeChange = (value) => {
+    const certNumber = tradeInForm.card_type !== 'raw' ? value : '';
+    setTradeInForm(prev => ({ ...prev, barcode_id: value, cert_number: certNumber }));
+    
+    // Debounce PSA lookup
+    if (psaDebounceRef.current) {
+      clearTimeout(psaDebounceRef.current);
+    }
+    setPsaError(null);
+    
+    if (isPSACertNumber(value)) {
+      psaDebounceRef.current = setTimeout(() => {
+        handlePSALookup(value);
+      }, 1200);
+    } else {
+      setPsaData(null);
+      psaFetchedRef.current = null;
+    }
+  };
 
   const handleSearchImages = async () => {
     if (!tradeInForm.card_name) return;
@@ -181,11 +261,15 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     }]);
     // Reset form but keep it open for adding more
     setTradeInForm({
-      card_name: '', set_name: '', card_number: '', game: tradeInForm.game,
+      barcode_id: '', card_name: '', set_name: '', card_number: '', game: tradeInForm.game,
       card_type: 'raw', condition: 'NM', grade: '', grade_qualifier: '',
       card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null, image_url: '', cert_number: '', notes: ''
     });
     setImageOptions([]);
+    // Reset PSA state for next card
+    setPsaData(null);
+    setPsaError(null);
+    psaFetchedRef.current = null;
   };
 
   const updateTradeInItem = (index, field, value) => {
@@ -267,8 +351,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white w-full sm:max-w-6xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-indigo-600">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
@@ -284,7 +368,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Trade Info Row */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <User className="w-4 h-4 inline mr-1" />
@@ -336,7 +420,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
           </div>
 
           {/* Two Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             {/* Trade-In Section (Customer's cards coming IN) */}
             <div className="border border-green-200 rounded-lg p-4 bg-green-50">
               <div className="flex items-center justify-between mb-3">
@@ -356,7 +440,31 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
               {/* Inline Add Card Form */}
               {showAddTradeInForm && (
                 <div className="bg-white border border-green-300 rounded-lg p-3 mb-3 space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Barcode Input for PSA lookup */}
+                  <div className="relative">
+                    <input
+                      ref={barcodeInputRef}
+                      type="text"
+                      value={tradeInForm.barcode_id}
+                      onChange={(e) => handleBarcodeChange(e.target.value)}
+                      placeholder="Scan barcode or enter PSA cert #..."
+                      className="w-full px-2 py-2 pr-8 border border-gray-300 rounded text-sm font-mono focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      autoComplete="off"
+                    />
+                    <Scan className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  </div>
+
+                  {/* PSA Market Data Panel */}
+                  {(psaData || psaLoading || psaError) && (
+                    <PSAMarketData
+                      data={psaData}
+                      loading={psaLoading}
+                      error={psaError}
+                      onRetry={() => tradeInForm.barcode_id && handlePSALookup(tradeInForm.barcode_id)}
+                    />
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
                       value={tradeInForm.card_name}
@@ -742,7 +850,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
               <DollarSign className="w-4 h-4" />
               Trade Summary
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
               <div>
                 <span className="text-gray-600">Customer Trade Value:</span>
                 <div className="font-bold text-green-600">${tradeInValue.toFixed(2)}</div>
@@ -772,7 +880,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
             </div>
 
             {/* Manual Cash Override */}
-            <div className="mt-3 pt-3 border-t border-gray-300 grid grid-cols-2 gap-4">
+            <div className="mt-3 pt-3 border-t border-gray-300 grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-xs text-gray-600">Cash to Customer (override)</label>
                 <input
@@ -798,7 +906,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 p-4 border-t border-gray-200 bg-gray-50">
           <button
             onClick={onClose}
             className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"

@@ -6,6 +6,7 @@ import terminalRoutes from './terminal.js';
 import stripeRoutes from './stripe.js';
 import authRoutes from './auth.js';
 import tradesRoutes from './trades.js';
+import psaLookupRoutes from './psaLookup.js';
 
 const router = express.Router();
 router.use('/auth', authRoutes);
@@ -15,5 +16,6 @@ router.use('/stripe', stripeRoutes);
 router.use('/terminal', terminalRoutes);
 router.use('/insights', insightsRoutes);
 router.use('/trades', tradesRoutes);
+router.use('/psa-lookup', psaLookupRoutes);
 
 export default router;

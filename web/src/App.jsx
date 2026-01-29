@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan } from 'lucide-react';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
@@ -43,13 +43,14 @@ function App() {
   );
 }
 
-function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
+function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedItems, setSelectedItems] = useState(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
@@ -111,6 +112,21 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
     loadInventory();
     loadTrades();
   }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [currentView]);
 
   const showAlert = (type, message) => {
     setAlertModal({ isOpen: true, type, message });
@@ -318,47 +334,65 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
               </div>
               
               {/* Navigation Tabs */}
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+              <div className="hidden sm:flex gap-1 bg-gray-100 p-1 rounded-lg">
                 <button
                   onClick={() => setCurrentView('inventory')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
                     currentView === 'inventory'
                       ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Inventory
+                  <Package className="w-4 h-4 sm:hidden" />
+                  <span className="hidden sm:inline">Inventory</span>
+                  <span className="sm:hidden">Inv</span>
                 </button>
                 {hasFeature(FEATURES.VIEW_INSIGHTS) && (
                   <>
                     <button
                       onClick={() => setCurrentView('trades')}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
                         currentView === 'trades'
                           ? 'bg-white text-purple-600 shadow-sm'
                           : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
                       <ArrowLeftRight className="w-4 h-4" />
-                      Trades
+                      <span className="hidden sm:inline">Trades</span>
                     </button>
                     <button
                       onClick={() => setCurrentView('insights')}
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
                         currentView === 'insights'
                           ? 'bg-white text-blue-600 shadow-sm'
                           : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
                       <BarChart3 className="w-4 h-4" />
-                      Insights
+                      <span className="hidden sm:inline">Insights</span>
                     </button>
                   </>
                 )}
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            {/* Mobile Menu Button */}
+            <div className="flex items-center gap-2 sm:hidden">
+              <button
+                onClick={() => setMobileMenuOpen((v) => !v)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-6 h-6 text-gray-700" />
+                ) : (
+                  <Menu className="w-6 h-6 text-gray-700" />
+                )}
+              </button>
+            </div>
+
+            {/* Desktop / Tablet Actions */}
+            <div className="hidden sm:flex items-center gap-2">
               {currentView === 'inventory' && (
                 <>
                   <button
@@ -414,6 +448,140 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
               )}
             </div>
           </div>
+
+          {/* Mobile Menu Overlay + Panel */}
+          {mobileMenuOpen && (
+            <>
+              <button
+                type="button"
+                className="fixed inset-0 top-16 bg-black/10 z-40 sm:hidden"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Close menu overlay"
+              />
+              <div className="sm:hidden absolute left-0 right-0 top-16 bg-white border-b border-gray-200 shadow-lg z-50">
+                <div className="px-4 py-3 space-y-3">
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => {
+                        setCurrentView('inventory');
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        currentView === 'inventory'
+                          ? 'bg-blue-50 border-blue-200 text-blue-700'
+                          : 'bg-white border-gray-200 text-gray-700'
+                      }`}
+                    >
+                      Inventory
+                    </button>
+                    {hasFeature(FEATURES.VIEW_INSIGHTS) ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            setCurrentView('trades');
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                            currentView === 'trades'
+                              ? 'bg-purple-50 border-purple-200 text-purple-700'
+                              : 'bg-white border-gray-200 text-gray-700'
+                          }`}
+                        >
+                          Trades
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCurrentView('insights');
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                            currentView === 'insights'
+                              ? 'bg-blue-50 border-blue-200 text-blue-700'
+                              : 'bg-white border-gray-200 text-gray-700'
+                          }`}
+                        >
+                          Insights
+                        </button>
+                      </>
+                    ) : (
+                      <div className="col-span-2" />
+                    )}
+                  </div>
+
+                  {currentView === 'inventory' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => {
+                          loadInventory();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </button>
+                      {hasFeature(FEATURES.ADD_ITEM) ? (
+                        <button
+                          onClick={() => {
+                            setShowAddModal(true);
+                            setMobileMenuOpen(false);
+                          }}
+                          className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add
+                        </button>
+                      ) : (
+                        <div />
+                      )}
+                      {hasFeature(FEATURES.BULK_ACTIONS) && (
+                        <button
+                          onClick={() => {
+                            toggleMultiSelectMode();
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`col-span-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                            isMultiSelectMode
+                              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}
+                        >
+                          <CheckSquare className="w-4 h-4" />
+                          {isMultiSelectMode ? 'Exit Multi-Select' : 'Multi-Select'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="border-t border-gray-200 pt-3">
+                    {isAdmin() ? (
+                      <button
+                        onClick={() => {
+                          logout();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Logout
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          openLoginModal();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Lock className="w-4 h-4" />
+                        Admin Login
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </header>
 
@@ -468,7 +636,7 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
         {/* Multi-select Toolbar */}
         {isMultiSelectMode && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-4">
                 <span className="text-sm font-medium text-blue-900">
                   {selectedItems.size} selected
@@ -480,18 +648,18 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
                   {selectedItems.size === filteredInventory.length ? 'Deselect All' : 'Select All'}
                 </button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={bulkSell}
                   className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
                 >
-                  Sell Selected
+                  Sell
                 </button>
                 <button
                   onClick={bulkDelete}
                   className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors"
                 >
-                  Delete Selected
+                  Delete
                 </button>
                 <button
                   onClick={toggleMultiSelectMode}
@@ -589,6 +757,7 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
         isOpen={showAddModal}
         onClose={closeAddModal}
         onAdd={handleAddItem}
+        inventoryItems={inventory}
         editItem={editItem}
         onEdit={handleEditItem}
       />

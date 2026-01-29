@@ -301,3 +301,39 @@ export const assignBarcode = async (inventoryId, barcodeId) => {
     throw error;
   }
 };
+
+// PSA Lookup API
+export const fetchPSAData = async (certNumber) => {
+  try {
+    const response = await fetch(`${API_BASE}/psa-lookup/${certNumber}`);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to fetch PSA data');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching PSA data:', error);
+    throw error;
+  }
+};
+
+export const fetchPSAPopulationReport = async (specId) => {
+  try {
+    const response = await fetch(`${API_BASE}/psa-lookup/pop/${specId}`);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to fetch PSA population');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching PSA population:', error);
+    throw error;
+  }
+};
+
+// Check if a value looks like a PSA cert number (7-9 digit numeric)
+export const isPSACertNumber = (value) => {
+  if (!value || typeof value !== 'string') return false;
+  const cleaned = value.trim();
+  return /^\d{7,9}$/.test(cleaned);
+};
