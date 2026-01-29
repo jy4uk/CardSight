@@ -20,7 +20,7 @@ export async function getInventoryByBarcode(barcode) {
 }
 
 export async function getAllInventory() {
-  const rows = await query(`SELECT * FROM inventory ORDER BY id DESC`);
+  const rows = await query(`SELECT * FROM inventory WHERE status = 'IN_STOCK' ORDER BY id DESC`);
   return rows;
 }
 
@@ -29,25 +29,26 @@ export async function markAsSold(id, salePrice) {
 }
 
 export async function updateInventoryItem(id, data) {
-  const { card_name, set_name, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, grade, grade_qualifier } = data;
+  const { barcode_id, card_name, set_name, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, grade, grade_qualifier } = data;
   const rows = await query(
     `UPDATE inventory SET 
-      card_name = COALESCE($1, card_name),
-      set_name = COALESCE($2, set_name),
-      game = COALESCE($3, game),
-      card_type = COALESCE($4, card_type),
-      cert_number = COALESCE($5, cert_number),
-      card_number = COALESCE($6, card_number),
-      condition = COALESCE($7, condition),
-      purchase_price = COALESCE($8, purchase_price),
-      front_label_price = COALESCE($9, front_label_price),
-      notes = COALESCE($10, notes),
-      image_url = COALESCE($11, image_url),
-      grade = COALESCE($12, grade),
-      grade_qualifier = COALESCE($13, grade_qualifier)
-    WHERE id = $14
+      barcode_id = COALESCE($1, barcode_id),
+      card_name = COALESCE($2, card_name),
+      set_name = COALESCE($3, set_name),
+      game = COALESCE($4, game),
+      card_type = COALESCE($5, card_type),
+      cert_number = COALESCE($6, cert_number),
+      card_number = COALESCE($7, card_number),
+      condition = COALESCE($8, condition),
+      purchase_price = COALESCE($9, purchase_price),
+      front_label_price = COALESCE($10, front_label_price),
+      notes = COALESCE($11, notes),
+      image_url = COALESCE($12, image_url),
+      grade = COALESCE($13, grade),
+      grade_qualifier = COALESCE($14, grade_qualifier)
+    WHERE id = $15
     RETURNING *`,
-    [card_name, set_name, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, grade, grade_qualifier, id]
+    [barcode_id, card_name, set_name, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, grade, grade_qualifier, id]
   );
   return rows[0];
 }

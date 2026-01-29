@@ -518,6 +518,7 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
               isMultiSelectMode={isMultiSelectMode}
               isSelected={selectedItems.has(item.id)}
               onToggleSelect={toggleItemSelection}
+              isAdmin={isAdmin()}
             />
           ))}
         </div>

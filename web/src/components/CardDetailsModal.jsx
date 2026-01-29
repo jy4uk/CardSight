@@ -1,6 +1,6 @@
 import { X, Package, Trash2, Image as ImageIcon, Calendar, DollarSign } from 'lucide-react';
 
-export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDelete, onFetchImage, onSell }) {
+export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDelete, onFetchImage, onSell, isAdmin = false }) {
   if (!isOpen || !item) return null;
 
   const renderDetails = () => {
@@ -68,19 +68,23 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
                 }
               </p>
             </div>
-            <div>
-              <p className="text-gray-500">Purchase Date</p>
-              <p className="font-medium text-gray-900">
-                {item.purchase_date ? new Date(item.purchase_date).toLocaleDateString() : 'Unknown'}
-              </p>
-            </div>
-            <div>
-              <p className="text-gray-500">Purchase Price</p>
-              <p className="font-medium text-gray-900">${item.purchase_price || '0.00'}</p>
-            </div>
+            {isAdmin && (
+              <>
+                <div>
+                  <p className="text-gray-500">Purchase Date</p>
+                  <p className="font-medium text-gray-900">
+                    {item.purchase_date ? new Date(item.purchase_date).toLocaleDateString() : 'Unknown'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-500">Purchase Price</p>
+                  <p className="font-medium text-gray-900">${item.purchase_price || '0.00'}</p>
+                </div>
+              </>
+            )}
           </div>
 
-          {item.notes && (
+          {isAdmin && item.notes && (
             <div>
               <p className="text-gray-500 text-sm mb-1">Notes</p>
               <p className="text-gray-700 text-sm">{item.notes}</p>
@@ -88,22 +92,28 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-2 pt-4">
-            <button
-              onClick={() => onSell?.(item)}
-              className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <DollarSign className="w-4 h-4" />
-              Sell
-            </button>
-            <button
-              onClick={() => onDelete?.(item)}
-              className="flex items-center gap-1 px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="flex gap-2 pt-4">
+              {onSell && (
+                <button
+                  onClick={() => onSell(item)}
+                  className="flex items-center gap-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <DollarSign className="w-4 h-4" />
+                  Sell
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => onDelete(item)}
+                  className="flex items-center gap-1 px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

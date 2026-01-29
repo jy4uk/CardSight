@@ -24,7 +24,7 @@ const gameLabels = {
   'yugioh': 'YGO',
 };
 
-export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchImage, onDelete, isMultiSelectMode, isSelected, onToggleSelect }) {
+export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchImage, onDelete, isMultiSelectMode, isSelected, onToggleSelect, isAdmin = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [fetchingImage, setFetchingImage] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -262,6 +262,7 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
       onDelete={onDelete}
       onFetchImage={onFetchImage}
       onSell={onSell}
+      isAdmin={isAdmin}
     />
     </>
   );

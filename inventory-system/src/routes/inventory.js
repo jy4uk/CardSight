@@ -18,6 +18,14 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const data = { ...req.body };
+
+    // Friendly duplicate barcode handling
+    if (data.barcode_id) {
+      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1`, [data.barcode_id]);
+      if (existing.length > 0) {
+        return res.status(400).json({ success: false, error: 'Barcode already in use' });
+      }
+    }
     
     // Auto-fetch image if not provided and card_type is raw
     if (!data.image_url && data.card_name && (!data.card_type || data.card_type === 'raw')) {
@@ -30,6 +38,9 @@ router.post('/', async (req, res) => {
     const item = await addInventoryItem(data);
     res.json({ success: true, item });
   } catch (err) {
+    if (err?.code === '23505') {
+      return res.status(400).json({ success: false, error: 'Barcode already in use' });
+    }
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -113,10 +124,21 @@ router.post('/:barcode/update-image', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    // Friendly duplicate barcode handling (only if barcode_id is being updated)
+    if (req.body?.barcode_id) {
+      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1 AND id <> $2`, [req.body.barcode_id, req.params.id]);
+      if (existing.length > 0) {
+        return res.status(400).json({ success: false, error: 'Barcode already in use' });
+      }
+    }
+
     const item = await updateInventoryItem(req.params.id, req.body);
     if (!item) return res.status(404).json({ success: false, msg: 'Item not found' });
     res.json({ success: true, item });
   } catch (err) {
+    if (err?.code === '23505') {
+      return res.status(400).json({ success: false, error: 'Barcode already in use' });
+    }
     res.status(500).json({ success: false, error: err.message });
   }
 });
