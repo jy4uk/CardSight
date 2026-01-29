@@ -44,15 +44,32 @@ export function AuthProvider({ children }) {
 
   const login = async (password) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || '/api'}/auth/login`, {
+      const apiUrl = `${import.meta.env.VITE_API_URL || '/api'}/auth/login`;
+      console.log('Attempting login to:', apiUrl);
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password }),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers.get('content-type'));
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Login failed');
+        // Try to parse error, but handle HTML responses
+        const contentType = response.headers.get('content-type');
+        let errorMessage = 'Login failed';
+        
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          errorMessage = data.error || 'Login failed';
+        } else {
+          const text = await response.text();
+          errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -62,6 +79,7 @@ export function AuthProvider({ children }) {
       setShowLoginModal(false); // Close modal on successful login
       return { success: true };
     } catch (error) {
+      console.error('Login error:', error);
       return { success: false, error: error.message };
     }
   };

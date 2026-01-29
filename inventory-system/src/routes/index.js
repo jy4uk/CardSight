@@ -5,6 +5,7 @@ import pricingRoutes from './pricing.js';
 import terminalRoutes from './terminal.js';
 import stripeRoutes from './stripe.js';
 import authRoutes from './auth.js';
+import tradesRoutes from './trades.js';
 
 const router = express.Router();
 router.use('/auth', authRoutes);
@@ -13,5 +14,6 @@ router.use('/pricing', pricingRoutes);
 router.use('/stripe', stripeRoutes);
 router.use('/terminal', terminalRoutes);
 router.use('/insights', insightsRoutes);
+router.use('/trades', tradesRoutes);
 
 export default router;

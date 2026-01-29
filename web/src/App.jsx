@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock } from 'lucide-react';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
@@ -8,8 +8,11 @@ import AlertModal from './components/AlertModal';
 import Insights from './components/Insights';
 import LoginPage from './components/LoginPage';
 import LoginModal from './components/LoginModal';
+import TradeModal from './components/modals/TradeModal';
+import TradeHistory from './components/TradeHistory';
+import PendingBarcodes from './components/PendingBarcodes';
 import { useAuth, FEATURES } from './context/AuthContext';
-import { fetchInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem } from './api';
+import { fetchInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade } from './api';
 
 function App() {
   const { user, loading: authLoading, logout, hasFeature, isAdmin, showLoginModal, openLoginModal, closeLoginModal, login } = useAuth();
@@ -52,9 +55,12 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
   const [editItem, setEditItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [alertModal, setAlertModal] = useState({ isOpen: false, type: 'error', message: '' });
-  const [currentView, setCurrentView] = useState('inventory'); // 'inventory' or 'insights'
+  const [currentView, setCurrentView] = useState('inventory'); // 'inventory', 'insights', or 'trades'
   const [filters, setFilters] = useState({ condition: null, minPrice: '', maxPrice: '', game: null, cardType: null });
   const [showFilters, setShowFilters] = useState(false);
+  const [trades, setTrades] = useState([]);
+  const [showTradeModal, setShowTradeModal] = useState(false);
+  const [tradesSubView, setTradesSubView] = useState('history'); // 'history' or 'pending'
 
   const loadInventory = async () => {
     try {
@@ -69,8 +75,41 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
     }
   };
 
+  const loadTrades = async () => {
+    try {
+      const data = await fetchTrades();
+      setTrades(data.trades || []);
+    } catch (err) {
+      console.error('Failed to load trades:', err);
+    }
+  };
+
+  const handleCreateTrade = async (tradeData) => {
+    try {
+      await createTrade(tradeData);
+      await loadTrades();
+      await loadInventory(); // Refresh inventory to show new trade-in items and remove traded-out items
+      showAlert('success', 'Trade completed successfully!');
+    } catch (err) {
+      showAlert('error', 'Failed to create trade: ' + err.message);
+      throw err;
+    }
+  };
+
+  const handleDeleteTrade = async (tradeId) => {
+    try {
+      await deleteTrade(tradeId);
+      await loadTrades();
+      await loadInventory(); // Refresh inventory to restore traded-out items
+      showAlert('success', 'Trade deleted and inventory restored');
+    } catch (err) {
+      showAlert('error', 'Failed to delete trade: ' + err.message);
+    }
+  };
+
   useEffect(() => {
     loadInventory();
+    loadTrades();
   }, []);
 
   const showAlert = (type, message) => {
@@ -291,17 +330,30 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
                   Inventory
                 </button>
                 {hasFeature(FEATURES.VIEW_INSIGHTS) && (
-                  <button
-                    onClick={() => setCurrentView('insights')}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
-                      currentView === 'insights'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <BarChart3 className="w-4 h-4" />
-                    Insights
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setCurrentView('trades')}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                        currentView === 'trades'
+                          ? 'bg-white text-purple-600 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      <ArrowLeftRight className="w-4 h-4" />
+                      Trades
+                    </button>
+                    <button
+                      onClick={() => setCurrentView('insights')}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                        currentView === 'insights'
+                          ? 'bg-white text-blue-600 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      Insights
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -470,9 +522,66 @@ function AppContent({ logout, hasFeature, isAdmin, user, openLoginModal }) {
           ))}
         </div>
       </main>
+      ) : currentView === 'trades' ? (
+        <main className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-semibold text-gray-900">Trades</h2>
+              {/* Sub-tabs for trades */}
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setTradesSubView('history')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    tradesSubView === 'history'
+                      ? 'bg-white text-purple-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  History
+                </button>
+                <button
+                  onClick={() => setTradesSubView('pending')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                    tradesSubView === 'pending'
+                      ? 'bg-white text-orange-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Scan className="w-4 h-4" />
+                  Scan Pending
+                </button>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowTradeModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <ArrowLeftRight className="w-5 h-5" />
+              Record Trade
+            </button>
+          </div>
+          
+          {tradesSubView === 'history' ? (
+            <TradeHistory 
+              trades={trades} 
+              onDelete={handleDeleteTrade}
+              onRefresh={loadTrades}
+            />
+          ) : (
+            <PendingBarcodes onComplete={loadInventory} />
+          )}
+        </main>
       ) : (
         <Insights />
       )}
+
+      {/* Trade Modal */}
+      <TradeModal
+        isOpen={showTradeModal}
+        onClose={() => setShowTradeModal(false)}
+        onSubmit={handleCreateTrade}
+        inventoryItems={inventory}
+      />
 
       {/* Add Item Modal */}
       <AddItemModal

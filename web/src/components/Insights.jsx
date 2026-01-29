@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Package, DollarSign, BarChart3, Calendar, Filter, Clock, MapPin, Plus } from 'lucide-react';
+import { TrendingUp, Package, DollarSign, BarChart3, Calendar, Filter, Clock, MapPin, Plus, ArrowLeftRight } from 'lucide-react';
 import { fetchInsights, addCardShow, deleteCardShow } from '../api';
 import SalesDetailsModal from './modals/SalesDetailsModal';
 import InventoryBreakdownModal from './modals/InventoryBreakdownModal';
@@ -7,6 +7,7 @@ import InventoryTypeModal from './modals/InventoryTypeModal';
 import SalesHistoryModal from './modals/SalesHistoryModal';
 import CardShowDetailsModal from './modals/CardShowDetailsModal';
 import AddCardShowModal from './AddCardShowModal';
+import InventoryValueModal from './modals/InventoryValueModal';
 
 export default function Insights() {
   const [timeRange, setTimeRange] = useState('30d');
@@ -15,13 +16,16 @@ export default function Insights() {
     totalInventory: 0,
     totalValue: 0,
     itemsSold: 0,
+    itemsTraded: 0,
     totalRevenue: 0,
+    totalProfit: 0,
     profitMargin: 0,
     avgSalePrice: 0,
+    avgTradePrice: 0,
     avgTimeInInventory: 0,
     gameDistribution: [],
     inventoryTypeBreakdown: [],
-    recentSales: [],
+    recentTransactions: [],
     cardShows: []
   });
   const [modalState, setModalState] = useState({ isOpen: false, type: null, data: null });
@@ -45,10 +49,18 @@ export default function Insights() {
         totalInventory: 0,
         totalValue: 0,
         itemsSold: 0,
+        itemsTraded: 0,
         totalRevenue: 0,
+        totalProfit: 0,
         profitMargin: 0,
         avgSalePrice: 0,
+        avgTradePrice: 0,
         avgTimeInInventory: 0,
+        gameDistribution: [],
+        inventoryTypeBreakdown: [],
+        recentTransactions: [],
+        inventoryValueByDate: [],
+        inventoryValueByCard: [],
         cardShows: []
       });
     } finally {
@@ -86,14 +98,23 @@ export default function Insights() {
     }
   };
 
-  const MetricCard = ({ title, value, icon: Icon, trend, color = 'blue', modalType, modalData }) => (
+  const MetricCard = ({ title, value, icon: Icon, trend, color = 'blue', modalType, modalData }) => {
+    const colorClasses = {
+      blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
+      green: { bg: 'bg-green-100', text: 'text-green-600' },
+      purple: { bg: 'bg-purple-100', text: 'text-purple-600' },
+      orange: { bg: 'bg-orange-100', text: 'text-orange-600' }
+    };
+    const classes = colorClasses[color] || colorClasses.blue;
+
+    return (
     <div 
       className={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 ${modalType ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
       onClick={() => modalType && openModal(modalType, modalData)}
     >
       <div className="flex items-center justify-between mb-2">
-        <div className={`p-2 bg-${color}-100 rounded-lg`}>
-          <Icon className={`w-5 h-5 text-${color}-600`} />
+        <div className={`p-2 ${classes.bg} rounded-lg`}>
+          <Icon className={`w-5 h-5 ${classes.text}`} />
         </div>
         {trend && (
           <div className={`flex items-center text-sm ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -108,7 +129,8 @@ export default function Insights() {
       <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
     </div>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -169,6 +191,8 @@ export default function Insights() {
             icon={DollarSign}
             trend={12.3}
             color="green"
+            modalType="inventoryValue"
+            modalData={metrics}
           />
           <MetricCard
             title="Items Sold"
@@ -177,7 +201,16 @@ export default function Insights() {
             trend={8.7}
             color="purple"
             modalType="itemsSold"
-            modalData={metrics.recentSales}
+            modalData={metrics.recentTransactions}
+          />
+          <MetricCard
+            title="Items Traded"
+            value={metrics.itemsTraded.toLocaleString()}
+            icon={ArrowLeftRight}
+            trend={5.4}
+            color="orange"
+            modalType="itemsTraded"
+            modalData={metrics.recentTransactions}
           />
           <MetricCard
             title="Total Revenue"
@@ -199,6 +232,12 @@ export default function Insights() {
             icon={TrendingUp}
             trend={-3.4}
             color="orange"
+            modalType="avgPriceBreakdown"
+            modalData={{
+              avgSalePrice: metrics.avgSalePrice,
+              avgTradePrice: metrics.avgTradePrice,
+              recentTransactions: metrics.recentTransactions
+            }}
           />
           <MetricCard
             title="Avg Time in Inventory"
@@ -274,21 +313,35 @@ export default function Insights() {
 
         {/* Recent Activity */}
         <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Sales</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Transactions</h3>
           <div className="space-y-3">
-            {metrics.recentSales?.length > 0 ? (
-              metrics.recentSales.map((sale, index) => (
+            {metrics.recentTransactions?.length > 0 ? (
+              metrics.recentTransactions.map((transaction, index) => (
                 <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                   <div>
-                    <p className="font-medium text-gray-900">{sale.cardName}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{transaction.cardName}</p>
+                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                        transaction.transactionType === 'sale' 
+                          ? 'bg-blue-100 text-blue-700' 
+                          : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {transaction.transactionType === 'sale' ? 'Sale' : 'Trade'}
+                      </span>
+                    </div>
                     <p className="text-sm text-gray-500">
-                      {sale.setName} • {new Date(sale.saleDate).toLocaleDateString()}
+                      {transaction.setName} • {new Date(transaction.date).toLocaleDateString()}
+                      {transaction.transactionType === 'trade' && transaction.customerName && ` • ${transaction.customerName}`}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-green-600">${sale.salePrice.toFixed(2)}</p>
+                    <p className={`font-semibold ${
+                      transaction.transactionType === 'sale' ? 'text-green-600' : 'text-orange-600'
+                    }`}>
+                      ${transaction.value.toFixed(2)}
+                    </p>
                     <p className="text-sm text-gray-500">
-                      Profit: ${sale.profit.toFixed(2)}
+                      {transaction.transactionType === 'sale' ? 'Profit' : 'Value'}: ${Math.abs(transaction.profit).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -296,7 +349,7 @@ export default function Insights() {
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <Package className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>No sales yet</p>
+                <p>No transactions yet</p>
               </div>
             )}
           </div>
@@ -308,7 +361,17 @@ export default function Insights() {
         <SalesDetailsModal
           isOpen={modalState.isOpen}
           onClose={() => setModalState({ isOpen: false, type: null, data: null })}
-          data={modalState.data}
+          data={(modalState.data || []).filter(t => t.transactionType === 'sale')}
+          title="Items Sold Details"
+          timeRange={timeRange}
+        />
+      )}
+      {modalState.type === 'itemsTraded' && (
+        <SalesDetailsModal
+          isOpen={modalState.isOpen}
+          onClose={() => setModalState({ isOpen: false, type: null, data: null })}
+          data={(modalState.data || []).filter(t => t.transactionType === 'trade')}
+          title="Items Traded Details"
           timeRange={timeRange}
         />
       )}
@@ -333,12 +396,28 @@ export default function Insights() {
           data={modalState.data}
         />
       )}
+      {modalState.type === 'inventoryValue' && (
+        <InventoryValueModal
+          isOpen={modalState.isOpen}
+          onClose={() => setModalState({ isOpen: false, type: null, data: null })}
+          data={modalState.data}
+        />
+      )}
+      {modalState.type === 'avgPriceBreakdown' && (
+        <SalesHistoryModal
+          isOpen={modalState.isOpen}
+          onClose={() => setModalState({ isOpen: false, type: null, data: null })}
+          data={modalState.data}
+          title="Average Price Breakdown"
+          showPriceComparison={true}
+        />
+      )}
       {modalState.type === 'cardShows' && (
         <CardShowDetailsModal
           isOpen={modalState.isOpen}
           onClose={() => setModalState({ isOpen: false, type: null, data: null })}
           cardShows={modalState.data}
-          recentSales={metrics.recentSales}
+          recentSales={(metrics.recentTransactions || []).filter(t => t.transactionType === 'sale')}
           onDeleteShow={handleDeleteCardShow}
         />
       )}

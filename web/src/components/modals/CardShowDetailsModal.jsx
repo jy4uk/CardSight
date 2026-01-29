@@ -119,7 +119,7 @@ export default function CardShowDetailsModal({ isOpen, onClose, cardShows, recen
                                     )}
                                   </div>
                                   <div className="text-right ml-4">
-                                    <p className="text-sm font-semibold text-green-600">${sale.salePrice?.toFixed(2)}</p>
+                                    <p className="text-sm font-semibold text-green-600">${(sale.value ?? sale.salePrice ?? 0).toFixed(2)}</p>
                                     <p className="text-xs text-gray-500">
                                       Profit: <span className={sale.profit > 0 ? 'text-blue-600' : 'text-red-600'}>
                                         ${sale.profit?.toFixed(2)}

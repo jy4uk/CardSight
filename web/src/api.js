@@ -228,3 +228,76 @@ export const deleteCardShow = async (showId) => {
     throw error;
   }
 };
+
+// Trades API
+export const fetchTrades = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/trades`);
+    if (!response.ok) throw new Error('Failed to fetch trades');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching trades:', error);
+    throw error;
+  }
+};
+
+export const createTrade = async (tradeData) => {
+  try {
+    const response = await fetch(`${API_BASE}/trades`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(tradeData)
+    });
+    if (!response.ok) throw new Error('Failed to create trade');
+    return await response.json();
+  } catch (error) {
+    console.error('Error creating trade:', error);
+    throw error;
+  }
+};
+
+export const deleteTrade = async (tradeId) => {
+  try {
+    const response = await fetch(`${API_BASE}/trades/${tradeId}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete trade');
+    return await response.json();
+  } catch (error) {
+    console.error('Error deleting trade:', error);
+    throw error;
+  }
+};
+
+export const fetchPendingBarcodes = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/trades/pending-barcodes`);
+    if (!response.ok) throw new Error('Failed to fetch pending barcodes');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching pending barcodes:', error);
+    throw error;
+  }
+};
+
+export const assignBarcode = async (inventoryId, barcodeId) => {
+  try {
+    const response = await fetch(`${API_BASE}/trades/assign-barcode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ inventory_id: inventoryId, barcode_id: barcodeId })
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to assign barcode');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error assigning barcode:', error);
+    throw error;
+  }
+};

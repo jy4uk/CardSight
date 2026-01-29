@@ -8,24 +8,35 @@ router.get('/', async (req, res) => {
   try {
     const { timeRange = '30d' } = req.query;
     
-    // Calculate date range
-    let dateFilter = '';
-    const now = new Date();
+    // Calculate date range filters (must be table-specific)
+    let salesDateFilter = '';
+    let tradeDateFilter = '';
+    let inventoryDateFilter = '';
     switch (timeRange) {
       case '7d':
-        dateFilter = `AND transactions.sale_date >= NOW() - INTERVAL '7 days'`;
+        salesDateFilter = `AND transactions.sale_date >= NOW() - INTERVAL '7 days'`;
+        tradeDateFilter = `AND t.trade_date >= NOW() - INTERVAL '7 days'`;
+        inventoryDateFilter = `AND i.purchase_date >= NOW() - INTERVAL '7 days'`;
         break;
       case '30d':
-        dateFilter = `AND transactions.sale_date >= NOW() - INTERVAL '30 days'`;
+        salesDateFilter = `AND transactions.sale_date >= NOW() - INTERVAL '30 days'`;
+        tradeDateFilter = `AND t.trade_date >= NOW() - INTERVAL '30 days'`;
+        inventoryDateFilter = `AND i.purchase_date >= NOW() - INTERVAL '30 days'`;
         break;
       case '90d':
-        dateFilter = `AND transactions.sale_date >= NOW() - INTERVAL '90 days'`;
+        salesDateFilter = `AND transactions.sale_date >= NOW() - INTERVAL '90 days'`;
+        tradeDateFilter = `AND t.trade_date >= NOW() - INTERVAL '90 days'`;
+        inventoryDateFilter = `AND i.purchase_date >= NOW() - INTERVAL '90 days'`;
         break;
       case '1y':
-        dateFilter = `AND transactions.sale_date >= NOW() - INTERVAL '1 year'`;
+        salesDateFilter = `AND transactions.sale_date >= NOW() - INTERVAL '1 year'`;
+        tradeDateFilter = `AND t.trade_date >= NOW() - INTERVAL '1 year'`;
+        inventoryDateFilter = `AND i.purchase_date >= NOW() - INTERVAL '1 year'`;
         break;
       default:
-        dateFilter = '';
+        salesDateFilter = '';
+        tradeDateFilter = '';
+        inventoryDateFilter = '';
     }
 
     // Get inventory metrics
@@ -47,7 +58,21 @@ router.get('/', async (req, res) => {
         AVG(transactions.sale_price) as avg_sale_price
       FROM transactions
       JOIN inventory ON transactions.inventory_id = inventory.id
-      WHERE 1=1 ${dateFilter}
+      WHERE 1=1 ${salesDateFilter}
+    `);
+
+    // Get trade metrics
+    const tradeStats = await query(`
+      SELECT 
+        COUNT(DISTINCT t.id) as trades_count,
+        COUNT(CASE WHEN ti.direction = 'out' THEN 1 END) as items_traded_out,
+        COALESCE(SUM(CASE WHEN ti.direction = 'out' THEN ti.trade_value ELSE 0 END), 0) as total_trade_out_value,
+        COALESCE(SUM(CASE WHEN ti.direction = 'out' THEN (ti.trade_value - i.purchase_price) ELSE 0 END), 0) as total_trade_out_profit,
+        AVG(CASE WHEN ti.direction = 'out' THEN ti.trade_value ELSE NULL END) as avg_trade_out_value
+      FROM trades t
+      JOIN trade_items ti ON t.id = ti.trade_id
+      LEFT JOIN inventory i ON ti.inventory_id = i.id
+      WHERE 1=1 ${tradeDateFilter}
     `);
 
     // Get sales trend data (daily)
@@ -59,7 +84,7 @@ router.get('/', async (req, res) => {
         SUM(transactions.sale_price - inventory.purchase_price) as profit
       FROM transactions
       JOIN inventory ON transactions.inventory_id = inventory.id
-      WHERE 1=1 ${dateFilter}
+      WHERE 1=1 ${salesDateFilter}
       GROUP BY DATE(transactions.sale_date)
       ORDER BY date DESC
       LIMIT 30
@@ -113,56 +138,118 @@ router.get('/', async (req, res) => {
       ORDER BY cs.show_date DESC
     `);
 
-    // Get recent sales with card show information
-    const recentSales = await query(`
-      SELECT 
-        transactions.sale_price,
-        transactions.sale_date,
-        (transactions.sale_price - inventory.purchase_price) as profit,
-        inventory.card_name,
-        inventory.set_name,
-        inventory.game,
-        inventory.purchase_date,
-        GREATEST(0, EXTRACT(EPOCH FROM (transactions.sale_date - inventory.purchase_date)) / 86400) as days_in_inventory,
-        COALESCE(card_shows.show_name, 'Direct Sale') as show_name,
-        COALESCE(card_shows.location, '') as location,
-        transactions.show_id,
-        COALESCE(purchase_shows.show_name, '') as purchase_show_name
-      FROM transactions
-      JOIN inventory ON transactions.inventory_id = inventory.id
-      LEFT JOIN card_shows ON transactions.show_id = card_shows.id
-      LEFT JOIN card_shows AS purchase_shows ON inventory.purchase_show_id = purchase_shows.id
-      ORDER BY transactions.sale_date DESC
+    // Get recent transactions (sales + trade-outs)
+    const recentTransactions = await query(`
+      (
+        SELECT 
+          'sale' as transaction_type,
+          transactions.sale_price as value,
+          transactions.sale_date as date,
+          (transactions.sale_price - inventory.purchase_price) as profit,
+          inventory.card_name,
+          inventory.set_name,
+          inventory.game,
+          inventory.purchase_date,
+          GREATEST(0, EXTRACT(EPOCH FROM (transactions.sale_date - inventory.purchase_date)) / 86400) as days_in_inventory,
+          COALESCE(card_shows.show_name, 'Direct Sale') as show_name,
+          COALESCE(card_shows.location, '') as location,
+          transactions.show_id,
+          COALESCE(purchase_shows.show_name, '') as purchase_show_name,
+          NULL as trade_id,
+          NULL as customer_name
+        FROM transactions
+        JOIN inventory ON transactions.inventory_id = inventory.id
+        LEFT JOIN card_shows ON transactions.show_id = card_shows.id
+        LEFT JOIN card_shows AS purchase_shows ON inventory.purchase_show_id = purchase_shows.id
+        WHERE 1=1 ${salesDateFilter}
+      )
+      UNION ALL
+      (
+        SELECT 
+          'trade' as transaction_type,
+          ti.trade_value as value,
+          t.trade_date as date,
+          (ti.trade_value - i.purchase_price) as profit,
+          COALESCE(i.card_name, ti.card_name) as card_name,
+          COALESCE(i.set_name, ti.set_name) as set_name,
+          COALESCE(i.game, 'pokemon') as game,
+          i.purchase_date,
+          GREATEST(0, EXTRACT(EPOCH FROM (t.trade_date - i.purchase_date)) / 86400) as days_in_inventory,
+          COALESCE(card_shows.show_name, 'Trade') as show_name,
+          COALESCE(card_shows.location, '') as location,
+          t.show_id,
+          COALESCE(purchase_shows.show_name, '') as purchase_show_name,
+          t.id as trade_id,
+          t.customer_name
+        FROM trades t
+        JOIN trade_items ti ON t.id = ti.trade_id
+        JOIN inventory i ON ti.inventory_id = i.id
+        LEFT JOIN card_shows ON t.show_id = card_shows.id
+        LEFT JOIN card_shows AS purchase_shows ON i.purchase_show_id = purchase_shows.id
+        WHERE ti.direction = 'out' ${tradeDateFilter}
+      )
+      ORDER BY date DESC
       LIMIT 10
     `);
 
-    // Calculate profit margin and time metrics
-    const totalRevenue = salesStats[0]?.total_revenue || 0;
-    const totalProfit = salesStats[0]?.total_profit || 0;
-    const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100) : 0;
+    // Inventory value gained (for modal)
+    const inventoryValueByDate = await query(`
+      SELECT
+        DATE(i.purchase_date) as date,
+        COUNT(*) as cards_added,
+        COALESCE(SUM(i.front_label_price), 0) as value_gained
+      FROM inventory i
+      WHERE i.purchase_date IS NOT NULL ${inventoryDateFilter}
+      GROUP BY DATE(i.purchase_date)
+      ORDER BY date DESC
+      LIMIT 60
+    `);
+
+    const inventoryValueByCard = await query(`
+      SELECT
+        i.card_name,
+        i.set_name,
+        COUNT(*) as count,
+        COALESCE(SUM(i.front_label_price), 0) as value_gained,
+        MAX(i.purchase_date) as last_added
+      FROM inventory i
+      WHERE i.purchase_date IS NOT NULL ${inventoryDateFilter}
+      GROUP BY i.card_name, i.set_name
+      ORDER BY value_gained DESC
+      LIMIT 100
+    `);
+
+    // Calculate profit margin and time metrics (including trade-outs)
+    const toNumber = (value) => {
+      const num = parseFloat(value);
+      return Number.isFinite(num) ? num : 0;
+    };
+
+    const totalRevenue = toNumber(salesStats[0]?.total_revenue);
+    const totalProfit = toNumber(salesStats[0]?.total_profit);
+    const totalTradeOutValue = toNumber(tradeStats[0]?.total_trade_out_value);
+    const totalTradeOutProfit = toNumber(tradeStats[0]?.total_trade_out_profit);
     
-    // Calculate average time in inventory for sold items
-    console.log('Recent sales for avg time calculation:', recentSales.map(s => ({
-      cardName: s.card_name,
-      daysInInventory: s.days_in_inventory,
-      purchaseDate: s.purchase_date,
-      saleDate: s.sale_date
-    })));
-    
-    const avgTimeInInventory = recentSales.length > 0 
-      ? recentSales.reduce((sum, sale) => sum + (Number(sale.days_in_inventory) || 0), 0) / recentSales.length 
+    // Include trade-outs in total revenue and profit
+    const adjustedRevenue = totalRevenue + totalTradeOutValue;
+    const adjustedProfit = totalProfit + totalTradeOutProfit;
+    const profitMargin = adjustedRevenue > 0 ? ((adjustedProfit / adjustedRevenue) * 100) : 0;
+
+    const salesTransactionsForTime = recentTransactions.filter(t => t.transaction_type === 'sale');
+    const avgTimeInInventory = salesTransactionsForTime.length > 0
+      ? salesTransactionsForTime.reduce((sum, sale) => sum + (Number(sale.days_in_inventory) || 0), 0) / salesTransactionsForTime.length
       : 0;
-    
-    console.log('Calculated avg time in inventory:', avgTimeInInventory);
 
     const metrics = {
       totalInventory: Number(inventoryStats[0]?.total_inventory || 0),
       totalValue: Number(inventoryStats[0]?.total_value || 0),
       itemsSold: Number(salesStats[0]?.items_sold || 0),
-      totalRevenue: Number(totalRevenue),
-      totalProfit: Number(totalProfit),
+      itemsTraded: Number(tradeStats[0]?.items_traded_out || 0),
+      totalRevenue: Number(adjustedRevenue),
+      totalProfit: Number(adjustedProfit),
       profitMargin: Number(profitMargin.toFixed(1)),
-      avgSalePrice: Number(salesStats[0]?.avg_sale_price || 0),
+      avgSalePrice: toNumber(salesStats[0]?.avg_sale_price),
+      avgTradePrice: toNumber(tradeStats[0]?.avg_trade_out_value),
       avgInventoryPrice: Number(inventoryStats[0]?.avg_price || 0),
       avgTimeInInventory: Number(avgTimeInInventory.toFixed(1)),
       salesTrend: salesTrend.map(row => ({
@@ -180,10 +267,11 @@ router.get('/', async (req, res) => {
         count: Number(row.count),
         totalValue: Number(row.total_value)
       })),
-      recentSales: recentSales.map(row => ({
-        salePrice: Number(row.sale_price),
+      recentTransactions: recentTransactions.map(row => ({
+        transactionType: row.transaction_type,
+        value: Number(row.value),
         profit: Number(row.profit),
-        saleDate: row.sale_date,
+        date: row.date,
         purchaseDate: row.purchase_date,
         daysInInventory: Number(row.days_in_inventory || 0),
         cardName: row.card_name,
@@ -192,7 +280,21 @@ router.get('/', async (req, res) => {
         showName: row.show_name,
         location: row.location,
         showId: row.show_id,
-        purchaseShowName: row.purchase_show_name
+        purchaseShowName: row.purchase_show_name,
+        tradeId: row.trade_id,
+        customerName: row.customer_name
+      })),
+      inventoryValueByDate: inventoryValueByDate.map(row => ({
+        date: row.date,
+        cardsAdded: Number(row.cards_added),
+        valueGained: Number(row.value_gained)
+      })),
+      inventoryValueByCard: inventoryValueByCard.map(row => ({
+        cardName: row.card_name,
+        setName: row.set_name,
+        count: Number(row.count),
+        valueGained: Number(row.value_gained),
+        lastAdded: row.last_added
       })),
       cardShows: cardShows.map(row => ({
         id: row.id,

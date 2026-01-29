@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, Package, DollarSign, TrendingUp, Calendar, Filter, Search, Clock } from 'lucide-react';
 
-export default function SalesDetailsModal({ isOpen, onClose, data, timeRange }) {
+export default function SalesDetailsModal({ isOpen, onClose, data, timeRange, title = 'Items Sold Details' }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date');
 
@@ -15,9 +15,9 @@ export default function SalesDetailsModal({ isOpen, onClose, data, timeRange }) 
   const sortedData = [...filteredData].sort((a, b) => {
     switch (sortBy) {
       case 'date':
-        return new Date(b.saleDate) - new Date(a.saleDate);
+        return new Date(b.date || b.saleDate) - new Date(a.date || a.saleDate);
       case 'price':
-        return b.salePrice - a.salePrice;
+        return (b.value || b.salePrice) - (a.value || a.salePrice);
       case 'profit':
         return b.profit - a.profit;
       case 'timeInInventory':
@@ -36,7 +36,7 @@ export default function SalesDetailsModal({ isOpen, onClose, data, timeRange }) 
       <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Items Sold Details</h2>
+          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
           <button
             onClick={onClose}
             className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -82,7 +82,7 @@ export default function SalesDetailsModal({ isOpen, onClose, data, timeRange }) 
             <div className="text-center">
               <p className="text-sm text-gray-500">Total Revenue</p>
               <p className="text-lg font-semibold text-green-600">
-                ${sortedData.reduce((sum, item) => sum + (item.salePrice || 0), 0).toFixed(2)}
+                ${sortedData.reduce((sum, item) => sum + (item.value || item.salePrice || 0), 0).toFixed(2)}
               </p>
             </div>
             <div className="text-center">
@@ -105,7 +105,16 @@ export default function SalesDetailsModal({ isOpen, onClose, data, timeRange }) 
                 <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900">{item.cardName}</h4>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-semibold text-gray-900">{item.cardName}</h4>
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          item.transactionType === 'sale' 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'bg-orange-100 text-orange-700'
+                        }`}>
+                          {item.transactionType === 'sale' ? 'Sale' : 'Trade'}
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-600">{item.setName}</p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
                         <span className="flex items-center gap-1">
@@ -114,8 +123,14 @@ export default function SalesDetailsModal({ isOpen, onClose, data, timeRange }) 
                         </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          Sold: {new Date(item.saleDate).toLocaleDateString()}
+                          {item.transactionType === 'sale' ? 'Sold' : 'Traded'}: {new Date(item.date || item.saleDate).toLocaleDateString()}
                         </span>
+                        {item.transactionType === 'trade' && item.customerName && (
+                          <span className="flex items-center gap-1">
+                            <Package className="w-3 h-3" />
+                            Customer: {item.customerName}
+                          </span>
+                        )}
                         {item.purchaseDate && (
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
@@ -143,10 +158,15 @@ export default function SalesDetailsModal({ isOpen, onClose, data, timeRange }) 
                       </div>
                     </div>
                     <div className="text-right ml-4">
-                      <p className="font-semibold text-green-600">${item.salePrice?.toFixed(2)}</p>
+                      <p className={`font-semibold ${
+                        item.transactionType === 'sale' ? 'text-green-600' : 'text-orange-600'
+                      }`}>
+                        ${(item.value || item.salePrice || 0).toFixed(2)}
+                      </p>
                       <p className="text-sm text-gray-500">
-                        Profit: <span className={item.profit > 0 ? 'text-blue-600' : 'text-red-600'}>
-                          ${item.profit?.toFixed(2)}
+                        {item.transactionType === 'sale' ? 'Profit' : 'Value'}: 
+                        <span className={item.profit > 0 ? 'text-blue-600' : 'text-red-600'}>
+                          ${Math.abs(item.profit || 0).toFixed(2)}
                         </span>
                       </p>
                     </div>
