@@ -44,6 +44,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
     notes: editItem?.notes || '',
     image_url: editItem?.image_url || '',
     tcg_product_id: editItem?.tcg_product_id || null,
+    hidden: editItem?.hidden || false,
   });
 
   const [formData, setFormData] = useState(getInitialFormData);
@@ -1022,10 +1023,25 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
             </div>
           )}
 
+          {/* Hide from Public Inventory Toggle */}
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+            <input
+              type="checkbox"
+              name="hidden"
+              checked={formData.hidden}
+              onChange={(e) => setFormData(prev => ({ ...prev, hidden: e.target.checked }))}
+              className="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+            />
+            <div className="flex-1">
+              <span className="text-sm font-medium text-gray-700">Hide from public inventory</span>
+              <p className="text-xs text-gray-500">For grading candidates or personal collection</p>
+            </div>
+          </label>
+
           {/* Submit */}
           <button
             type="submit"
-            disabled={!isEditMode && (!formData.barcode_id || isDuplicateBarcode)}
+            disabled={!isEditMode && isDuplicateBarcode}
             className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl
                        hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed
                        transition-colors flex items-center justify-center gap-2"

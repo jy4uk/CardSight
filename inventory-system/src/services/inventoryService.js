@@ -4,13 +4,13 @@ export async function addInventoryItem(data) {
   const { 
     barcode_id, card_name, set_name, series = null, condition, purchase_price, front_label_price, notes,
     game = 'pokemon', card_type = 'raw', cert_number = null, card_number = null, image_url = null,
-    tcg_product_id = null
+    tcg_product_id = null, hidden = false
   } = data;
   const rows = await query(
-    `INSERT INTO inventory (barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, purchase_date, front_label_price, status, notes, image_url, tcg_product_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now(), $11, 'IN_STOCK', $12, $13, $14)
+    `INSERT INTO inventory (barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, purchase_date, front_label_price, status, notes, image_url, tcg_product_id, hidden)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now(), $11, 'IN_STOCK', $12, $13, $14, $15)
      RETURNING *`,
-    [barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, tcg_product_id]
+    [barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, tcg_product_id, hidden]
   );
   return rows[0];
 }
@@ -30,7 +30,7 @@ export async function markAsSold(id, salePrice) {
 }
 
 export async function updateInventoryItem(id, data) {
-  const { barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, grade, grade_qualifier, tcg_product_id } = data;
+  const { barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, grade, grade_qualifier, tcg_product_id, hidden } = data;
   const rows = await query(
     `UPDATE inventory SET 
       barcode_id = COALESCE($1, barcode_id),
@@ -48,10 +48,11 @@ export async function updateInventoryItem(id, data) {
       image_url = COALESCE($13, image_url),
       grade = COALESCE($14, grade),
       grade_qualifier = COALESCE($15, grade_qualifier),
-      tcg_product_id = COALESCE($16, tcg_product_id)
-    WHERE id = $17
+      tcg_product_id = COALESCE($16, tcg_product_id),
+      hidden = COALESCE($17, hidden)
+    WHERE id = $18
     RETURNING *`,
-    [barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, grade, grade_qualifier, tcg_product_id, id]
+    [barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, grade, grade_qualifier, tcg_product_id, hidden, id]
   );
   return rows[0];
 }

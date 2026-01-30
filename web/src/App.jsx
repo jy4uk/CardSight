@@ -62,6 +62,7 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
   const [trades, setTrades] = useState([]);
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [tradesSubView, setTradesSubView] = useState('history'); // 'history' or 'pending'
+  const [inventorySubView, setInventorySubView] = useState('grid'); // 'grid' or 'pending'
 
   const loadInventory = async () => {
     try {
@@ -588,109 +589,144 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
       {/* Main Content */}
       {currentView === 'inventory' ? (
         <main className="max-w-7xl mx-auto px-4 py-4">
-          {/* Search & Filters */}
-          <div className="mb-4">
-            <SearchFilter
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              filters={filters}
-              onFilterChange={setFilters}
-              showFilters={showFilters}
-              onToggleFilters={() => setShowFilters(!showFilters)}
-            />
-        </div>
-
-        {/* Results Count */}
-        <div className="mb-3 text-sm text-gray-500">
-          {filteredInventory.length} {filteredInventory.length === 1 ? 'card' : 'cards'} available
-        </div>
-
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4">
-            {error}
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading && inventory.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-            <RefreshCw className="w-8 h-8 animate-spin mb-3" />
-            <p>Loading inventory...</p>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && filteredInventory.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-            <Package className="w-12 h-12 mb-3 text-gray-300" />
-            <p className="font-medium">No cards found</p>
-            <p className="text-sm">
-              {inventory.length === 0 
-                ? 'Add your first card to get started' 
-                : 'Try adjusting your search or filters'}
-            </p>
-          </div>
-        )}
-
-        {/* Multi-select Toolbar */}
-        {isMultiSelectMode && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-blue-900">
-                  {selectedItems.size} selected
-                </span>
+          {/* Inventory Sub-view Toggle */}
+          {isAdmin() && (
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                 <button
-                  onClick={selectAll}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  onClick={() => setInventorySubView('grid')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    inventorySubView === 'grid'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
-                  {selectedItems.size === filteredInventory.length ? 'Deselect All' : 'Select All'}
-                </button>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={bulkSell}
-                  className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
-                >
-                  Sell
+                  Inventory
                 </button>
                 <button
-                  onClick={bulkDelete}
-                  className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors"
+                  onClick={() => setInventorySubView('pending')}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                    inventorySubView === 'pending'
+                      ? 'bg-white text-orange-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
-                  Delete
-                </button>
-                <button
-                  onClick={toggleMultiSelectMode}
-                  className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
+                  <Scan className="w-4 h-4" />
+                  Scan Pending
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {inventorySubView === 'pending' ? (
+            <PendingBarcodes onComplete={loadInventory} />
+          ) : (
+            <>
+              {/* Search & Filters */}
+              <div className="mb-4">
+                <SearchFilter
+                  searchQuery={searchQuery}
+                  onSearchChange={setSearchQuery}
+                  filters={filters}
+                  onFilterChange={setFilters}
+                  showFilters={showFilters}
+                  onToggleFilters={() => setShowFilters(!showFilters)}
+                />
+              </div>
+
+              {/* Results Count */}
+              <div className="mb-3 text-sm text-gray-500">
+                {filteredInventory.length} {filteredInventory.length === 1 ? 'card' : 'cards'} available
+              </div>
+
+        {/* Error State */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4">
+                  {error}
+                </div>
+              )}
+
+              {/* Loading State */}
+              {loading && inventory.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                  <RefreshCw className="w-8 h-8 animate-spin mb-3" />
+                  <p>Loading inventory...</p>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loading && filteredInventory.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                  <Package className="w-12 h-12 mb-3 text-gray-300" />
+                  <p className="font-medium">No cards found</p>
+                  <p className="text-sm">
+                    {inventory.length === 0 
+                      ? 'Add your first card to get started' 
+                      : 'Try adjusting your search or filters'}
+                  </p>
+                </div>
+              )}
+
+              {/* Multi-select Toolbar */}
+              {isMultiSelectMode && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-medium text-blue-900">
+                        {selectedItems.size} selected
+                      </span>
+                      <button
+                        onClick={selectAll}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        {selectedItems.size === filteredInventory.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={bulkSell}
+                        className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
+                      >
+                        Sell
+                      </button>
+                      <button
+                        onClick={bulkDelete}
+                        className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={toggleMultiSelectMode}
+                        className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
         {/* Inventory Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {filteredInventory.map((item) => (
-            <InventoryCard
-              key={item.id}
-              item={item}
-              onSelect={(item) => console.log('Selected:', item)}
-              onSell={hasFeature(FEATURES.SELL_ITEM) ? openSellModal : null}
-              onEdit={hasFeature(FEATURES.EDIT_ITEM) ? openEditModal : null}
-              onFetchImage={hasFeature(FEATURES.EDIT_ITEM) ? handleFetchImage : null}
-              onDelete={hasFeature(FEATURES.DELETE_ITEM) ? handleDeleteItem : null}
-              isMultiSelectMode={isMultiSelectMode}
-              isSelected={selectedItems.has(item.id)}
-              onToggleSelect={toggleItemSelection}
-              isAdmin={isAdmin()}
-            />
-          ))}
-        </div>
-      </main>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {filteredInventory.map((item) => (
+                  <InventoryCard
+                    key={item.id}
+                    item={item}
+                    onSelect={(item) => console.log('Selected:', item)}
+                    onSell={hasFeature(FEATURES.SELL_ITEM) ? openSellModal : null}
+                    onEdit={hasFeature(FEATURES.EDIT_ITEM) ? openEditModal : null}
+                    onFetchImage={hasFeature(FEATURES.EDIT_ITEM) ? handleFetchImage : null}
+                    onDelete={hasFeature(FEATURES.DELETE_ITEM) ? handleDeleteItem : null}
+                    isMultiSelectMode={isMultiSelectMode}
+                    isSelected={selectedItems.has(item.id)}
+                    onToggleSelect={toggleItemSelection}
+                    isAdmin={isAdmin()}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </main>
       ) : currentView === 'trades' ? (
         <main className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
