@@ -1,1 +1,38 @@
-{"name": "card-pilot", "version": "1.0.0", "description": "Trading Card Inventory System", "scripts": {"dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"", "dev:backend": "cd inventory-system && npm run dev", "dev:frontend": "cd web && npm run dev", "install:all": "npm run install:backend && npm run install:frontend", "install:backend": "cd inventory-system && npm install", "install:frontend": "cd web && npm install", "setup": "npm run install:all && npm run setup:env", "setup:env": "cp .env.local.example .env.local && cp inventory-system/.env.example inventory-system/.env.local", "migrate": "cd inventory-system && node src/migrate.js", "seed": "cd inventory-system && node src/seed-data.js"}, "devDependencies": {"concurrently": "^8.2.2"}, "keywords": ["cards", "inventory", "trading", "react", "node"], "author": "Card Pilot", "license": "MIT"}
+{
+    "name": "card-pilot",
+    "version": "1.0.0",
+    "description": "Trading Card Inventory System",
+    "scripts": {
+        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+        "dev:backend": "cd inventory-system && npm run dev",
+        "dev:frontend": "cd web && npm run dev",
+        "install:all": "npm run install:backend && npm run install:frontend",
+        "install:backend": "cd inventory-system && npm install",
+        "install:frontend": "cd web && npm install",
+        "setup": "npm run install:all && npm run setup:env",
+        "setup:env": "cp .env.local.example .env.local && cp inventory-system/.env.example inventory-system/.env.local",
+        "migrate": "cd inventory-system && node src/migrate.js",
+        "seed": "cd inventory-system && node src/seed-data.js",
+        "fetch:tcg": "npx tsx inventory-system/src/card-data/fetch-tcg-data.ts"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "concurrently": "^8.2.2",
+        "tsx": "^4.21.0",
+        "typescript": "^5.0.0"
+    },
+    "keywords": [
+        "cards",
+        "inventory",
+        "trading",
+        "react",
+        "node"
+    ],
+    "author": "Card Pilot",
+    "license": "MIT",
+    "dependencies": {
+        "dotenv": "^17.2.3",
+        "pg": "^8.17.2",
+        "sql-parser": "^0.5.0"
+    }
+}
