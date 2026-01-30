@@ -30,6 +30,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
     barcode_id: editItem?.barcode_id || '',
     card_name: editItem?.card_name || '',
     set_name: editItem?.set_name || '',
+    series: editItem?.series || '',
     card_number: editItem?.card_number || '',
     game: editItem?.game || 'pokemon',
     card_type: editItem?.card_type || 'raw',
@@ -116,15 +117,97 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
       if (result.success && result.psa) {
         setPsaData(result);
         
+        // Extract numeric grade from PSA grade (e.g., "GEM MT 10" -> "10")
+        const extractNumericGrade = (psaGrade) => {
+          if (!psaGrade) return '';
+          const match = psaGrade.match(/(\d+(?:\.\d+)?)/);
+          return match ? match[1] : '';
+        };
+
+        // Convert to title case (first letter of each word capitalized)
+        const toTitleCase = (str) => {
+          if (!str) return '';
+          return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+        };
+
+        // Strip PSA variant prefixes from card name (e.g., "Fa/Lugia V" -> "Lugia V")
+        // PSA uses these prefixes: Fa=Full Art, Sr=Secret Rare, Ar=Art Rare, etc.
+        const cleanCardName = (name) => {
+          if (!name) return '';
+          // Common PSA variant prefixes followed by /
+          const prefixPattern = /^(Fa|Sr|Ar|Sar|Ir|Sir|Ur|Chr|Csr|Tg|Gg|Rr|Pr|Hr)\//i;
+          return name.replace(prefixPattern, '').trim();
+        };
+
+        // Game prefixes to detect and strip from set name
+        const GAME_PREFIXES = [
+          { pattern: /^POKEMON\s+/i, game: 'pokemon' },
+          { pattern: /^ONE PIECE\s+/i, game: 'onepiece' },
+          { pattern: /^ONEPIECE\s+/i, game: 'onepiece' },
+          { pattern: /^MTG\s+/i, game: 'mtg' },
+          { pattern: /^MAGIC\s+/i, game: 'mtg' },
+          { pattern: /^MAGIC:?\s*THE GATHERING\s+/i, game: 'mtg' },
+          { pattern: /^YU-?GI-?OH!?\s+/i, game: 'yugioh' },
+          { pattern: /^YUGIOH!?\s+/i, game: 'yugioh' },
+        ];
+
+        // Parse set name: extract game prefix, series, and true set name
+        // e.g., "POKEMON SWORD & SHIELD SILVER TEMPEST" -> { game: 'pokemon', series: 'Sword & Shield', setName: 'Silver Tempest' }
+        const parseSetName = (rawSet) => {
+          if (!rawSet) return { game: null, series: '', setName: '' };
+          
+          let setName = rawSet;
+          let detectedGame = null;
+          let detectedSeries = '';
+
+          // Check for game prefix
+          for (const { pattern, game } of GAME_PREFIXES) {
+            if (pattern.test(setName)) {
+              detectedGame = game;
+              setName = setName.replace(pattern, '');
+              break;
+            }
+          }
+
+          // Extract common Pokemon series prefixes (e.g., "SWORD & SHIELD" from "SWORD & SHIELD SILVER TEMPEST")
+          const POKEMON_SERIES_PREFIXES = [
+            { pattern: /^(SWORD\s*&?\s*SHIELD)\s+/i, series: 'Sword & Shield' },
+            { pattern: /^(SUN\s*&?\s*MOON)\s+/i, series: 'Sun & Moon' },
+            { pattern: /^(XY)\s+/i, series: 'XY' },
+            { pattern: /^(BLACK\s*&?\s*WHITE)\s+/i, series: 'Black & White' },
+            { pattern: /^(SCARLET\s*&?\s*VIOLET)\s+/i, series: 'Scarlet & Violet' },
+            { pattern: /^(DIAMOND\s*&?\s*PEARL)\s+/i, series: 'Diamond & Pearl' },
+            { pattern: /^(HEARTGOLD\s*&?\s*SOULSILVER)\s+/i, series: 'HeartGold & SoulSilver' },
+            { pattern: /^(PLATINUM)\s+/i, series: 'Platinum' },
+            { pattern: /^(EX)\s+/i, series: 'EX' },
+          ];
+
+          if (detectedGame === 'pokemon') {
+            for (const { pattern, series } of POKEMON_SERIES_PREFIXES) {
+              if (pattern.test(setName)) {
+                detectedSeries = series;
+                setName = setName.replace(pattern, '');
+                break;
+              }
+            }
+          }
+
+          return { game: detectedGame, series: detectedSeries, setName: toTitleCase(setName.trim()) };
+        };
+
+        const { game: detectedGame, series: detectedSeries, setName: parsedSetName } = parseSetName(result.psa.set);
+
         // Auto-fill form fields from PSA data
         setFormData(prev => ({
           ...prev,
           card_type: 'psa',
           cert_number: certNumber,
-          card_name: result.psa.name || prev.card_name,
-          set_name: result.psa.set || prev.set_name,
+          game: detectedGame || prev.game,
+          card_name: toTitleCase(cleanCardName(result.psa.name)) || prev.card_name,
+          set_name: parsedSetName || prev.set_name,
+          series: detectedSeries || prev.series,
           card_number: result.psa.number || prev.card_number,
-          grade: result.psa.grade || prev.grade,
+          grade: extractNumericGrade(result.psa.grade) || prev.grade,
           image_url: result.psa.imageUrl || prev.image_url,
         }));
       } else {
@@ -297,7 +380,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
       <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
+        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
           <h2 className="text-lg font-semibold text-gray-900">{isEditMode ? 'Edit Item' : 'Add New Item'}</h2>
           <button
             onClick={onClose}
@@ -584,20 +667,22 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                       <option key={grade} value={grade}>{grade}</option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ 
-                      ...prev, 
-                      grade_qualifier: prev.grade_qualifier === '' ? '.5' : prev.grade_qualifier === '.5' ? '' : prev.grade_qualifier === '10' ? '.5' : '10'
-                    }))}
-                    className={`px-3 py-2 border rounded-lg font-medium text-sm transition-colors
-                      ${formData.grade_qualifier === '.5'
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
-                      }`}
-                  >
-                    {formData.grade_qualifier === '.5' ? '.5' : formData.grade_qualifier === '10' ? '10' : 'Add .5'}
-                  </button>
+                  {formData.grade !== '10' && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ 
+                        ...prev, 
+                        grade_qualifier: prev.grade_qualifier === '' ? '.5' : prev.grade_qualifier === '.5' ? '' : prev.grade_qualifier === '10' ? '.5' : '10'
+                      }))}
+                      className={`px-3 py-2 border rounded-lg font-medium text-sm transition-colors
+                        ${formData.grade_qualifier === '.5'
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                        }`}
+                    >
+                      {formData.grade_qualifier === '.5' ? '.5' : formData.grade_qualifier === '10' ? '10' : 'Add .5'}
+                    </button>
+                  )}
                 </div>
                 {formData.grade && formData.grade_qualifier && (
                   <div className="text-sm text-gray-600">
@@ -609,7 +694,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
           </div>
 
           {/* Price Row */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Purchase Price
@@ -631,7 +716,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Label Price
+                Market Price
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
@@ -645,6 +730,26 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                   min="0"
                   className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
                              focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Purchase %
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={(() => {
+                    const purchase = parseFloat(formData.purchase_price) || 0;
+                    const market = parseFloat(formData.front_label_price) || 0;
+                    if (market === 0) return '--';
+                    const percentage = ((purchase / market) * 100).toFixed(1);
+                    return `${percentage}%`;
+                  })()}
+                  readOnly
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 
+                             text-gray-700 font-medium"
                 />
               </div>
             </div>

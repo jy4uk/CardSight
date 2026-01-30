@@ -3,6 +3,7 @@ CREATE TABLE inventory (
   barcode_id TEXT UNIQUE NOT NULL,
   card_name TEXT,
   set_name TEXT,
+  series TEXT,
   game TEXT DEFAULT 'pokemon',
   card_type TEXT DEFAULT 'raw',
   cert_number TEXT, 
