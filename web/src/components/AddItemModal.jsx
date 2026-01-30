@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Scan, Plus, Save, Search, Loader2, Check } from 'lucide-react';
-import { searchCardImages, fetchPSAData, isPSACertNumber } from '../api';
+import { searchCardImages, fetchPSAData, isPSACertNumber, searchTCGProducts } from '../api';
 import AlertModal from './AlertModal';
 import PSAMarketData from './PSAMarketData';
 
@@ -40,8 +40,10 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
     condition: editItem?.condition || 'NM',
     purchase_price: editItem?.purchase_price ?? '',
     front_label_price: editItem?.front_label_price ?? '',
+    purchase_percentage: '',
     notes: editItem?.notes || '',
     image_url: editItem?.image_url || '',
+    tcg_product_id: editItem?.tcg_product_id || null,
   });
 
   const [formData, setFormData] = useState(getInitialFormData);
@@ -51,11 +53,17 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
   const [psaData, setPsaData] = useState(null);
   const [psaLoading, setPsaLoading] = useState(false);
   const [psaError, setPsaError] = useState(null);
+  const [tcgProducts, setTcgProducts] = useState([]);
+  const [tcgLoading, setTcgLoading] = useState(false);
+  const [selectedTcgProduct, setSelectedTcgProduct] = useState(null);
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const imageSearchAbortRef = useRef(null);
   const imageSearchTimeoutRef = useRef(null);
   const barcodeInputRef = useRef(null);
   const psaFetchedRef = useRef(null);
   const psaDebounceRef = useRef(null);
+  const tcgDebounceRef = useRef(null);
 
   const duplicateBarcodeItem = useMemo(() => {
     if (isEditMode) return null;
@@ -82,10 +90,20 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
       setPsaData(null);
       setPsaLoading(false);
       setPsaError(null);
+      setTcgProducts([]);
+      setTcgLoading(false);
+      setSelectedTcgProduct(null);
+      // Show more details if editing and has non-default values
+      setShowMoreDetails(isEditMode && (editItem?.game !== 'pokemon' || editItem?.card_type !== 'raw' || editItem?.condition !== 'NM'));
+      setShowNotes(isEditMode && !!editItem?.notes);
       psaFetchedRef.current = null;
       if (psaDebounceRef.current) {
         clearTimeout(psaDebounceRef.current);
         psaDebounceRef.current = null;
+      }
+      if (tcgDebounceRef.current) {
+        clearTimeout(tcgDebounceRef.current);
+        tcgDebounceRef.current = null;
       }
       if (imageSearchAbortRef.current) {
         imageSearchAbortRef.current.abort();
@@ -291,6 +309,99 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
     setSearchingImages(false);
   };
 
+  // TCG product search with debouncing
+  const handleTCGSearch = async (cardName, setName, cardNumber) => {
+    if (!cardName || cardName.trim().length < 2) {
+      setTcgProducts([]);
+      return;
+    }
+    
+    setTcgLoading(true);
+    try {
+      const result = await searchTCGProducts(cardName, setName, cardNumber, 3);
+      if (result.success && result.products) {
+        setTcgProducts(result.products);
+      } else {
+        setTcgProducts([]);
+      }
+    } catch (err) {
+      console.error('TCG search error:', err);
+      setTcgProducts([]);
+    } finally {
+      setTcgLoading(false);
+    }
+  };
+
+  // Convert to title case (first letter of each word capitalized)
+  const toTitleCase = (str) => {
+    if (!str) return '';
+    return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
+  // Strip trailing numbers and variant suffixes from cleanName
+  // e.g., "Lugia V Alternate Full Art 216 091" -> "Lugia V"
+  const cleanCardName = (name) => {
+    if (!name) return '';
+    let cleaned = name.replace(/\s+\d+\s+\d+$/, '').replace(/\s+-\s+\d+\/\d+$/, '').trim();
+    
+    // Strip common variant suffixes
+    const variantSuffixes = [
+      /\s+Alternate Full Art$/i,
+      /\s+Full Art$/i,
+      /\s+Special Art Rare$/i,
+      /\s+Special Illustration Rare$/i,
+      /\s+Illustration Rare$/i,
+      /\s+Ultra Rare$/i,
+      /\s+Secret Rare$/i,
+      /\s+Rainbow Rare$/i,
+      /\s+Gold Rare$/i,
+      /\s+Black Star Promo$/i,
+      /\s+Promo$/i,
+      /\s+Shiny$/i,
+      /\s+Shiny Rare$/i,
+      /\s+Shiny Full Art$/i,
+      /\s+Shiny Secret Rare$/i,
+      /\s+Shiny Ultra Rare$/i,
+      /\s+Shiny Rainbow Rare$/i,
+      /\s+Shiny Gold Rare$/i,
+      /\s+Shiny Black Star Promo$/i,
+      /\s+Shiny Promo$/i,
+    ];
+    
+    for (const suffix of variantSuffixes) {
+      cleaned = cleaned.replace(suffix, '');
+    }
+    
+    return cleaned.trim();
+  };
+
+  // Strip set code prefixes like "Swsh12:" or "ME02:" from set names
+  const cleanSetName = (name) => {
+    if (!name) return '';
+    return name.replace(/^[A-Za-z]+\d*:\s*/i, '').trim();
+  };
+
+  // Select a TCG product and overwrite form fields with title case formatting
+  const selectTCGProduct = (product) => {
+    setSelectedTcgProduct(product);
+    
+    const formattedCardName = toTitleCase(cleanCardName(product.cleanName || product.name || ''));
+    const formattedSetName = toTitleCase(cleanSetName(product.setName || ''));
+    
+    setFormData(prev => ({
+      ...prev,
+      image_url: product.imageUrl || prev.image_url,
+      tcg_product_id: product.productId,
+      // Overwrite fields with title case formatted values from selected product
+      card_name: formattedCardName,
+      set_name: formattedSetName,
+      card_number: product.cardNumber || '',
+      // Auto-select game to pokemon (TCG data is Pokemon cards)
+      game: 'pokemon',
+    }));
+    setTcgProducts([]); // Clear suggestions after selection
+  };
+
   const selectImage = (card) => {
     setFormData(prev => ({ 
       ...prev, 
@@ -337,9 +448,56 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
         setPsaData(null);
         psaFetchedRef.current = null;
       }
+    } else if (name === 'card_name' || name === 'set_name' || name === 'card_number') {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      
+      // Debounce TCG product search when card name, set name, or card number changes
+      if (tcgDebounceRef.current) {
+        clearTimeout(tcgDebounceRef.current);
+      }
+      
+      const newCardName = name === 'card_name' ? value : formData.card_name;
+      const newSetName = name === 'set_name' ? value : formData.set_name;
+      const newCardNumber = name === 'card_number' ? value : formData.card_number;
+      
+      if (newCardName && newCardName.trim().length >= 2) {
+        tcgDebounceRef.current = setTimeout(() => {
+          handleTCGSearch(newCardName, newSetName, newCardNumber);
+        }, 400);
+      } else {
+        setTcgProducts([]);
+      }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
+  };
+
+  const handlePercentageChange = (e) => {
+    const { value } = e.target;
+    const marketPrice = parseFloat(formData.front_label_price) || 0;
+    
+    // Update the percentage field value
+    setFormData(prev => ({
+      ...prev,
+      purchase_percentage: value,
+    }));
+    
+    if (marketPrice === 0) {
+      // Can't calculate percentage without market price
+      return;
+    }
+    
+    // Parse percentage value (remove % if present)
+    const percentage = parseFloat(value.toString().replace('%', '')) || 0;
+    
+    // Calculate purchase price from percentage
+    const purchasePrice = (marketPrice * percentage / 100).toFixed(2);
+    
+    // Update purchase price
+    setFormData(prev => ({
+      ...prev,
+      purchase_price: purchasePrice,
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -364,6 +522,26 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
       onAdd(data);
     }
   };
+
+  // Sync percentage when purchase price or market price changes
+  useEffect(() => {
+    const purchase = parseFloat(formData.purchase_price) || 0;
+    const market = parseFloat(formData.front_label_price) || 0;
+    
+    if (market > 0 && purchase > 0) {
+      const percentage = ((purchase / market) * 100).toFixed(1);
+      setFormData(prev => ({
+        ...prev,
+        purchase_percentage: percentage,
+      }));
+    } else if (market === 0) {
+      // Clear percentage if no market price
+      setFormData(prev => ({
+        ...prev,
+        purchase_percentage: '',
+      }));
+    }
+  }, [formData.purchase_price, formData.front_label_price]);
 
   const handleBarcodeKeyDown = (e) => {
     // Most barcode scanners send Enter after the code
@@ -395,7 +573,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
           {/* Barcode Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Barcode ID {!isEditMode && '*'}
+              Barcode or Cert # {!isEditMode && '*'}
             </label>
             <div className="relative">
               <input
@@ -491,69 +669,122 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
             />
           </div>
 
-          {/* Image Search */}
-          {formData.game === 'pokemon' && formData.card_type === 'raw' && (
+          {/* TCG Product Autocomplete */}
+          {formData.card_type === 'raw' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Card Image
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleSearchImages}
-                  disabled={!formData.card_name || searchingImages}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium text-sm
-                             hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed
-                             flex items-center gap-2"
-                >
-                  {searchingImages ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Search className="w-4 h-4" />
-                  )}
-                  {formData.image_url ? 'Select New Image' : 'Find Images'}
-                </button>
-
-                {searchingImages && (
-                  <button
-                    type="button"
-                    onClick={cancelImageSearch}
-                    className="p-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100"
-                    aria-label="Cancel image search"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              
-              {/* Image Options Grid */}
-              {imageOptions.length > 0 && (
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {imageOptions.map((card, idx) => (
+              {/* TCG Product Grid - shows up to 3 matches */}
+              {tcgProducts.length > 0 && !selectedTcgProduct && (
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Match Card {tcgLoading && <Loader2 className="inline w-3 h-3 ml-1 animate-spin" />}
+                </label>
+              )}
+              {tcgProducts.length > 0 && (
+                <div className="grid grid-cols-3 gap-2">
+                  {tcgProducts.map((product) => (
                     <button
-                      key={idx}
+                      key={product.productId}
                       type="button"
-                      onClick={() => selectImage(card)}
-                      className={`relative rounded-lg overflow-hidden border-2 transition-all
-                        ${formData.image_url === card.imageUrl 
+                      onClick={() => selectTCGProduct(product)}
+                      className={`rounded-lg overflow-hidden border-2 transition-all text-left
+                        ${selectedTcgProduct?.productId === product.productId 
                           ? 'border-blue-500 ring-2 ring-blue-200' 
                           : 'border-gray-200 hover:border-blue-300'}`}
                     >
-                      <img 
-                        src={card.smallImageUrl || card.imageUrl} 
-                        alt={card.name}
-                        className="w-full aspect-[2.5/3.5] object-cover"
-                      />
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-1 py-0.5">
-                        <p className="text-white text-[10px] truncate">{card.set}</p>
-                        <p className="text-gray-300 text-[9px]">#{card.number}</p>
+                      <div className="relative">
+                        {product.imageUrl ? (
+                          <img 
+                            src={product.imageUrl} 
+                            alt={product.name}
+                            className="w-full aspect-[2.5/3.5] object-cover"
+                          />
+                        ) : (
+                          <div className="w-full aspect-[2.5/3.5] bg-gray-100 flex items-center justify-center">
+                            <span className="text-gray-400 text-xs">No image</span>
+                          </div>
+                        )}
+                        {selectedTcgProduct?.productId === product.productId && (
+                          <div className="absolute top-1 right-1 bg-blue-500 rounded-full p-0.5">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="px-2 py-1.5 bg-gray-50 text-[11px] leading-tight">
+                        <p className="font-medium text-gray-900 truncate">
+                          {/* Strip trailing numbers from cleanName (e.g., "Mew ex 216 091" -> "Mew ex") */}
+                          {(product.cleanName || product.name || '').replace(/\s+\d+\s+\d+$/, '').replace(/\s+-\s+\d+\/\d+$/, '')}
+                        </p>
+                        <p className="text-gray-500 truncate">{product.setName} • #{product.cardNumber || '—'}</p>
+                        {product.rarity && (
+                          <p className="text-purple-600 truncate text-[10px]">{product.rarity}</p>
+                        )}
                       </div>
                     </button>
                   ))}
                 </div>
               )}
               
-              {imageOptions.length === 0 && formData.image_url && (
+              {/* No matches message */}
+              {formData.card_name && formData.card_name.length >= 2 && !tcgLoading && tcgProducts.length === 0 && !selectedTcgProduct && (
+                <p className="text-xs text-gray-500 mt-1">No matching cards found. Try adjusting the card name.</p>
+              )}
+              
+              {/* Selected card preview */}
+              {selectedTcgProduct && tcgProducts.length === 0 && (
+                <div className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                  {selectedTcgProduct.imageUrl && (
+                    <img 
+                      src={selectedTcgProduct.imageUrl} 
+                      alt={selectedTcgProduct.name}
+                      className="w-12 h-auto rounded"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{selectedTcgProduct.cleanName || selectedTcgProduct.name}</p>
+                    {selectedTcgProduct.setName && (
+                      <p className="text-xs text-gray-500 truncate">{selectedTcgProduct.setName}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTcgProduct(null);
+                      setFormData(prev => ({ ...prev, tcg_product_id: null, image_url: '' }));
+                      // Re-trigger search
+                      if (formData.card_name) handleTCGSearch(formData.card_name, formData.set_name, formData.card_number);
+                    }}
+                    className="p-1 hover:bg-blue-100 rounded"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
+                </div>
+              )}
+              
+              {/* TCGPlayer Link */}
+              {selectedTcgProduct?.url && (
+                <a
+                  href={(() => {
+                    const conditionMap = {
+                      'NM': 'Near+Mint',
+                      'LP': 'Lightly+Played',
+                      'MP': 'Moderately+Played',
+                      'HP': 'Heavily+Played',
+                      'DMG': 'Damaged',
+                    };
+                    const baseUrl = selectedTcgProduct.url;
+                    const condition = conditionMap[formData.condition] || 'Near+Mint';
+                    const separator = baseUrl.includes('?') ? '&' : '?';
+                    return `${baseUrl}${separator}Language=English&Condition=${condition}&page=1`;
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  View on TCGPlayer →
+                </a>
+              )}
+              
+              {/* Fallback: show current image if no TCG product selected */}
+              {!selectedTcgProduct && formData.image_url && tcgProducts.length === 0 && (
                 <div className="mt-2">
                   <img 
                     src={formData.image_url} 
@@ -565,96 +796,12 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
             </div>
           )}
 
-          {/* Game */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Game
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {GAMES.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, game: g.id }))}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors
-                    ${formData.game === g.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                >
-                  {g.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Card Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Card Type
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {CARD_TYPES.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, card_type: t.id }))}
-                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors
-                    ${formData.card_type === t.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Cert Number (for slabs) */}
+          {/* Grade (only for slabs) */}
           {formData.card_type !== 'raw' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {formData.card_type.toUpperCase()} Cert Number
+                Grade
               </label>
-              <input
-                type="text"
-                name="cert_number"
-                value={formData.cert_number}
-                onChange={handleChange}
-                placeholder={`Enter ${formData.card_type.toUpperCase()} certification number (syncs with barcode)`}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
-                           focus:ring-blue-500 focus:border-blue-500 font-mono"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Used to fetch slab image from {formData.card_type.toUpperCase()}
-              </p>
-            </div>
-          )}
-
-          {/* Condition / Grade */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {formData.card_type === 'raw' ? 'Condition' : 'Grade'}
-            </label>
-            {formData.card_type === 'raw' ? (
-              <div className="flex gap-2 flex-wrap">
-                {CONDITIONS.map((cond) => (
-                  <button
-                    key={cond}
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, condition: cond }))}
-                    className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors
-                      ${formData.condition === cond
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                  >
-                    {cond}
-                  </button>
-                ))}
-              </div>
-            ) : (
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <select
@@ -690,8 +837,93 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* More Details Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowMoreDetails(!showMoreDetails)}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+          >
+            {showMoreDetails ? '− Hide Details' : '+ More Details'}
+          </button>
+
+          {/* Expandable More Details Section */}
+          {showMoreDetails && (
+            <div className="space-y-4 p-3 bg-gray-50 rounded-xl">
+              {/* Game */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Game
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {GAMES.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, game: g.id }))}
+                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors
+                        ${formData.game === g.id
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                        }`}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Card Type */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Card Type
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {CARD_TYPES.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, card_type: t.id }))}
+                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors
+                        ${formData.card_type === t.id
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                        }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Condition (only for raw cards) */}
+              {formData.card_type === 'raw' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Condition
+                  </label>
+                  <div className="flex gap-2 flex-wrap">
+                    {CONDITIONS.map((cond) => (
+                      <button
+                        key={cond}
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, condition: cond }))}
+                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors
+                          ${formData.condition === cond
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                          }`}
+                      >
+                        {cond}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Price Row */}
           <div className="grid grid-cols-3 gap-4">
@@ -740,36 +972,55 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               <div className="relative">
                 <input
                   type="text"
-                  value={(() => {
-                    const purchase = parseFloat(formData.purchase_price) || 0;
-                    const market = parseFloat(formData.front_label_price) || 0;
-                    if (market === 0) return '--';
-                    const percentage = ((purchase / market) * 100).toFixed(1);
-                    return `${percentage}%`;
-                  })()}
-                  readOnly
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl bg-gray-50 
-                             text-gray-700 font-medium"
+                  name="purchase_percentage"
+                  value={formData.purchase_percentage}
+                  onChange={handlePercentageChange}
+                  placeholder="%"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
+                             focus:ring-blue-500 focus:border-blue-500"
                 />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
               </div>
             </div>
           </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Notes
-            </label>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              placeholder="Optional notes..."
-              rows={2}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
-                         focus:ring-blue-500 focus:border-blue-500 resize-none"
-            />
-          </div>
+          {/* Notes Toggle */}
+          {!showNotes ? (
+            <button
+              type="button"
+              onClick={() => setShowNotes(true)}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+            >
+              + Add Notes
+            </button>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Notes
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNotes(false);
+                    setFormData(prev => ({ ...prev, notes: '' }));
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Remove
+                </button>
+              </div>
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleChange}
+                placeholder="Optional notes..."
+                rows={2}
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
+                           focus:ring-blue-500 focus:border-blue-500 resize-none"
+              />
+            </div>
+          )}
 
           {/* Submit */}
           <button

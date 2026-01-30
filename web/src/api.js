@@ -337,3 +337,36 @@ export const isPSACertNumber = (value) => {
   const cleaned = value.trim();
   return /^\d{7,9}$/.test(cleaned);
 };
+
+// TCG Product Search API
+export const searchTCGProducts = async (searchTerm, setName = null, cardNumber = null, limit = 3) => {
+  try {
+    const params = new URLSearchParams({ q: searchTerm, limit: limit.toString() });
+    if (setName) params.append('set', setName);
+    if (cardNumber) params.append('number', cardNumber);
+    
+    const response = await fetch(`${API_BASE}/tcg/search?${params}`);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to search TCG products');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error searching TCG products:', error);
+    throw error;
+  }
+};
+
+export const getTCGProduct = async (productId) => {
+  try {
+    const response = await fetch(`${API_BASE}/tcg/product/${productId}`);
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to fetch TCG product');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching TCG product:', error);
+    throw error;
+  }
+};
