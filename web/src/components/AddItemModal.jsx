@@ -220,19 +220,28 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
 
         const { game: detectedGame, series: detectedSeries, setName: parsedSetName } = parseSetName(result.psa.set);
 
-        // Auto-fill form fields from PSA data
+        // Extract card details for TCG search
+        const cardName = toTitleCase(cleanCardName(result.psa.name));
+        const cardNumber = result.psa.number;
+
+        // Auto-fill form fields from PSA data (don't use PSA image - we'll search TCG products instead)
         setFormData(prev => ({
           ...prev,
           card_type: 'psa',
           cert_number: certNumber,
           game: detectedGame || prev.game,
-          card_name: toTitleCase(cleanCardName(result.psa.name)) || prev.card_name,
+          card_name: cardName || prev.card_name,
           set_name: parsedSetName || prev.set_name,
           series: detectedSeries || prev.series,
-          card_number: result.psa.number || prev.card_number,
+          card_number: cardNumber || prev.card_number,
           grade: extractNumericGrade(result.psa.grade) || prev.grade,
-          image_url: result.psa.imageUrl || prev.image_url,
+          // Don't set image_url from PSA - let user pick from TCG products
         }));
+
+        // Trigger TCG product search to find matching images
+        if (cardName && cardName.trim().length >= 2) {
+          handleTCGSearch(cardName, parsedSetName, cardNumber);
+        }
       } else {
         setPsaError(result.error || 'PSA certification not found');
       }
@@ -393,17 +402,26 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
     const formattedCardName = toTitleCase(cleanCardName(product.cleanName || product.name || ''));
     const formattedSetName = toTitleCase(cleanSetName(product.setName || ''));
     
-    setFormData(prev => ({
-      ...prev,
-      image_url: product.imageUrl || prev.image_url,
-      tcg_product_id: product.productId,
-      // Overwrite fields with title case formatted values from selected product
-      card_name: formattedCardName,
-      set_name: formattedSetName,
-      card_number: product.cardNumber || '',
-      // Auto-select game to pokemon (TCG data is Pokemon cards)
-      game: 'pokemon',
-    }));
+    setFormData(prev => {
+      // For graded cards, only update image - preserve PSA data for other fields
+      if (prev.card_type === 'psa') {
+        return {
+          ...prev,
+          image_url: product.imageUrl || prev.image_url,
+          tcg_product_id: product.productId,
+        };
+      }
+      // For raw cards, overwrite all fields
+      return {
+        ...prev,
+        image_url: product.imageUrl || prev.image_url,
+        tcg_product_id: product.productId,
+        card_name: formattedCardName,
+        set_name: formattedSetName,
+        card_number: product.cardNumber || '',
+        game: 'pokemon',
+      };
+    });
     setTcgProducts([]); // Clear suggestions after selection
   };
 
@@ -672,8 +690,8 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
             />
           </div>
 
-          {/* TCG Product Autocomplete */}
-          {formData.card_type === 'raw' && (
+          {/* TCG Product Autocomplete - show for both raw and graded cards */}
+          {(formData.card_type === 'raw' || formData.card_type === 'psa') && (
             <div>
               {/* TCG Product Grid - shows up to 3 matches */}
               {tcgProducts.length > 0 && !selectedTcgProduct && (
@@ -762,8 +780,8 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                 </div>
               )}
               
-              {/* TCGPlayer Link */}
-              {selectedTcgProduct?.url && (
+              {/* TCGPlayer Link - only for raw cards */}
+              {selectedTcgProduct?.url && formData.card_type === 'raw' && (
                 <a
                   href={(() => {
                     const conditionMap = {
