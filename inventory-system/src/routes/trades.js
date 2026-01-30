@@ -30,6 +30,7 @@ router.get('/pending-barcodes', async (req, res) => {
       LEFT JOIN trade_items ti ON i.id = ti.inventory_id AND ti.direction = 'in'
       LEFT JOIN trades t ON ti.trade_id = t.id
       WHERE i.status = 'PENDING_BARCODE'
+         OR (i.status = 'IN_STOCK' AND (i.barcode_id IS NULL OR i.barcode_id = ''))
       ORDER BY i.purchase_date DESC
     `);
     
@@ -241,10 +242,11 @@ router.post('/assign-barcode', async (req, res) => {
     }
     
     // Update the item with barcode and set status to IN_STOCK
+    // Handle both PENDING_BARCODE status and IN_STOCK with NULL barcode
     const [updated] = await query(`
       UPDATE inventory 
       SET barcode_id = $1, status = 'IN_STOCK'
-      WHERE id = $2 AND status = 'PENDING_BARCODE'
+      WHERE id = $2 AND (status = 'PENDING_BARCODE' OR (status = 'IN_STOCK' AND (barcode_id IS NULL OR barcode_id = '')))
       RETURNING *
     `, [barcode_id, inventory_id]);
     

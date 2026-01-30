@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu } from 'lucide-react';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
@@ -63,6 +63,7 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [tradesSubView, setTradesSubView] = useState('history'); // 'history' or 'pending'
   const [inventorySubView, setInventorySubView] = useState('grid'); // 'grid' or 'pending'
+  const [inventorySort, setInventorySort] = useState('newest'); // 'newest', 'oldest', 'price_high', 'price_low'
 
   const loadInventory = async () => {
     try {
@@ -275,7 +276,7 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
   };
 
   const filteredInventory = useMemo(() => {
-    return inventory.filter((item) => {
+    const filtered = inventory.filter((item) => {
       // Only show available items
       if (item.status === 'SOLD') return false;
 
@@ -310,7 +311,22 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
 
       return true;
     });
-  }, [inventory, searchQuery, filters]);
+
+    // Sort the filtered results
+    return filtered.sort((a, b) => {
+      switch (inventorySort) {
+        case 'price_high':
+          return (Number(b.front_label_price) || 0) - (Number(a.front_label_price) || 0);
+        case 'price_low':
+          return (Number(a.front_label_price) || 0) - (Number(b.front_label_price) || 0);
+        case 'oldest':
+          return new Date(a.purchase_date || 0) - new Date(b.purchase_date || 0);
+        case 'newest':
+        default:
+          return new Date(b.purchase_date || 0) - new Date(a.purchase_date || 0);
+      }
+    });
+  }, [inventory, searchQuery, filters, inventorySort]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -634,9 +650,24 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                 />
               </div>
 
-              {/* Results Count */}
-              <div className="mb-3 text-sm text-gray-500">
-                {filteredInventory.length} {filteredInventory.length === 1 ? 'card' : 'cards'} available
+              {/* Results Count & Sort */}
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  {filteredInventory.length} {filteredInventory.length === 1 ? 'card' : 'cards'} available
+                </span>
+                <div className="flex items-center gap-2">
+                  <ArrowUpDown className="w-4 h-4 text-gray-400" />
+                  <select
+                    value={inventorySort}
+                    onChange={(e) => setInventorySort(e.target.value)}
+                    className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mr-1"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="price_high">Price: High to Low</option>
+                    <option value="price_low">Price: Low to High</option>
+                  </select>
+                </div>
               </div>
 
         {/* Error State */}

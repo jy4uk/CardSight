@@ -67,14 +67,18 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
   const tcgDebounceRef = useRef(null);
 
   const duplicateBarcodeItem = useMemo(() => {
-    if (isEditMode) return null;
-    const barcode = (formData.barcode_id || '').toString().trim();
-    if (!barcode) return null;
+    // Skip duplicate check if barcode is null, undefined, or empty
+    if (!formData.barcode_id || !formData.barcode_id.toString().trim()) return null;
+    const barcode = formData.barcode_id.toString().trim();
     return (inventoryItems || []).find((item) => {
-      const candidate = (item?.barcode_id ?? '').toString().trim();
-      return candidate && candidate === barcode;
+      // In edit mode, exclude the current item from duplicate check
+      if (isEditMode && item.id === editItem?.id) return false;
+      // Skip items with null/empty barcodes
+      if (!item?.barcode_id || !item.barcode_id.toString().trim()) return false;
+      const candidate = item.barcode_id.toString().trim();
+      return candidate === barcode;
     }) || null;
-  }, [formData.barcode_id, inventoryItems, isEditMode]);
+  }, [formData.barcode_id, inventoryItems, isEditMode, editItem]);
 
   const isDuplicateBarcode = !!duplicateBarcodeItem;
 
@@ -503,8 +507,8 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!isEditMode && !formData.barcode_id) return;
-    if (!isEditMode && isDuplicateBarcode) {
+    if (!isEditMode && !formData.card_name?.trim()) return;
+    if (formData.barcode_id?.trim() && isDuplicateBarcode) {
       showAlert('error', 'This barcode already exists in your inventory.');
       return;
     }
@@ -574,7 +578,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
           {/* Barcode Input */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Barcode or Cert # {!isEditMode && '*'}
+              Barcode or Cert #
             </label>
             <div className="relative">
               <input
@@ -585,28 +589,26 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                 onChange={handleChange}
                 onKeyDown={handleBarcodeKeyDown}
                 placeholder="Scan or enter barcode..."
-                disabled={isEditMode}
                 title={
-                  !isEditMode && isDuplicateBarcode
+                  isDuplicateBarcode
                     ? `Barcode already exists in inventory${duplicateBarcodeItem?.card_name ? `: ${duplicateBarcodeItem.card_name}` : ''}`
                     : undefined
                 }
                 className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 
                            focus:ring-blue-500 focus:border-blue-500 text-lg font-mono
-                           ${isEditMode ? 'bg-gray-100 text-gray-500' : ''}
-                           ${!isEditMode && isDuplicateBarcode ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
+                           ${isDuplicateBarcode ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
                 autoComplete="off"
               />
               <Scan className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             </div>
-            {!isEditMode && isDuplicateBarcode && (
+            {isDuplicateBarcode && (
               <div className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                 Barcode already exists in your inventory{duplicateBarcodeItem?.card_name ? `: ${duplicateBarcodeItem.card_name}` : ''}.
               </div>
             )}
             {!isEditMode && (
               <p className="text-xs text-gray-500 mt-1">
-                Use your barcode scanner or type manually
+                Optional - scan barcode or leave blank to assign later
               </p>
             )}
           </div>
@@ -624,7 +626,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
           {/* Card Name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Card Name
+              Card Name <span className="text-red-500">*</span>
             </label>
             <input
               id="card_name"
@@ -935,13 +937,12 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   name="purchase_price"
                   value={formData.purchase_price}
                   onChange={handleChange}
                   placeholder="0.00"
-                  step="0.01"
-                  min="0"
                   className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
                              focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -954,12 +955,12 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   name="front_label_price"
                   value={formData.front_label_price}
                   onChange={handleChange}
                   placeholder="0.00"
-                  step="0.01"
                   min="0"
                   className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
                              focus:ring-blue-500 focus:border-blue-500"
@@ -1041,7 +1042,10 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
           {/* Submit */}
           <button
             type="submit"
-            disabled={!isEditMode && isDuplicateBarcode}
+            disabled={
+              (!isEditMode && !formData.card_name?.trim()) ||
+              (formData.barcode_id?.trim() && isDuplicateBarcode)
+            }
             className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl
                        hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed
                        transition-colors flex items-center justify-center gap-2"

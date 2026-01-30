@@ -19,9 +19,10 @@ router.post('/', async (req, res) => {
   try {
     const data = { ...req.body };
 
-    // Friendly duplicate barcode handling
-    if (data.barcode_id) {
-      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1`, [data.barcode_id]);
+    // Friendly duplicate barcode handling (only if barcode_id is not empty)
+    const barcodeToCheck = data.barcode_id?.toString().trim();
+    if (barcodeToCheck) {
+      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1`, [barcodeToCheck]);
       if (existing.length > 0) {
         return res.status(400).json({ success: false, error: 'Barcode already in use' });
       }
@@ -124,9 +125,10 @@ router.post('/:barcode/update-image', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    // Friendly duplicate barcode handling (only if barcode_id is being updated)
-    if (req.body?.barcode_id) {
-      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1 AND id <> $2`, [req.body.barcode_id, req.params.id]);
+    // Friendly duplicate barcode handling (only if barcode_id is being updated and not empty)
+    const barcodeToCheck = req.body?.barcode_id?.toString().trim();
+    if (barcodeToCheck) {
+      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1 AND id <> $2`, [barcodeToCheck, req.params.id]);
       if (existing.length > 0) {
         return res.status(400).json({ success: false, error: 'Barcode already in use' });
       }
