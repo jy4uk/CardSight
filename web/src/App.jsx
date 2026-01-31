@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
@@ -11,8 +11,12 @@ import LoginModal from './components/LoginModal';
 import TradeModal from './components/modals/TradeModal';
 import TradeHistory from './components/TradeHistory';
 import PendingBarcodes from './components/PendingBarcodes';
+import BarcodeGeneratorPage from './components/BarcodeGeneratorPage';
+import CartDrawer from './components/CartDrawer';
 import { useAuth, FEATURES } from './context/AuthContext';
-import { fetchInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade } from './api';
+import { useCart } from './context/CartContext';
+import { useBarcodeScanner } from './hooks/useBarcodeScanner';
+import { fetchInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode } from './api';
 
 function App() {
   const { user, loading: authLoading, logout, hasFeature, isAdmin, showLoginModal, openLoginModal, closeLoginModal, login } = useAuth();
@@ -56,14 +60,40 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
   const [editItem, setEditItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [alertModal, setAlertModal] = useState({ isOpen: false, type: 'error', message: '' });
-  const [currentView, setCurrentView] = useState('inventory'); // 'inventory', 'insights', or 'trades'
+  const [currentView, setCurrentView] = useState('inventory'); // 'inventory', 'insights', 'trades', or 'barcodes'
   const [filters, setFilters] = useState({ condition: null, minPrice: '', maxPrice: '', game: null, cardType: null });
   const [showFilters, setShowFilters] = useState(false);
   const [trades, setTrades] = useState([]);
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [tradesSubView, setTradesSubView] = useState('history'); // 'history' or 'pending'
   const [inventorySubView, setInventorySubView] = useState('grid'); // 'grid' or 'pending'
-  const [inventorySort, setInventorySort] = useState('newest'); // 'newest', 'oldest', 'price_high', 'price_low'
+  const [inventorySort, setInventorySort] = useState('price_high'); // 'newest', 'oldest', 'price_high', 'price_low'
+
+  // Cart system
+  const { addToCart, setError: setCartError, cartCount, setIsCartOpen } = useCart();
+
+  // Handle barcode scan - fetch item and add to cart
+  const handleBarcodeScan = useCallback(async (barcode) => {
+    try {
+      const response = await fetchInventoryByBarcode(barcode);
+      if (response.success && response.item) {
+        addToCart(response.item);
+        // Play success sound
+        try {
+          const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleE8YUqTmxm0zHk2h4cdbNUQAAABhT05/lpuXe1pdcIynsqSOZj8nOmacyNW1fkINCFCn4ddzPB8jSp/hxG8rGDaCrbnB3sRMLA0Naq7Q5Ng=');
+          audio.volume = 0.3;
+          audio.play().catch(() => {});
+        } catch {}
+      } else {
+        setCartError(`Barcode not found: ${barcode}`);
+      }
+    } catch (err) {
+      setCartError(`Barcode not found: ${barcode}`);
+    }
+  }, [addToCart, setCartError]);
+
+  // Global barcode scanner listener
+  useBarcodeScanner(handleBarcodeScan, { enabled: true });
 
   const loadInventory = async () => {
     try {
@@ -207,6 +237,11 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
 
   const handleSell = async ({ item, salePrice, paymentMethod }) => {
     if (paymentMethod === 'stripe') {
+      // TEMPORARILY: Process credit card like cash (manual collection)
+      // Treat as direct sale - trusting manual credit card collection
+      await sellDirectly(item.barcode_id, salePrice, 'credit_card');
+      
+      /* STRIPE TERMINAL CODE - COMMENTED OUT FOR FUTURE USE
       // Stripe Terminal flow
       const { paymentIntentId } = await initiateStripeSale(item.barcode_id, salePrice);
       
@@ -225,6 +260,7 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
       // The webhook will handle marking the item as sold
       // Return to let the UI show "awaiting tap" state
       return;
+      */
     } else {
       // Direct sale (cash, venmo, zelle, cashapp)
       await sellDirectly(item.barcode_id, salePrice, paymentMethod);
@@ -390,6 +426,20 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                     </button>
                   </>
                 )}
+                {/* Admin-only barcode generator */}
+                {isAdmin() && (
+                  <button
+                    onClick={() => setCurrentView('barcodes')}
+                    className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                      currentView === 'barcodes'
+                        ? 'bg-white text-green-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span className="hidden sm:inline">Barcodes</span>
+                  </button>
+                )}
               </div>
             </div>
             
@@ -444,6 +494,19 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                   )}
                 </>
               )}
+              {/* Cart Button */}
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Shopping Cart"
+              >
+                <ShoppingCart className="w-5 h-5 text-gray-600" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </span>
+                )}
+              </button>
               {/* Admin Login / Logout Button */}
               {isAdmin() ? (
                 <button
@@ -519,6 +582,21 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                         >
                           Insights
                         </button>
+                        {isAdmin() && (
+                          <button
+                            onClick={() => {
+                              setCurrentView('barcodes');
+                              setMobileMenuOpen(false);
+                            }}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                              currentView === 'barcodes'
+                                ? 'bg-green-50 border-green-200 text-green-700'
+                                : 'bg-white border-gray-200 text-gray-700'
+                            }`}
+                          >
+                            Barcodes
+                          </button>
+                        )}
                       </>
                     ) : (
                       <div className="col-span-2" />
@@ -807,9 +885,11 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
             <PendingBarcodes onComplete={loadInventory} />
           )}
         </main>
-      ) : (
+      ) : currentView === 'insights' ? (
         <Insights />
-      )}
+      ) : currentView === 'barcodes' && isAdmin() ? (
+        <BarcodeGeneratorPage />
+      ) : null}
 
       {/* Trade Modal */}
       <TradeModal
@@ -845,6 +925,9 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
         message={alertModal.message}
         showCancel={false}
       />
+
+      {/* Shopping Cart Drawer */}
+      <CartDrawer onCheckoutComplete={loadInventory} />
     </div>
   );
 }

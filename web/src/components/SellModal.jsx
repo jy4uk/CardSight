@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, Smartphone, CheckCircle, Loader2 } from 'lucide-react';
 
 const PAYMENT_METHODS = [
-  { id: 'stripe', label: 'Card (Stripe)', icon: CreditCard, color: 'bg-blue-600' },
+  // TEMPORARILY: Using credit_card (manual) instead of stripe
+  // { id: 'stripe', label: 'Card (Stripe)', icon: CreditCard, color: 'bg-blue-600' },
+  { id: 'credit_card', label: 'Credit Card', icon: CreditCard, color: 'bg-blue-600' },
   { id: 'cash', label: 'Cash', icon: Banknote, color: 'bg-green-600' },
   { id: 'venmo', label: 'Venmo', icon: Smartphone, color: 'bg-sky-500' },
   { id: 'zelle', label: 'Zelle', icon: Smartphone, color: 'bg-purple-600' },
@@ -37,12 +39,13 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
         paymentMethod: paymentMethod.id,
       });
 
-      if (paymentMethod.id === 'stripe') {
-        setStatus('awaiting_tap');
-      } else {
-        setStatus('success');
-        setTimeout(() => onClose(), 1500);
-      }
+      // TEMPORARILY: credit_card is manual, so treat like other direct payments
+      // if (paymentMethod.id === 'stripe') {
+      //   setStatus('awaiting_tap');
+      // } else {
+      setStatus('success');
+      setTimeout(() => onClose(), 1500);
+      // }
     } catch (err) {
       setStatus('error');
       setErrorMessage(err.message || 'Failed to process sale');
@@ -166,7 +169,7 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
                          hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed
                          transition-colors flex items-center justify-center gap-2"
             >
-              {paymentMethod?.id === 'stripe' ? 'Initiate Card Payment' : 'Record Sale'}
+              Record Sale
             </button>
           )}
 

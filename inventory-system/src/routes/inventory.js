@@ -171,7 +171,7 @@ router.post('/:barcode/sell', async (req, res) => {
 router.post('/:barcode/sell-direct', async (req, res) => {
   try {
     const { sale_price, payment_method } = req.body;
-    const validMethods = ['cash', 'venmo', 'zelle', 'cashapp'];
+    const validMethods = ['cash', 'venmo', 'zelle', 'cashapp', 'credit_card'];
     
     if (!validMethods.includes(payment_method)) {
       return res.status(400).json({ success: false, error: 'Invalid payment method for direct sale' });

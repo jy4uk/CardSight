@@ -80,7 +80,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     const search = tradeOutSearch.toLowerCase();
     return availableItems.filter(item => 
       item.card_name?.toLowerCase().includes(search) ||
-      item.set_name?.toLowerCase().includes(search)
+      item.set_name?.toLowerCase().includes(search) ||
+      item.barcode_id?.toLowerCase().includes(search)
     ).slice(0, 10);
   }, [availableItems, tradeOutSearch]);
 
@@ -894,7 +895,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                       setShowTradeOutDropdown(true);
                     }}
                     onFocus={() => setShowTradeOutDropdown(true)}
-                    placeholder="Search your inventory..."
+                    placeholder="Search by name, set, or barcode..."
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
