@@ -9,6 +9,7 @@ import Insights from './components/Insights';
 import LoginModal from './components/LoginModal';
 import TradeModal from './components/modals/TradeModal';
 import TradeHistory from './components/TradeHistory';
+import IntakePage from './components/IntakePage';
 import PendingBarcodes from './components/PendingBarcodes';
 import BarcodeGeneratorPage from './components/BarcodeGeneratorPage';
 import CartDrawer from './components/CartDrawer';
@@ -85,7 +86,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   const [editItem, setEditItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [alertModal, setAlertModal] = useState({ isOpen: false, type: 'error', message: '' });
-  const [currentView, setCurrentView] = useState('inventory'); // 'inventory', 'insights', 'trades', or 'barcodes'
+  const [currentView, setCurrentView] = useState('inventory'); // 'inventory', 'insights', 'intake', or 'barcodes'
   const [filters, setFilters] = useState({ condition: null, minPrice: '', maxPrice: '', game: null, cardType: null });
   const [showFilters, setShowFilters] = useState(false);
   const [trades, setTrades] = useState([]);
@@ -225,14 +226,16 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
     }
   };
 
-  const bulkSell = () => {
+  const bulkAddToCart = () => {
     if (selectedItems.size === 0) return;
-    // For now, just open sell modal with first selected item
-    // TODO: Implement bulk sell modal
-    const firstItem = filteredInventory.find(item => selectedItems.has(item.id));
-    if (firstItem) {
-      openSellModal(firstItem);
-    }
+    // Add all selected items to cart
+    const itemsToAdd = filteredInventory.filter(item => selectedItems.has(item.id));
+    itemsToAdd.forEach(item => {
+      addToCart(item);
+    });
+    setSelectedItems(new Set());
+    setMultiSelectMode(false);
+    showAlert('success', `Added ${itemsToAdd.length} items to cart`);
   };
 
   const bulkDelete = async () => {
@@ -441,15 +444,15 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                 {isAuthenticated && (
                   <>
                     <button
-                      onClick={() => setCurrentView('trades')}
+                      onClick={() => setCurrentView('intake')}
                       className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
-                        currentView === 'trades'
+                        currentView === 'intake'
                           ? 'bg-white text-purple-600 shadow-sm'
                           : 'text-gray-600 hover:text-gray-900'
                       }`}
                     >
                       <ArrowLeftRight className="w-4 h-4" />
-                      <span className="hidden sm:inline">Trades</span>
+                      <span className="hidden sm:inline">Intake</span>
                     </button>
                     <button
                       onClick={() => setCurrentView('insights')}
@@ -602,16 +605,16 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                       <>
                         <button
                           onClick={() => {
-                            setCurrentView('trades');
+                            setCurrentView('intake');
                             setMobileMenuOpen(false);
                           }}
                           className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                            currentView === 'trades'
+                            currentView === 'intake'
                               ? 'bg-purple-50 border-purple-200 text-purple-700'
                               : 'bg-white border-gray-200 text-gray-700'
                           }`}
                         >
-                          Trades
+                          Intake
                         </button>
                         <button
                           onClick={() => {
@@ -626,7 +629,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                         >
                           Insights
                         </button>
-                        {isAdmin() && (
+                        {hasFeature(FEATURES.BARCODE_GENERATOR) && (
                           <button
                             onClick={() => {
                               setCurrentView('barcodes');
@@ -659,27 +662,13 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                       </button>
-                      {hasFeature(FEATURES.ADD_ITEM) ? (
-                        <button
-                          onClick={() => {
-                            setShowAddModal(true);
-                            setMobileMenuOpen(false);
-                          }}
-                          className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Add
-                        </button>
-                      ) : (
-                        <div />
-                      )}
                       {hasFeature(FEATURES.BULK_ACTIONS) && (
                         <button
                           onClick={() => {
                             toggleMultiSelectMode();
                             setMobileMenuOpen(false);
                           }}
-                          className={`col-span-2 px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                          className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
                             isMultiSelectMode
                               ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -848,10 +837,10 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
-                        onClick={bulkSell}
+                        onClick={bulkAddToCart}
                         className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
                       >
-                        Sell
+                        Add to Cart
                       </button>
                       <button
                         onClick={bulkDelete}
@@ -890,58 +879,18 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
             </>
           )}
         </main>
-      ) : currentView === 'trades' ? (
-        <main className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-semibold text-gray-900">Trades</h2>
-              {/* Sub-tabs for trades */}
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                <button
-                  onClick={() => setTradesSubView('history')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    tradesSubView === 'history'
-                      ? 'bg-white text-purple-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  History
-                </button>
-                <button
-                  onClick={() => setTradesSubView('pending')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
-                    tradesSubView === 'pending'
-                      ? 'bg-white text-orange-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <Scan className="w-4 h-4" />
-                  Scan Pending
-                </button>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowTradeModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              <ArrowLeftRight className="w-5 h-5" />
-              Record Trade
-            </button>
-          </div>
-          
-          {tradesSubView === 'history' ? (
-            <TradeHistory 
-              trades={trades} 
-              onDelete={handleDeleteTrade}
-              onRefresh={loadTrades}
-            />
-          ) : (
-            <PendingBarcodes onComplete={loadInventory} />
-          )}
-        </main>
+      ) : currentView === 'intake' ? (
+        <IntakePage
+          trades={trades}
+          inventoryItems={inventory}
+          onOpenTradeModal={() => setShowTradeModal(true)}
+          onDeleteTrade={handleDeleteTrade}
+          onRefreshTrades={loadTrades}
+          onPurchaseComplete={loadInventory}
+        />
       ) : currentView === 'insights' ? (
         <Insights />
-      ) : currentView === 'barcodes' && isAdmin() ? (
+      ) : currentView === 'barcodes' && hasFeature(FEATURES.BARCODE_GENERATOR) ? (
         <BarcodeGeneratorPage />
       ) : null}
 

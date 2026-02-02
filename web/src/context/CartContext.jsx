@@ -40,6 +40,13 @@ export function CartProvider({ children }) {
     setCartItems(prev => prev.filter(item => item.id !== itemId));
   }, []);
 
+  // Update item in cart
+  const updateCartItem = useCallback((itemId, updates) => {
+    setCartItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, ...updates } : item
+    ));
+  }, []);
+
   // Clear entire cart
   const clearCart = useCallback(() => {
     setCartItems([]);
@@ -71,6 +78,7 @@ export function CartProvider({ children }) {
     setIsCartOpen,
     addToCart,
     removeFromCart,
+    updateCartItem,
     clearCart,
     lastScannedItem,
     scanError,

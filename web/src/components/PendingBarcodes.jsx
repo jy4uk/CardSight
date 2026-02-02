@@ -202,11 +202,11 @@ export default function PendingBarcodes({ onComplete }) {
 
               {/* Barcode Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2 italic">
                   <Scan className="w-4 h-4 inline mr-1" />
                   Scan or Enter Barcode
                 </label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-3 gap-4">
                   <input
                     ref={barcodeInputRef}
                     type="text"
@@ -214,16 +214,16 @@ export default function PendingBarcodes({ onComplete }) {
                     onChange={(e) => setBarcodeInput(e.target.value)}
                     onKeyDown={handleBarcodeKeyDown}
                     placeholder="Scan barcode..."
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-lg font-mono
-                               focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="flex-1 px-4 col-span-2 py-3 border border-gray-300 rounded-lg text-lg font-mono
+                               focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-sm"
                     autoComplete="off"
                   />
                   <button
                     onClick={handleAssignBarcode}
                     disabled={!barcodeInput.trim() || assigning}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium
+                    className="px-6 py-3 bg-blue-600 col-span-1 text-white rounded-lg font-medium
                                hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed
-                               flex items-center gap-2"
+                               flex items-center justify-center text-center"
                   >
                     {assigning ? (
                       <RefreshCw className="w-5 h-5 animate-spin" />

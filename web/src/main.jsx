@@ -4,12 +4,15 @@ import './index.css'
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContextNew'
 import { CartProvider } from './context/CartContext'
+import { PendingPurchaseProvider } from './context/PendingPurchaseContext'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <AuthProvider>
       <CartProvider>
-        <App />
+        <PendingPurchaseProvider>
+          <App />
+        </PendingPurchaseProvider>
       </CartProvider>
     </AuthProvider>
   </StrictMode>,

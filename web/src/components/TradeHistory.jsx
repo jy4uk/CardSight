@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeftRight, Calendar, User, DollarSign, Trash2, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 
-export default function TradeHistory({ trades = [], onDelete, onRefresh }) {
+export default function TradeHistory({ trades = [], onDelete, onRefresh, compact = false }) {
   const [expandedTrade, setExpandedTrade] = useState(null);
   const [stats, setStats] = useState(null);
 
@@ -41,8 +41,8 @@ export default function TradeHistory({ trades = [], onDelete, onRefresh }) {
 
   return (
     <div className="space-y-4">
-      {/* Stats Summary */}
-      {stats && (
+      {/* Stats Summary - hide in compact mode */}
+      {stats && !compact && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
           <div className="bg-purple-50 rounded-lg p-3">
             <div className="text-xs text-purple-600 font-medium">Total Trades</div>

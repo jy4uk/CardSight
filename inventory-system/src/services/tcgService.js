@@ -31,6 +31,7 @@ export async function searchTCGProducts(searchTerm, setName = null, cardNumber =
       p.image_url,
       p.url,
       p.group_id,
+      p.category_id,
       p.extended_data,
       g.name as set_name,
       g.abbreviation as set_abbreviation
@@ -93,6 +94,7 @@ export async function searchTCGProducts(searchTerm, setName = null, cardNumber =
         imageUrl: row.image_url,
         url: row.url,
         groupId: row.group_id,
+        categoryId: row.category_id,
         setName: row.set_name,
         setAbbreviation: row.set_abbreviation,
         cardNumber: getExtValue('Number'),
