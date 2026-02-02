@@ -1,7 +1,40 @@
 import { useState } from 'react';
-import { Bookmark, ShoppingBag, ArrowLeftRight, Trash2, Play, AlertTriangle, Clock, User, Loader2 } from 'lucide-react';
+import { Bookmark, ShoppingBag, ArrowLeftRight, Trash2, Play, AlertTriangle, Clock, User, Loader2, Package } from 'lucide-react';
 import { useSavedDeals } from '../context/SavedDealsContext';
 import { formatDate } from '../utils';
+
+// Extract card images from deal data
+const getCardImages = (deal) => {
+  const images = [];
+  const dealData = deal.deal_data || {};
+  
+  // For purchases - items array
+  if (dealData.items && Array.isArray(dealData.items)) {
+    dealData.items.forEach(item => {
+      if (item.image_url) {
+        images.push({ url: item.image_url, name: item.card_name });
+      }
+    });
+  }
+  
+  // For trades - tradeInItems and tradeOutItems
+  if (dealData.tradeInItems && Array.isArray(dealData.tradeInItems)) {
+    dealData.tradeInItems.forEach(item => {
+      if (item.image_url) {
+        images.push({ url: item.image_url, name: item.card_name });
+      }
+    });
+  }
+  if (dealData.tradeOutItems && Array.isArray(dealData.tradeOutItems)) {
+    dealData.tradeOutItems.forEach(item => {
+      if (item.image_url) {
+        images.push({ url: item.image_url, name: item.card_name });
+      }
+    });
+  }
+  
+  return images;
+};
 
 export default function SavedDeals({ onResumePurchase, onResumeTrade, compact = false }) {
   const { savedDeals, loading, deleteDeal, getDeal } = useSavedDeals();
@@ -77,6 +110,9 @@ export default function SavedDeals({ onResumePurchase, onResumeTrade, compact = 
         const hasWarning = deal.has_unavailable_items;
         const isDeleting = deletingId === deal.id;
         const isResuming = resumingId === deal.id;
+        const cardImages = getCardImages(deal);
+        const maxThumbnails = 4;
+        const extraCount = cardImages.length - maxThumbnails;
         
         return (
           <div
@@ -87,18 +123,19 @@ export default function SavedDeals({ onResumePurchase, onResumeTrade, compact = 
                 : 'bg-gray-50 border-gray-200 dark:bg-slate-700 dark:border-slate-600'
             }`}
           >
-            <div className="flex items-start gap-3">
+            <div className="flex justify-between items-start">
               {/* Icon */}
-              <div className={`p-2 rounded-lg ${isPurchase ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-violet-100 dark:bg-violet-900/30'}`}>
-                {isPurchase ? (
-                  <ShoppingBag className={`w-4 h-4 ${isPurchase ? 'text-emerald-600 dark:text-emerald-400' : 'text-violet-600 dark:text-violet-400'}`} />
-                ) : (
-                  <ArrowLeftRight className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                )}
-              </div>
+              <div className="flex ">
+                <div className={`p-2 flex items-center justify-center rounded-lg ${isPurchase ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-violet-100 dark:bg-violet-900/30'}`}>
+                  {isPurchase ? (
+                    <ShoppingBag className={`w-4 h-4 ${isPurchase ? 'text-emerald-600 dark:text-emerald-400' : 'text-violet-600 dark:text-violet-400'}`} />
+                  ) : (
+                    <ArrowLeftRight className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                  )}
+                </div>
 
               {/* Content */}
-              <div className="flex-1 min-w-0">
+              <div className="pl-4 flex flex-col min-w-0">
                 <div className="flex items-center gap-2">
                   <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
                     isPurchase 
@@ -139,6 +176,32 @@ export default function SavedDeals({ onResumePurchase, onResumeTrade, compact = 
                   </span>
                 </div>
               </div>
+              </div>
+
+
+            {/* Card Thumbnails */}
+              {cardImages.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {cardImages.slice(0, maxThumbnails).map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="w-8 h-11 rounded overflow-hidden bg-gray-200 dark:bg-slate-600 flex-shrink-0"
+                      title={img.name}
+                    >
+                      <img
+                        src={img.url}
+                        alt={img.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ))}
+                  {extraCount > 0 && (
+                    <div className="w-8 h-11 rounded bg-gray-200 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">+{extraCount}</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex items-center gap-1">

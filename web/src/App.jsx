@@ -73,8 +73,6 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   // If user is NOT logged in and URL param exists, show public profile
   const isViewingProfile = !isAuthenticated && !!usernameParam;
   const hasEditPermission = isAuthenticated; // Logged in users always have edit permission on their own data
-
-  console.log(isAuthenticated, usernameParam, isViewingProfile);
   
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -727,39 +725,6 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
       {/* Main Content */}
       {currentView === 'inventory' ? (
         <main className="max-w-7xl mx-auto px-4 py-4">
-          {/* Inventory Sub-view Toggle */}
-          {isAuthenticated && (
-            <div className="flex items-center gap-4 mb-4">
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                <button
-                  onClick={() => setInventorySubView('grid')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    inventorySubView === 'grid'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Inventory
-                </button>
-                <button
-                  onClick={() => setInventorySubView('pending')}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
-                    inventorySubView === 'pending'
-                      ? 'bg-white text-orange-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <Scan className="w-4 h-4" />
-                  Scan Pending
-                </button>
-              </div>
-            </div>
-          )}
-
-          {inventorySubView === 'pending' ? (
-            <PendingBarcodes onComplete={loadInventory} />
-          ) : (
-            <>
               {/* Search & Filters */}
               <div className="mb-4">
                 <SearchFilter
@@ -876,8 +841,6 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                   />
                 ))}
               </div>
-            </>
-          )}
         </main>
       ) : currentView === 'intake' ? (
         <IntakePage

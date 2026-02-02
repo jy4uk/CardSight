@@ -4,9 +4,16 @@ import apiClient, { setAccessToken, clearAccessToken } from '../utils/apiClient'
 const AuthContextNew = createContext();
 
 export const FEATURES = {
-  ADMIN_MODE: 'admin_mode',
-  MANAGE_INVENTORY: 'manage_inventory',
+  VIEW_INVENTORY: 'view_inventory',
+  ADD_ITEM: 'add_item',
+  EDIT_ITEM: 'edit_item',
+  DELETE_ITEM: 'delete_item',
+  SELL_ITEM: 'sell_item',
   VIEW_INSIGHTS: 'view_insights',
+  MANAGE_CARD_SHOWS: 'manage_card_shows',
+  BULK_ACTIONS: 'bulk_actions',
+  PRICING_ASSISTANT: 'pricing_assistant',
+  BARCODE_GENERATOR: 'barcode_generator',
   MANAGE_TRADES: 'manage_trades',
 };
 
@@ -160,28 +167,21 @@ export function AuthProvider({ children }) {
     setIsAdminMode(false);
   };
 
-  // Feature access control
+  const isAuthenticated = !!user;
+
+  // Feature access control - authenticated users get all features
   const hasFeature = (feature) => {
-    switch (feature) {
-      case FEATURES.ADMIN_MODE:
-        return isAuthenticated;
-      case FEATURES.MANAGE_INVENTORY:
-        return isAuthenticated;
-      case FEATURES.VIEW_INSIGHTS:
-        return isAuthenticated;
-      case FEATURES.MANAGE_TRADES:
-        return isAuthenticated;
-      default:
-        return false;
-    }
+    // All features require authentication
+    if (!isAuthenticated) return false;
+    
+    // All listed features are available to authenticated users
+    return Object.values(FEATURES).includes(feature);
   };
 
   const canEdit = (profileUsername) => {
     if (!isAuthenticated || !user) return false;
     return user.username === profileUsername;
   };
-
-  const isAuthenticated = !!user;
 
   const value = {
     // User state
