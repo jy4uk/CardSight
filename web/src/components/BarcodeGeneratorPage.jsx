@@ -168,23 +168,23 @@ export default function BarcodeGeneratorPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-8">
       <div className="max-w-2xl w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-            <Package className="w-8 h-8 text-blue-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4">
+            <Package className="w-8 h-8 text-blue-600 dark:text-blue-400" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">UPC-A Barcode Generator</h1>
-          <p className="text-gray-600">Generate printable barcodes for 1.6" × 0.6" Rollo labels</p>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">UPC-A Barcode Generator</h1>
+          <p className="text-slate-600 dark:text-slate-400">Generate printable barcodes for 1.6" × 0.6" Rollo labels</p>
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-xl shadow-lg p-8">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-8">
           {/* Input Section */}
           <div className="space-y-6">
             <div>
-              <label htmlFor="count" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="count" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                 Number of Barcodes
               </label>
               <input
@@ -194,10 +194,10 @@ export default function BarcodeGeneratorPage() {
                 max="1000"
                 value={count}
                 onChange={(e) => setCount(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter number of barcodes to generate"
               />
-              <p className="text-xs text-gray-500 mt-1">Maximum 1000 barcodes per PDF</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Maximum 1000 barcodes per PDF</p>
             </div>
 
             {/* Action Buttons */}
@@ -205,7 +205,7 @@ export default function BarcodeGeneratorPage() {
               <button
                 onClick={generateBarcodes}
                 disabled={isGenerating || count < 1}
-                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {isGenerating ? (
                   <>
@@ -223,7 +223,7 @@ export default function BarcodeGeneratorPage() {
               <button
                 onClick={downloadPDF}
                 disabled={barcodes.length === 0 || isDownloading}
-                className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 {isDownloading ? (
                   <>
@@ -242,19 +242,19 @@ export default function BarcodeGeneratorPage() {
 
           {/* Preview Section */}
           {barcodes.length > 0 && (
-            <div className="mt-8 pt-8 border-t border-gray-200">
+            <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Preview</h2>
-                <span className="text-sm text-gray-500">{barcodes.length} barcodes generated</span>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Preview</h2>
+                <span className="text-sm text-slate-500 dark:text-slate-400">{barcodes.length} barcodes generated</span>
               </div>
               
               {/* Preview Grid */}
               <div 
                 ref={previewRef}
-                className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-64 overflow-y-auto p-4 bg-gray-50 rounded-lg"
+                className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-64 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-900 rounded-lg"
               >
                 {barcodes.slice(0, 24).map((barcode, index) => (
-                  <div key={index} className="bg-white p-1 rounded border border-gray-200">
+                  <div key={index} className="bg-white p-1 rounded border border-slate-200 dark:border-slate-600">
                     <img
                       src={createBarcodeSVG(barcode, 60, 20)}
                       alt={`Barcode ${index + 1}`}
@@ -265,7 +265,7 @@ export default function BarcodeGeneratorPage() {
               </div>
               
               {barcodes.length > 24 && (
-                <p className="text-xs text-gray-500 mt-2 text-center">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
                   Showing first 24 of {barcodes.length} barcodes
                 </p>
               )}
@@ -273,11 +273,11 @@ export default function BarcodeGeneratorPage() {
           )}
 
           {/* Info Section */}
-          <div className="mt-8 pt-8 border-t border-gray-200">
+          <div className="mt-8 pt-8 border-t border-slate-200 dark:border-slate-700">
             <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-blue-600 mt-0.5" />
-              <div className="text-sm text-gray-600">
-                <p className="font-medium text-gray-900 mb-1">Label Specifications</p>
+              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                <p className="font-medium text-slate-900 dark:text-slate-100 mb-1">Label Specifications</p>
                 <ul className="space-y-1">
                   <li>• Size: 1.6" × 0.6" Rollo labels</li>
                   <li>• Format: UPC-A with check digits</li>

@@ -55,37 +55,37 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
   if (!isOpen || !item) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-auto">
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-900 w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white">
-          <h2 className="text-lg font-semibold text-gray-900">Sell Card</h2>
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Sell Card</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-4 space-y-5">
           {/* Card Info */}
-          <div className="bg-gray-50 rounded-xl p-3">
-            <h3 className="font-semibold text-gray-900">{item.card_name || 'Unnamed Card'}</h3>
-            <p className="text-sm text-gray-500">{item.set_name || 'Unknown Set'}</p>
-            <p className="text-xs text-gray-400 mt-1">
+          <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100">{item.card_name || 'Unnamed Card'}</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{item.set_name || 'Unknown Set'}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
               Sticker: ${Number(item.front_label_price || 0).toFixed(2)} • Barcode: {item.barcode_id?.slice(-6)}
             </p>
           </div>
 
           {/* Sale Price */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
               Sale Price *
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-lg">$</span>
               <input
                 type="number"
                 value={salePrice}
@@ -93,22 +93,23 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
                 placeholder="0.00"
                 step="0.01"
                 min="0"
-                className="w-full pl-9 pr-4 py-3 text-2xl font-semibold border border-gray-300 rounded-xl 
+                className="w-full pl-9 pr-4 py-3 text-2xl font-semibold border border-slate-300 dark:border-slate-600 rounded-xl 
+                           bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100
                            focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 disabled={status !== 'idle'}
               />
             </div>
             {paymentMethod?.id === 'credit_card' && salePrice && (
-              <p className="mt-1 text-sm text-gray-600">
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
                 After fees (5.3% tax + 2.6% card + $0.15)
-                <span className="font-bold text-green-600 border border-green-600 p-1">${((Number(salePrice) * 1.053) * 1.026 + 0.15).toFixed(2)}</span>
+                <span className="font-bold text-green-600 dark:text-green-400 border border-green-600 dark:border-green-500 p-1">${((Number(salePrice) * 1.053) * 1.026 + 0.15).toFixed(2)}</span>
               </p>
             )}
           </div>
 
           {/* Payment Method */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Payment Method *
             </label>
             <div className="grid grid-cols-2 gap-2">
@@ -122,8 +123,8 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
                     disabled={status !== 'idle'}
                     className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 transition-all
                       ${isSelected 
-                        ? `border-blue-500 bg-blue-50` 
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? `border-blue-500 bg-blue-50 dark:bg-blue-900/30` 
+                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                       }
                       ${status !== 'idle' ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
@@ -131,7 +132,7 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
                     <div className={`p-1.5 rounded-lg ${method.color}`}>
                       <Icon className="w-4 h-4 text-white" />
                     </div>
-                    <span className="text-sm font-medium text-gray-700">{method.label}</span>
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{method.label}</span>
                   </button>
                 );
               })}
@@ -140,29 +141,29 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
 
           {/* Status Messages */}
           {status === 'awaiting_tap' && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3">
-              <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-center gap-3">
+              <Loader2 className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
               <div>
-                <p className="font-medium text-blue-900">Waiting for card tap...</p>
-                <p className="text-sm text-blue-700">Customer can tap, insert, or swipe their card</p>
+                <p className="font-medium text-blue-900 dark:text-blue-200">Waiting for card tap...</p>
+                <p className="text-sm text-blue-700 dark:text-blue-400">Customer can tap, insert, or swipe their card</p>
               </div>
             </div>
           )}
 
           {status === 'success' && (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-              <CheckCircle className="w-6 h-6 text-green-600" />
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 flex items-center gap-3">
+              <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
               <div>
-                <p className="font-medium text-green-900">Sale Complete!</p>
-                <p className="text-sm text-green-700">Card marked as sold</p>
+                <p className="font-medium text-green-900 dark:text-green-200">Sale Complete!</p>
+                <p className="text-sm text-green-700 dark:text-green-400">Card marked as sold</p>
               </div>
             </div>
           )}
 
           {status === 'error' && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p className="font-medium text-red-900">Error</p>
-              <p className="text-sm text-red-700">{errorMessage}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+              <p className="font-medium text-red-900 dark:text-red-200">Error</p>
+              <p className="text-sm text-red-700 dark:text-red-400">{errorMessage}</p>
             </div>
           )}
 
@@ -172,7 +173,7 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
               onClick={handleSubmit}
               disabled={!salePrice || !paymentMethod}
               className="w-full py-3 bg-green-600 text-white font-semibold rounded-xl
-                         hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed
+                         hover:bg-green-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed
                          transition-colors flex items-center justify-center gap-2"
             >
               Record Sale
@@ -182,7 +183,7 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
           {status === 'processing' && (
             <button
               disabled
-              className="w-full py-3 bg-gray-300 text-white font-semibold rounded-xl
+              className="w-full py-3 bg-slate-300 dark:bg-slate-700 text-white font-semibold rounded-xl
                          flex items-center justify-center gap-2"
             >
               <Loader2 className="w-5 h-5 animate-spin" />

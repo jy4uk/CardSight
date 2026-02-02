@@ -91,40 +91,40 @@ export default function CartDrawer({ onCheckoutComplete }) {
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black/30 z-40 transition-opacity"
+        className="fixed inset-0 bg-black/30 dark:bg-black/50 z-40 transition-opacity"
         onClick={() => setIsCartOpen(false)}
       />
       
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl z-50 flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-slate-900 shadow-xl z-50 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-900">Shopping Cart</h2>
+            <ShoppingCart className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Shopping Cart</h2>
             {cartCount > 0 && (
-              <span className="bg-blue-100 text-blue-700 text-sm font-medium px-2 py-0.5 rounded-full">
+              <span className="bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-sm font-medium px-2 py-0.5 rounded-full">
                 {cartCount}
               </span>
             )}
           </div>
           <button
             onClick={() => setIsCartOpen(false)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
           </button>
         </div>
 
         {/* Toast Notifications */}
         {lastScannedItem && (
-          <div className="mx-4 mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3 animate-pulse">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+          <div className="mx-4 mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg flex items-center gap-3 animate-pulse">
+            <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-green-800 truncate">
+              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-200 truncate">
                 Added: {lastScannedItem.card_name}
               </p>
-              <p className="text-xs text-green-600 truncate">
+              <p className="text-xs text-emerald-600 dark:text-emerald-400 truncate">
                 {lastScannedItem.set_name}
               </p>
             </div>
@@ -132,16 +132,16 @@ export default function CartDrawer({ onCheckoutComplete }) {
         )}
 
         {scanError && (
-          <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-            <p className="text-sm font-medium text-red-800">{scanError}</p>
+          <div className="mx-4 mt-4 p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0" />
+            <p className="text-sm font-medium text-rose-800 dark:text-rose-200">{scanError}</p>
           </div>
         )}
 
         {/* Cart Items */}
         <div className="flex-1 overflow-y-auto p-4">
           {cartItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 dark:text-slate-400">
               <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
               <p className="text-sm">Cart is empty</p>
               <p className="text-xs mt-1">Scan a barcode to add items</p>
@@ -151,7 +151,7 @@ export default function CartDrawer({ onCheckoutComplete }) {
               {cartItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
+                  className="flex gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
                 >
                   {/* Card Image */}
                   {item.image_url ? (
