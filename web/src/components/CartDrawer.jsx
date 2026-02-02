@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, ShoppingCart, Trash2, CheckCircle, AlertCircle, Loader2, DollarSign, CreditCard } from 'lucide-react';
+import { X, ShoppingCart, Trash2, CheckCircle, AlertCircle, Loader2, DollarSign, CreditCard, Pencil, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { sellDirectly } from '../api';
 
@@ -19,6 +19,7 @@ export default function CartDrawer({ onCheckoutComplete }) {
     isCartOpen,
     setIsCartOpen,
     removeFromCart,
+    updateCartItem,
     clearCart,
     lastScannedItem,
     scanError,
@@ -28,6 +29,25 @@ export default function CartDrawer({ onCheckoutComplete }) {
   const [checkoutError, setCheckoutError] = useState(null);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [editPrice, setEditPrice] = useState('');
+
+  const startEditing = (item) => {
+    setEditingItemId(item.id);
+    setEditPrice(parseFloat(item.front_label_price || item.purchase_price || 0).toFixed(2));
+  };
+
+  const saveEdit = (itemId) => {
+    const newPrice = parseFloat(editPrice) || 0;
+    updateCartItem(itemId, { front_label_price: newPrice });
+    setEditingItemId(null);
+    setEditPrice('');
+  };
+
+  const cancelEdit = () => {
+    setEditingItemId(null);
+    setEditPrice('');
+  };
 
   const handleCheckout = async () => {
     if (cartItems.length === 0) return;
@@ -166,18 +186,65 @@ export default function CartDrawer({ onCheckoutComplete }) {
                     )}
                   </div>
 
-                  {/* Price & Remove */}
+                  {/* Price & Actions */}
                   <div className="flex flex-col items-end justify-between">
-                    <span className="font-semibold text-gray-900">
-                      ${parseFloat(item.front_label_price || item.purchase_price || 0).toFixed(2)}
-                    </span>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
-                      title="Remove from cart"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {editingItemId === item.id ? (
+                      <>
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-500">$</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editPrice}
+                            onChange={(e) => setEditPrice(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEdit(item.id);
+                              if (e.key === 'Escape') cancelEdit();
+                            }}
+                            className="w-20 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-right"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="flex gap-1 mt-1">
+                          <button
+                            onClick={() => saveEdit(item.id)}
+                            className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                            title="Save"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition-colors"
+                            title="Cancel"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold text-gray-900">
+                          ${parseFloat(item.front_label_price || item.purchase_price || 0).toFixed(2)}
+                        </span>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => startEditing(item)}
+                            className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors"
+                            title="Edit price"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                            title="Remove from cart"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}

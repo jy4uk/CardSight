@@ -100,7 +100,7 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
         className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden 
                    hover:shadow-md hover:border-blue-300 transition-all cursor-pointer
                    active:scale-[0.98] touch-manipulation relative
-                   ${isMultiSelectMode ? 'ring-2 ring-blue-500' : ''}`}
+                   ${isMultiSelectMode && isSelected ? 'ring-2 ring-blue-500' : ''}`}
       >
       {/* Card Image */}
       <div className="aspect-[2.5/3.5] bg-gradient-to-br from-gray-100 to-gray-200 relative">

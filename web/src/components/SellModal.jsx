@@ -98,6 +98,12 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
                 disabled={status !== 'idle'}
               />
             </div>
+            {paymentMethod?.id === 'credit_card' && salePrice && (
+              <p className="mt-1 text-sm text-gray-600">
+                After fees (5.3% tax + 2.6% card + $0.15)
+                <span className="font-bold text-green-600 border border-green-600 p-1">${((Number(salePrice) * 1.053) * 1.026 + 0.15).toFixed(2)}</span>
+              </p>
+            )}
           </div>
 
           {/* Payment Method */}
