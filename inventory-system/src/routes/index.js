@@ -9,6 +9,7 @@ import authNewRoutes from './auth-new.js';
 import tradesRoutes from './trades.js';
 import psaLookupRoutes from './psaLookup.js';
 import tcgRoutes from './tcg.js';
+import savedDealsRoutes from './savedDeals.js';
 
 const router = express.Router();
 // Legacy admin mode auth (preserved for backward compatibility)
@@ -23,5 +24,6 @@ router.use('/insights', insightsRoutes);
 router.use('/trades', tradesRoutes);
 router.use('/psa-lookup', psaLookupRoutes);
 router.use('/tcg', tcgRoutes);
+router.use('/saved-deals', savedDealsRoutes);
 
 export default router;

@@ -1,18 +1,5 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react';
-
-const GAMES = [
-  { id: 'pokemon', label: 'Pokémon' },
-  { id: 'onepiece', label: 'One Piece' },
-  { id: 'mtg', label: 'MTG' },
-  { id: 'yugioh', label: 'Yu-Gi-Oh!' },
-];
-
-const CARD_TYPES = [
-  { id: 'raw', label: 'Raw' },
-  { id: 'psa', label: 'PSA' },
-  { id: 'bgs', label: 'BGS' },
-  { id: 'cgc', label: 'CGC' },
-];
+import { GAMES, CARD_TYPES, CONDITIONS } from '../constants';
 
 export default function SearchFilter({ 
   searchQuery, 
@@ -22,7 +9,6 @@ export default function SearchFilter({
   showFilters,
   onToggleFilters 
 }) {
-  const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
 
   return (
     <div className="space-y-3">

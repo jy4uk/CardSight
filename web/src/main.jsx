@@ -5,6 +5,7 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContextNew'
 import { CartProvider } from './context/CartContext'
 import { PendingPurchaseProvider } from './context/PendingPurchaseContext'
+import { SavedDealsProvider } from './context/SavedDealsContext'
 import { ThemeProvider } from './context/ThemeContext'
 
 createRoot(document.getElementById('root')).render(
@@ -13,7 +14,9 @@ createRoot(document.getElementById('root')).render(
       <AuthProvider>
         <CartProvider>
           <PendingPurchaseProvider>
-            <App />
+            <SavedDealsProvider>
+              <App />
+            </SavedDealsProvider>
           </PendingPurchaseProvider>
         </CartProvider>
       </AuthProvider>

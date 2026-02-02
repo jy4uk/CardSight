@@ -93,6 +93,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   const [showFilters, setShowFilters] = useState(false);
   const [trades, setTrades] = useState([]);
   const [showTradeModal, setShowTradeModal] = useState(false);
+  const [resumedTradeDeal, setResumedTradeDeal] = useState(null);
   const [inventorySubView, setInventorySubView] = useState('grid'); // 'grid' or 'pending'
   const [inventorySort, setInventorySort] = useState('price_high'); // 'newest', 'oldest', 'price_high', 'price_low'
 
@@ -882,7 +883,10 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
         <IntakePage
           trades={trades}
           inventoryItems={inventory}
-          onOpenTradeModal={() => setShowTradeModal(true)}
+          onOpenTradeModal={(resumedDeal) => {
+            setResumedTradeDeal(resumedDeal || null);
+            setShowTradeModal(true);
+          }}
           onDeleteTrade={handleDeleteTrade}
           onRefreshTrades={loadTrades}
           onPurchaseComplete={loadInventory}
@@ -896,9 +900,13 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
       {/* Trade Modal */}
       <TradeModal
         isOpen={showTradeModal}
-        onClose={() => setShowTradeModal(false)}
+        onClose={() => {
+          setShowTradeModal(false);
+          setResumedTradeDeal(null);
+        }}
         onSubmit={handleCreateTrade}
         inventoryItems={inventory}
+        resumedDeal={resumedTradeDeal}
       />
 
       {/* Add Item Modal */}

@@ -77,95 +77,101 @@ export default function BarcodeGeneratorPage() {
   };
 
   const downloadPDF = async () => {
-    if (barcodes.length === 0) return;
-    
-    setIsDownloading(true);
-    
-    try {
-      // Create PDF with exact label dimensions: 1.6" x 0.6"
-      // In points: 1.6 * 72 = 115.2pt, 0.6 * 72 = 43.2pt
-      const labelWidthPt = 115.2; // 1.6 inches in points
-      const labelHeightPt = 43.2; // 0.6 inches in points
-      
-      // Load logo image
-      const logoImg = new Image();
-      logoImg.crossOrigin = 'anonymous';
-      
-      await new Promise((resolve, reject) => {
-        logoImg.onload = resolve;
-        logoImg.onerror = reject;
-        logoImg.src = '/CardSafari.png';
+  if (barcodes.length === 0) return;
+
+  setIsDownloading(true);
+
+  try {
+    // Label dimensions: 1.6" × 0.6" → 1" = 72pt
+    const labelWidthPt = 1.6 * 72;  // 115.2pt
+    const labelHeightPt = 0.6 * 72; // 43.2pt
+
+    // Load logo image
+    const logoImg = new Image();
+    logoImg.crossOrigin = 'anonymous';
+
+    await new Promise((resolve, reject) => {
+      logoImg.onload = resolve;
+      logoImg.onerror = reject;
+      logoImg.src = '/beltwayTCG.png'; // Make sure this file exists in your /public folder
+    });
+
+    // Create canvas for logo (preserve aspect ratio)
+    const logoCanvas = document.createElement('canvas');
+    const logoCtx = logoCanvas.getContext('2d');
+
+    const aspectRatio = logoImg.width / logoImg.height;
+    const logoHeight = 120;
+    const logoWidth = logoHeight * aspectRatio;
+
+    logoCanvas.width = logoWidth;
+    logoCanvas.height = logoHeight;
+
+    logoCtx.drawImage(logoImg, 0, 0, logoWidth, logoHeight);
+    const logoData = logoCanvas.toDataURL('image/png', 1.0);
+
+    // Create PDF
+    const pdf = new jsPDF({
+      orientation: 'landscape',
+      unit: 'pt',
+      format: [labelWidthPt, labelHeightPt]
+    });
+
+    // Layout calculations
+    const horizontalPadding = labelWidthPt * 0.075; // 7.5% each side
+    const usableWidth = labelWidthPt - (horizontalPadding * 2);
+    const usableHeight = labelHeightPt * 0.70; // top 70% for content
+    const topPadding = 2;
+
+    // Logo placement
+    const logoDisplayHeight = 26;
+    const logoDisplayWidth = logoDisplayHeight * aspectRatio;
+    const logoX = horizontalPadding;
+    const logoY = topPadding + (usableHeight - logoDisplayHeight) / 2;
+
+    // Barcode placement
+    const barcodeX = logoX + logoDisplayWidth + 4; // 4pt gap
+    const barcodeWidth = usableWidth - logoDisplayWidth - 4;
+    const barcodeHeight = usableHeight - 2;
+
+    // Loop through all barcodes
+    for (let i = 0; i < barcodes.length; i++) {
+      if (i > 0) pdf.addPage([labelWidthPt, labelHeightPt], 'landscape');
+
+      // Add logo
+      pdf.addImage(logoData, 'PNG', logoX, logoY, logoDisplayWidth, logoDisplayHeight);
+
+      // Generate barcode on canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = 300;
+      canvas.height = 120;
+
+      JsBarcode(canvas, barcodes[i], {
+        format: 'UPC',
+        width: 2,
+        height: 70,
+        displayValue: true,
+        fontSize: 14,
+        margin: 2,
+        background: '#ffffff',
+        lineColor: '#000000'
       });
-      
-      // Create canvas for logo
-      const logoCanvas = document.createElement('canvas');
-      const logoSize = 120; // High res logo
-      logoCanvas.width = logoSize;
-      logoCanvas.height = logoSize;
-      const logoCtx = logoCanvas.getContext('2d');
-      logoCtx.drawImage(logoImg, 0, 0, logoSize, logoSize);
-      const logoData = logoCanvas.toDataURL('image/png', 1.0);
-      
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'pt',
-        format: [labelWidthPt, labelHeightPt]
-      });
-      
-      // Layout: logo on left, barcode on right
-      // Leave ~30% empty at the bottom, ~15% total horizontal padding
-      const horizontalPadding = labelWidthPt * 0.075; // 7.5% on each side
-      const usableWidth = labelWidthPt - (horizontalPadding * 2);
-      const usableHeight = labelHeightPt * 0.70; // Use top 70% of label
-      const topPadding = 2;
-      
-      const logoDisplaySize = 26; // Logo size in points
-      const logoX = horizontalPadding; // Left padding
-      const logoY = topPadding + (usableHeight - logoDisplaySize) / 2; // Centered in usable area
-      
-      const barcodeX = logoX + logoDisplaySize + 4; // After logo with small gap
-      const barcodeWidth = usableWidth - logoDisplaySize - 4; // Fill remaining usable width
-      const barcodeHeight = usableHeight - 2; // Fit in usable height area
-      
-      for (let i = 0; i < barcodes.length; i++) {
-        if (i > 0) {
-          pdf.addPage([labelWidthPt, labelHeightPt], 'landscape');
-        }
-        
-        // Add logo on left
-        pdf.addImage(logoData, 'PNG', logoX, logoY, logoDisplaySize, logoDisplaySize);
-        
-        // Create canvas for barcode
-        const canvas = document.createElement('canvas');
-        canvas.width = 300; // High resolution
-        canvas.height = 120;
-        
-        JsBarcode(canvas, barcodes[i], {
-          format: 'UPC',
-          width: 2,
-          height: 70,
-          displayValue: true,
-          fontSize: 14,
-          margin: 2,
-          background: '#ffffff',
-          lineColor: '#000000'
-        });
-        
-        // Add barcode to PDF on the right
-        const barcodeImgData = canvas.toDataURL('image/png', 1.0);
-        pdf.addImage(barcodeImgData, 'PNG', barcodeX, 2, barcodeWidth, barcodeHeight);
-      }
-      
-      // Download PDF
-      pdf.save(`upc-barcodes-${new Date().toISOString().split('T')[0]}.pdf`);
-      
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
-    } finally {
-      setIsDownloading(false);
+
+      const barcodeImgData = canvas.toDataURL('image/png', 1.0);
+      pdf.addImage(barcodeImgData, 'PNG', barcodeX, 2, barcodeWidth, barcodeHeight);
     }
-  };
+
+    // Save PDF
+    pdf.save(`upc-barcodes-${new Date().toISOString().split('T')[0]}.pdf`);
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    alert('Failed to generate PDF. Please try again.');
+  } finally {
+    setIsDownloading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-8">

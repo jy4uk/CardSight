@@ -3,38 +3,8 @@ import { Plus, Trash2, DollarSign, Search, Loader2, Scan, X, ShoppingBag, CheckC
 import { fetchPSAData, isPSACertNumber, searchTCGProducts, addInventoryItem } from '../api';
 import { usePendingPurchase } from '../context/PendingPurchaseContext.jsx';
 import PSAMarketData from './PSAMarketData';
-
-const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
-const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-const GAMES = [
-  { id: 'pokemon', label: 'Pokémon' },
-  { id: 'onepiece', label: 'One Piece' },
-  { id: 'mtg', label: 'MTG' },
-  { id: 'yugioh', label: 'Yu-Gi-Oh!' },
-];
-const CARD_TYPES = [
-  { id: 'raw', label: 'Raw' },
-  { id: 'psa', label: 'PSA' },
-  { id: 'bgs', label: 'BGS' },
-  { id: 'cgc', label: 'CGC' },
-];
-
-const getInitialFormData = () => ({
-  barcode_id: '',
-  card_name: '',
-  set_name: '',
-  card_number: '',
-  game: '',
-  card_type: 'raw',
-  condition: '',
-  grade: '',
-  grade_qualifier: '',
-  purchase_price: '',
-  front_label_price: '',
-  image_url: '',
-  cert_number: '',
-  notes: ''
-});
+import { CONDITIONS, GRADES, GAMES, CARD_TYPES } from '../constants';
+import { getInitialFormData } from '../utils';
 
 export default function PurchasePanel({ inventoryItems = [], onPurchaseComplete }) {
   const { pendingItems, addPendingItem, updatePendingItem, removePendingItem, clearPending, totalQuantity, totalCost } = usePendingPurchase();
@@ -572,6 +542,18 @@ export default function PurchasePanel({ inventoryItems = [], onPurchaseComplete 
           </div>
         </div>
 
+        {/* Set Name */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Set Name</label>
+          <input
+            type="text"
+            value={formData.set_name}
+            onChange={(e) => handleFieldChange('set_name', e.target.value)}
+            placeholder="e.g., Brilliant Stars"
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+
         {/* Game & Card Type Row */}
         <div className="grid grid-cols-2 gap-2">
           <div>
@@ -601,18 +583,6 @@ export default function PurchasePanel({ inventoryItems = [], onPurchaseComplete 
           </div>
         </div>
 
-        {/* Set Name */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Set Name</label>
-          <input
-            type="text"
-            value={formData.set_name}
-            onChange={(e) => handleFieldChange('set_name', e.target.value)}
-            placeholder="e.g., Brilliant Stars"
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-
         {/* TCG Loading Spinner */}
         {tcgLoading && tcgProducts.length === 0 && !selectedTcgProduct && (
           <div className="flex items-center justify-center py-4">
@@ -634,7 +604,7 @@ export default function PurchasePanel({ inventoryItems = [], onPurchaseComplete 
                   onClick={() => setShowAllTcgResults(!showAllTcgResults)}
                   className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  {showAllTcgResults ? 'Show less' : `Show all (${tcgProducts.length})`}
+                  {showAllTcgResults ? 'Show less' : `Show more (${tcgProducts.length})`}
                 </button>
               )}
             </div>

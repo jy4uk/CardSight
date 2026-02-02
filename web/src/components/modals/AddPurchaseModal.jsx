@@ -1,72 +1,26 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, Trash2, DollarSign, Loader2, Scan, X, ShoppingBag, CheckCircle, Pencil } from 'lucide-react';
+import { Plus, Trash2, DollarSign, Loader2, Scan, X, ShoppingBag, CheckCircle, Pencil, Bookmark } from 'lucide-react';
 import { fetchPSAData, isPSACertNumber, searchTCGProducts, addInventoryItem } from '../../api';
 import { usePendingPurchase } from '../../context/PendingPurchaseContext.jsx';
+import { useSavedDeals } from '../../context/SavedDealsContext';
 import PSAMarketData from '../PSAMarketData';
+import { CONDITIONS, GRADES, GAMES, CARD_TYPES } from '../../constants';
+import { getInitialFormData, cleanCardName, cleanSetName, toTitleCase } from '../../utils';
 
-const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
-const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-const GAMES = [
-  { id: 'pokemon', label: 'Pokémon' },
-  { id: 'onepiece', label: 'One Piece' },
-  { id: 'mtg', label: 'MTG' },
-  { id: 'yugioh', label: 'Yu-Gi-Oh!' },
-];
-const CARD_TYPES = [
-  { id: 'raw', label: 'Raw' },
-  { id: 'psa', label: 'PSA' },
-  { id: 'bgs', label: 'BGS' },
-  { id: 'cgc', label: 'CGC' },
-];
-
-const getInitialFormData = () => ({
-  barcode_id: '',
-  card_name: '',
-  set_name: '',
-  card_number: '',
-  game: '',
-  card_type: 'raw',
-  condition: '',
-  grade: '',
-  grade_qualifier: '',
-  purchase_price: '',
-  front_label_price: '',
-  image_url: '',
-  cert_number: '',
-  notes: ''
-});
-
-// Helper functions for cleaning card/set names
-const cleanCardName = (name) => {
-  if (!name) return '';
-  return name
-    .replace(/\s+\d+\s+\d+$/, '')
-    .replace(/\s*-\s*\d+\/\d+$/, '')
-    .trim();
-};
-
-const cleanSetName = (name) => {
-  if (!name) return '';
-  return name
-    .replace(/^One Piece Card Game\s*-?\s*/i, '')
-    .replace(/\s*Booster Pack$/i, '')
-    .replace(/\s*-\s*\[OP-?\d+\]$/i, '')
-    .trim();
-};
-
-const toTitleCase = (str) => {
-  if (!str) return '';
-  return str.replace(/\w\S*/g, (txt) => 
-    txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-  );
-};
-
-export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [], onPurchaseComplete }) {
+export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [], onPurchaseComplete, resumedDeal = null }) {
   const { pendingItems, addPendingItem, updatePendingItem, removePendingItem, clearPending, totalQuantity, totalCost } = usePendingPurchase();
+  const { saveDeal, deleteDeal } = useSavedDeals();
   
   const [formData, setFormData] = useState(getInitialFormData);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  
+  // Save for later state
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveCustomerName, setSaveCustomerName] = useState('');
+  const [saveCustomerNote, setSaveCustomerNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [resumedDealId, setResumedDealId] = useState(null);
   
   // Editing staged items state
   const [editingLineId, setEditingLineId] = useState(null);
@@ -111,8 +65,42 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
       setTcgProducts([]);
       setEditingLineId(null);
       setEditingData({});
+      setShowSaveDialog(false);
+      setSaveCustomerName('');
+      setSaveCustomerNote('');
+      setResumedDealId(null);
     }
   }, [isOpen]);
+
+  // Hydrate from resumed deal
+  useEffect(() => {
+    if (isOpen && resumedDeal && resumedDeal.deal_data) {
+      // Clear existing pending items first
+      clearPending();
+      
+      // Add items from resumed deal
+      const dealData = typeof resumedDeal.deal_data === 'string' 
+        ? JSON.parse(resumedDeal.deal_data) 
+        : resumedDeal.deal_data;
+      
+      if (dealData.items && Array.isArray(dealData.items)) {
+        dealData.items.forEach(item => {
+          addPendingItem(item);
+        });
+      }
+      
+      // Pre-fill customer name if available
+      if (resumedDeal.customer_name) {
+        setSaveCustomerName(resumedDeal.customer_name);
+      }
+      if (resumedDeal.customer_note) {
+        setSaveCustomerNote(resumedDeal.customer_note);
+      }
+      
+      // Track the resumed deal ID for deletion after completion
+      setResumedDealId(resumedDeal.id);
+    }
+  }, [isOpen, resumedDeal, clearPending, addPendingItem]);
 
   // PSA lookup with full parsing (matching PurchasePanel)
   const handlePSALookup = async (certNumber) => {
@@ -447,9 +435,14 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
     setEditingLineId(item.lineId);
     setEditingData({
       card_name: item.card_name,
-      purchase_price: item.purchase_price,
-      condition: item.condition,
-      grade: item.grade,
+      set_name: item.set_name || '',
+      card_number: item.card_number || '',
+      purchase_price: item.purchase_price || '',
+      front_label_price: item.front_label_price || '',
+      condition: item.condition || '',
+      grade: item.grade || '',
+      card_type: item.card_type || 'raw',
+      game: item.game || '',
     });
   };
 
@@ -462,6 +455,76 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
   const handleCancelEdit = () => {
     setEditingLineId(null);
     setEditingData({});
+  };
+
+  // Generate TCGPlayer product URL with condition
+  const generateTCGPlayerUrl = (product, condition) => {
+    // Use the direct product URL if available
+    if (product?.url) {
+      const conditionMap = {
+        'NM': 'Near Mint',
+        'LP': 'Lightly Played',
+        'MP': 'Moderately Played',
+        'HP': 'Heavily Played',
+        'DMG': 'Damaged'
+      };
+      const tcgCondition = conditionMap[condition] || 'Near Mint';
+      const separator = product.url.includes('?') ? '&' : '?';
+      return `${product.url}${separator}Language=English&Condition=${encodeURIComponent(tcgCondition)}`;
+    }
+    
+    // Fallback to search URL
+    const searchQuery = product?.cardNumber 
+      ? `${product.cleanName || product.name} ${product.setName || ''} ${product.cardNumber}`
+      : `${product.cleanName || product.name} ${product.setName || ''}`;
+    return `https://www.tcgplayer.com/search/all/product?q=${encodeURIComponent(searchQuery.trim())}&page=1`;
+  };
+
+  // Save for later handler
+  const handleSaveForLater = async () => {
+    if (pendingItems.length === 0) return;
+    
+    setSaving(true);
+    try {
+      const dealData = {
+        items: pendingItems,
+        totalQuantity,
+        totalCost
+      };
+      
+      const result = await saveDeal({
+        deal_type: 'purchase',
+        customer_name: saveCustomerName.trim() || null,
+        customer_note: saveCustomerNote.trim() || null,
+        deal_data: dealData,
+        total_items: totalQuantity,
+        total_value: totalCost,
+        trade_out_inventory_ids: []
+      });
+      
+      if (result.success) {
+        // If we resumed from an existing deal, delete the old one
+        if (resumedDealId) {
+          await deleteDeal(resumedDealId);
+        }
+        
+        clearPending();
+        setShowSaveDialog(false);
+        setSuccessMessage('Deal saved for later!');
+        
+        setTimeout(() => {
+          setSuccessMessage('');
+          onClose();
+        }, 1500);
+      } else {
+        alert('Failed to save deal: ' + result.error);
+      }
+    } catch (err) {
+      console.error('Failed to save deal:', err);
+      alert('Failed to save deal');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -559,8 +622,20 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
               </div>
             </div>
 
-            {/* Game & Card Type Row */}
-            <div className="grid grid-cols-2 gap-2">
+            {/* Set Name */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Set Name</label>
+              <input
+                type="text"
+                value={formData.set_name}
+                onChange={(e) => handleFieldChange('set_name', e.target.value)}
+                placeholder="e.g., Brilliant Stars"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+
+            {/* Game, Card Type, and Condition/Grade Row */}
+            <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Game</label>
                 <select
@@ -586,11 +661,8 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                   ))}
                 </select>
               </div>
-            </div>
-
-            {/* Condition/Grade Row */}
-            <div className="grid grid-cols-2 gap-2">
-              {isGraded ? (
+              <div>
+                {isGraded ? (
                 <>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">Grade</label>
@@ -603,21 +675,6 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                       {GRADES.map(g => (
                         <option key={g} value={g}>{g}</option>
                       ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Qualifier</label>
-                    <select
-                      value={formData.grade_qualifier}
-                      onChange={(e) => setFormData(prev => ({ ...prev, grade_qualifier: e.target.value }))}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                    >
-                      <option value="">None</option>
-                      <option value="OC">OC (Off-Center)</option>
-                      <option value="PD">PD (Print Defect)</option>
-                      <option value="MC">MC (Miscut)</option>
-                      <option value="MK">MK (Marked)</option>
-                      <option value="ST">ST (Stained)</option>
                     </select>
                   </div>
                 </>
@@ -636,18 +693,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                   </select>
                 </div>
               )}
-            </div>
-
-            {/* Set Name */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Set Name</label>
-              <input
-                type="text"
-                value={formData.set_name}
-                onChange={(e) => handleFieldChange('set_name', e.target.value)}
-                placeholder="e.g., Brilliant Stars"
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-              />
+              </div>
             </div>
 
             {/* TCG Loading Spinner */}
@@ -671,7 +717,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                       onClick={() => setShowAllTcgResults(!showAllTcgResults)}
                       className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                     >
-                      {showAllTcgResults ? 'Show less' : `Show all (${tcgProducts.length})`}
+                      {showAllTcgResults ? 'Show less' : `Show more (${tcgProducts.length})`}
                     </button>
                   )}
                 </div>
@@ -752,6 +798,14 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                   {selectedTcgProduct.setName && (
                     <p className="text-xs text-gray-500 truncate">{selectedTcgProduct.setName}</p>
                   )}
+                  <a 
+                    href={generateTCGPlayerUrl(selectedTcgProduct, formData.condition)} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    View on TCGPlayer
+                  </a>
                 </div>
                 <button
                   type="button"
@@ -822,7 +876,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
           </div>
 
           {/* Staged Items List */}
-          <div className="p-4 max-h-64 overflow-y-auto">
+          <div className="p-4 max-h-72 overflow-y-auto">
             {pendingItems.length === 0 ? (
               <div className="text-center py-6 text-gray-400">
                 <ShoppingBag className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -830,104 +884,173 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
               </div>
             ) : (
               <div className="space-y-2">
-                {pendingItems.map((item) => (
-                  <div 
-                    key={item.lineId} 
-                    className={`rounded-lg p-3 ${editingLineId === item.lineId ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}
-                  >
-                    {editingLineId === item.lineId ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
+                {pendingItems.map((item) => {
+                  const purchasePrice = Number(item.purchase_price || 0);
+                  const marketPrice = Number(item.front_label_price || 0);
+                  const percentage = marketPrice > 0 ? Math.round((purchasePrice / marketPrice) * 100) : null;
+                  
+                  return (
+                    <div 
+                      key={item.lineId} 
+                      className={`rounded-lg p-3 ${editingLineId === item.lineId ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'}`}
+                    >
+                      {editingLineId === item.lineId ? (
+                        <div className="space-y-2">
+                          {/* Row 1: Image + Card Name + Set */}
+                          <div className="flex items-start gap-2">
+                            {item.image_url && (
+                              <img src={item.image_url} alt="" className="w-10 h-14 object-cover rounded flex-shrink-0" />
+                            )}
+                            <div className="flex-1 space-y-1">
+                              <input
+                                type="text"
+                                value={editingData.card_name}
+                                onChange={(e) => setEditingData(prev => ({ ...prev, card_name: e.target.value }))}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                placeholder="Card Name"
+                              />
+                              <div className="flex gap-1">
+                                <input
+                                  type="text"
+                                  value={editingData.set_name}
+                                  onChange={(e) => setEditingData(prev => ({ ...prev, set_name: e.target.value }))}
+                                  className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Set Name"
+                                />
+                                <input
+                                  type="text"
+                                  value={editingData.card_number}
+                                  onChange={(e) => setEditingData(prev => ({ ...prev, card_number: e.target.value }))}
+                                  className="w-16 px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                  placeholder="#"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          {/* Row 2: Game, Type, Condition/Grade */}
+                          <div className="flex items-center gap-1">
+                            <select
+                              value={editingData.game || ''}
+                              onChange={(e) => setEditingData(prev => ({ ...prev, game: e.target.value }))}
+                              className="px-1.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Game</option>
+                              {GAMES.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
+                            </select>
+                            <select
+                              value={editingData.card_type || 'raw'}
+                              onChange={(e) => setEditingData(prev => ({ ...prev, card_type: e.target.value, condition: e.target.value === 'raw' ? prev.condition : '', grade: e.target.value !== 'raw' ? prev.grade : '' }))}
+                              className="px-1.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                            >
+                              {CARD_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                            </select>
+                            {editingData.card_type === 'raw' ? (
+                              <select
+                                value={editingData.condition || ''}
+                                onChange={(e) => setEditingData(prev => ({ ...prev, condition: e.target.value }))}
+                                className="px-1.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Cond</option>
+                                {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                            ) : (
+                              <select
+                                value={editingData.grade || ''}
+                                onChange={(e) => setEditingData(prev => ({ ...prev, grade: e.target.value }))}
+                                className="px-1.5 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Grade</option>
+                                {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                              </select>
+                            )}
+                          </div>
+                          {/* Row 3: Prices + Actions */}
+                          <div className="flex items-center gap-1">
+                            <div className="relative flex-1">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
+                              <input
+                                type="number"
+                                value={editingData.purchase_price}
+                                onChange={(e) => setEditingData(prev => ({ ...prev, purchase_price: e.target.value }))}
+                                className="w-full pl-5 pr-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                placeholder="Purchase Price"
+                                step="0.01"
+                              />
+                            </div>
+                            <div className="relative flex-1">
+                              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
+                              <input
+                                type="number"
+                                value={editingData.front_label_price}
+                                onChange={(e) => setEditingData(prev => ({ ...prev, front_label_price: e.target.value }))}
+                                className="w-full pl-5 pr-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                                placeholder="Market Price"
+                                step="0.01"
+                              />
+                            </div>
+                            {editingData.front_label_price > 0 && editingData.purchase_price > 0 && (
+                              <span className="text-xs font-medium text-gray-500 w-10 text-center">
+                                {Math.round((Number(editingData.purchase_price) / Number(editingData.front_label_price)) * 100)}%
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleSaveEdit(item.lineId)}
+                              className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="px-2 py-1 bg-gray-300 text-gray-700 text-xs font-medium rounded hover:bg-gray-400"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
                           {item.image_url && (
                             <img src={item.image_url} alt="" className="w-10 h-14 object-cover rounded" />
                           )}
-                          <input
-                            type="text"
-                            value={editingData.card_name}
-                            onChange={(e) => setEditingData(prev => ({ ...prev, card_name: e.target.value }))}
-                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                            placeholder="Card Name"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="relative flex-1">
-                            <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-                            <input
-                              type="number"
-                              value={editingData.purchase_price}
-                              onChange={(e) => setEditingData(prev => ({ ...prev, purchase_price: e.target.value }))}
-                              className="w-full pl-6 pr-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                              placeholder="Price"
-                              step="0.01"
-                            />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm text-gray-900 truncate">{item.card_name}</p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {item.card_type !== 'raw' ? `${item.card_type.toUpperCase()} ${item.grade || ''}` : item.condition || 'Raw'}
+                              {item.set_name && ` • ${item.set_name}`}
+                            </p>
                           </div>
-                          {item.card_type === 'raw' ? (
-                            <select
-                              value={editingData.condition || ''}
-                              onChange={(e) => setEditingData(prev => ({ ...prev, condition: e.target.value }))}
-                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-semibold text-sm text-green-600">Buy @ ${purchasePrice.toFixed(2)}</p>
+                            {marketPrice > 0 && (
+                              <p className="text-xs text-gray-400">
+                                <span className="text-gray-500">Market: ${marketPrice.toFixed(2)}</span>
+                                {percentage !== null && (
+                                  <span className={`ml-1 font-medium ${percentage <= 60 ? 'text-green-600' : percentage <= 80 ? 'text-yellow-600' : 'text-red-500'}`}>
+                                    ({percentage}%)
+                                  </span>
+                                )}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => handleStartEdit(item)}
+                              className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
                             >
-                              <option value="">Cond</option>
-                              {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                          ) : (
-                            <select
-                              value={editingData.grade || ''}
-                              onChange={(e) => setEditingData(prev => ({ ...prev, grade: e.target.value }))}
-                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => removePendingItem(item.lineId)}
+                              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                             >
-                              <option value="">Grade</option>
-                              {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-                            </select>
-                          )}
-                          <button
-                            onClick={() => handleSaveEdit(item.lineId)}
-                            className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="px-2 py-1 bg-gray-300 text-gray-700 text-xs font-medium rounded hover:bg-gray-400"
-                          >
-                            Cancel
-                          </button>
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        {item.image_url && (
-                          <img src={item.image_url} alt="" className="w-10 h-14 object-cover rounded" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-gray-900 truncate">{item.card_name}</p>
-                          <p className="text-xs text-gray-500">
-                            {item.card_type !== 'raw' ? `${item.card_type.toUpperCase()} ${item.grade || ''}` : item.condition || 'Raw'}
-                            {item.set_name && ` • ${item.set_name}`}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-sm">${Number(item.purchase_price || 0).toFixed(2)}</p>
-                          <p className="text-xs text-gray-500">×{item.quantity || 1}</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleStartEdit(item)}
-                            className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => removePendingItem(item.lineId)}
-                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -936,36 +1059,86 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
         {/* Footer with Submit */}
         {pendingItems.length > 0 && (
           <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Total ({totalQuantity} cards)</span>
-              <span className="font-bold text-lg">${totalCost.toFixed(2)}</span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={clearPending}
-                className="flex-1 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                Clear All
-              </button>
-              <button
-                onClick={handleSubmitAll}
-                disabled={submitting}
-                className="flex-1 py-2.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 
-                           disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Complete Purchase
-                  </>
-                )}
-              </button>
-            </div>
+            {/* Save Dialog */}
+            {showSaveDialog ? (
+              <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-sm font-medium text-gray-700">Save this quote for later?</p>
+                <input
+                  type="text"
+                  value={saveCustomerName}
+                  onChange={(e) => setSaveCustomerName(e.target.value)}
+                  placeholder="Customer name (optional)"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+                <input
+                  type="text"
+                  value={saveCustomerNote}
+                  onChange={(e) => setSaveCustomerNote(e.target.value)}
+                  placeholder="Note (optional)"
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowSaveDialog(false)}
+                    className="flex-1 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveForLater}
+                    disabled={saving}
+                    className="flex-1 py-2 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {saving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Bookmark className="w-4 h-4" />
+                    )}
+                    Save Deal
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Total ({totalQuantity} cards)</span>
+                  <span className="font-bold text-lg">Pay customer: ${totalCost.toFixed(2)}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={clearPending}
+                    className="py-2.5 px-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    onClick={() => setShowSaveDialog(true)}
+                    className="py-2.5 px-3 border border-amber-400 text-amber-600 font-medium rounded-lg hover:bg-amber-50 transition-colors flex items-center gap-1"
+                  >
+                    <Bookmark className="w-4 h-4" />
+                    Save for Later
+                  </button>
+                  <button
+                    onClick={handleSubmitAll}
+                    disabled={submitting}
+                    className="flex-1 py-2.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 
+                               disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Complete Purchase
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

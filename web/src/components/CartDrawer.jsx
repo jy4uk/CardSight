@@ -2,14 +2,7 @@ import { useState } from 'react';
 import { X, ShoppingCart, Trash2, CheckCircle, AlertCircle, Loader2, DollarSign, CreditCard, Pencil, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { sellDirectly } from '../api';
-
-const PAYMENT_METHODS = [
-  { id: 'cash', label: 'Cash', icon: DollarSign },
-  { id: 'credit_card', label: 'Card', icon: CreditCard },
-  { id: 'venmo', label: 'Venmo', icon: CreditCard },
-  { id: 'zelle', label: 'Zelle', icon: CreditCard },
-  { id: 'cashapp', label: 'CashApp', icon: CreditCard },
-];
+import { PAYMENT_METHODS } from '../constants';
 
 export default function CartDrawer({ onCheckoutComplete }) {
   const {

@@ -3,18 +3,9 @@ import { X, Scan, Plus, Save, Search, Loader2, Check } from 'lucide-react';
 import { searchCardImages, fetchPSAData, isPSACertNumber, searchTCGProducts } from '../api';
 import AlertModal from './AlertModal';
 import PSAMarketData from './PSAMarketData';
+import { CONDITIONS, GRADES, GAMES } from '../constants';
 
-const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
-
-const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 const GRADE_QUALIFIERS = ['', '.5', '10'];
-
-const GAMES = [
-  { id: 'pokemon', label: 'Pokémon' },
-  { id: 'onepiece', label: 'One Piece' },
-  { id: 'mtg', label: 'MTG' },
-  { id: 'yugioh', label: 'Yu-Gi-Oh!' },
-];
 
 const CARD_TYPES = [
   { id: 'raw', label: 'Raw' },

@@ -1,26 +1,15 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Plus, Trash2, ArrowRight, ArrowLeft, DollarSign, Percent, User, Calendar, Search, Loader2, Scan } from 'lucide-react';
+import { X, Plus, Trash2, ArrowRight, ArrowLeft, DollarSign, Percent, User, Calendar, Search, Loader2, Scan, Bookmark, AlertTriangle } from 'lucide-react';
 import { fetchPSAData, isPSACertNumber, searchTCGProducts } from '../../api';
+import { useSavedDeals } from '../../context/SavedDealsContext';
 import PSAMarketData from '../PSAMarketData';
-
-const CONDITIONS = ['NM', 'LP', 'MP', 'HP', 'DMG'];
-const GRADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-const GAMES = [
-  { id: 'pokemon', label: 'Pokémon' },
-  { id: 'onepiece', label: 'One Piece' },
-  { id: 'mtg', label: 'MTG' },
-  { id: 'yugioh', label: 'Yu-Gi-Oh!' },
-];
-const CARD_TYPES = [
-  { id: 'raw', label: 'Raw' },
-  { id: 'psa', label: 'PSA' },
-  { id: 'bgs', label: 'BGS' },
-  { id: 'cgc', label: 'CGC' },
-];
+import { CONDITIONS, GRADES, GAMES, CARD_TYPES } from '../../constants';
 
 const DEFAULT_TRADE_PERCENTAGE = 80;
 
-export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems = [] }) {
+export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems = [], resumedDeal = null }) {
+  const { saveDeal, deleteDeal } = useSavedDeals();
+  
   const [customerName, setCustomerName] = useState('');
   const [tradeDate, setTradeDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -29,6 +18,13 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   const [cashToCustomer, setCashToCustomer] = useState(0);
   const [cashFromCustomer, setCashFromCustomer] = useState(0);
   const [loading, setLoading] = useState(false);
+  
+  // Save for later state
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [saveCustomerNote, setSaveCustomerNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [resumedDealId, setResumedDealId] = useState(null);
+  const [unavailableItems, setUnavailableItems] = useState([]);
   
   // Trade-out search state
   const [tradeOutSearch, setTradeOutSearch] = useState('');
@@ -178,8 +174,51 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         clearTimeout(tcgDebounceRef.current);
         tcgDebounceRef.current = null;
       }
+      // Reset save for later state
+      setShowSaveDialog(false);
+      setSaveCustomerNote('');
+      setResumedDealId(null);
+      setUnavailableItems([]);
     }
   }, [isOpen]);
+
+  // Hydrate from resumed deal
+  useEffect(() => {
+    if (isOpen && resumedDeal && resumedDeal.deal_data) {
+      const dealData = typeof resumedDeal.deal_data === 'string' 
+        ? JSON.parse(resumedDeal.deal_data) 
+        : resumedDeal.deal_data;
+      
+      // Set customer info
+      if (resumedDeal.customer_name) setCustomerName(resumedDeal.customer_name);
+      if (resumedDeal.customer_note) setSaveCustomerNote(resumedDeal.customer_note);
+      if (dealData.notes) setNotes(dealData.notes);
+      
+      // Set trade items
+      if (dealData.tradeInItems) setTradeInItems(dealData.tradeInItems);
+      if (dealData.tradeOutItems) {
+        // Check which trade-out items are still available
+        const unavailable = [];
+        const validTradeOutItems = dealData.tradeOutItems.filter(item => {
+          const inventoryItem = inventoryItems.find(i => i.id === item.inventory_id);
+          if (!inventoryItem || inventoryItem.status !== 'IN_STOCK') {
+            unavailable.push(item);
+            return false;
+          }
+          return true;
+        });
+        setTradeOutItems(validTradeOutItems);
+        setUnavailableItems(unavailable);
+      }
+      
+      // Set cash values
+      if (dealData.cashToCustomer !== undefined) setCashToCustomer(dealData.cashToCustomer);
+      if (dealData.cashFromCustomer !== undefined) setCashFromCustomer(dealData.cashFromCustomer);
+      
+      // Track resumed deal ID
+      setResumedDealId(resumedDeal.id);
+    }
+  }, [isOpen, resumedDeal, inventoryItems]);
 
   // Focus barcode input when Add Card form is opened
   useEffect(() => {
@@ -432,6 +471,11 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         trade_date: tradeDate
       });
       
+      // If this was a resumed deal, delete the saved deal
+      if (resumedDealId) {
+        await deleteDeal(resumedDealId);
+      }
+      
       // Reset form
       setCustomerName('');
       setTradeInItems([]);
@@ -444,6 +488,73 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       alert('Failed to create trade: ' + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Save for later handler
+  const handleSaveForLater = async () => {
+    if (tradeInItems.length === 0 && tradeOutItems.length === 0) {
+      alert('Please add at least one trade-in or trade-out item');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      // Calculate totals for display
+      const totalItems = tradeInItems.length + tradeOutItems.length;
+      const totalValue = tradeInValue + tradeOutTotal;
+      
+      // Get inventory IDs of trade-out items for availability checking
+      const tradeOutInventoryIds = tradeOutItems
+        .filter(item => item.inventory_id)
+        .map(item => item.inventory_id);
+      
+      const dealData = {
+        tradeInItems,
+        tradeOutItems,
+        cashToCustomer,
+        cashFromCustomer,
+        notes,
+        tradeDate,
+        tradeInTotal,
+        tradeInValue,
+        tradeOutTotal,
+        avgTradePercentage
+      };
+      
+      const result = await saveDeal({
+        deal_type: 'trade',
+        customer_name: customerName.trim() || null,
+        customer_note: saveCustomerNote.trim() || null,
+        deal_data: dealData,
+        total_items: totalItems,
+        total_value: totalValue,
+        trade_out_inventory_ids: tradeOutInventoryIds
+      });
+      
+      if (result.success) {
+        // If we resumed from an existing deal, delete the old one
+        if (resumedDealId) {
+          await deleteDeal(resumedDealId);
+        }
+        
+        // Reset form
+        setCustomerName('');
+        setTradeInItems([]);
+        setTradeOutItems([]);
+        setCashToCustomer(0);
+        setCashFromCustomer(0);
+        setNotes('');
+        setShowSaveDialog(false);
+        onClose();
+      } else {
+        alert('Failed to save deal: ' + result.error);
+      }
+    } catch (err) {
+      console.error('Failed to save deal:', err);
+      alert('Failed to save deal');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1058,21 +1169,80 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
           </div>
         </div>
 
+        {/* Unavailable Items Warning */}
+        {unavailableItems.length > 0 && (
+          <div className="mx-4 mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">Some items are no longer available</p>
+                <p className="text-xs text-amber-600 mt-1">
+                  {unavailableItems.map(item => item.card_name).join(', ')} - These items have been sold or traded since this deal was saved.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 p-4 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading || (tradeInItems.length === 0 && tradeOutItems.length === 0)}
-            className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {loading ? 'Processing...' : 'Complete Trade'}
-          </button>
+        <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-2">
+          {/* Save Dialog */}
+          {showSaveDialog ? (
+            <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-sm font-medium text-gray-700">Save this trade quote for later?</p>
+              <input
+                type="text"
+                value={saveCustomerNote}
+                onChange={(e) => setSaveCustomerNote(e.target.value)}
+                placeholder="Note (optional)"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowSaveDialog(false)}
+                  className="flex-1 py-2 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveForLater}
+                  disabled={saving}
+                  className="flex-1 py-2 bg-amber-500 text-white text-sm font-semibold rounded-lg hover:bg-amber-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Bookmark className="w-4 h-4" />
+                  )}
+                  Save Deal
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setShowSaveDialog(true)}
+                disabled={tradeInItems.length === 0 && tradeOutItems.length === 0}
+                className="px-4 py-2 border border-amber-400 text-amber-600 font-medium rounded-lg hover:bg-amber-50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+              >
+                <Bookmark className="w-4 h-4" />
+                Save for Later
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={loading || (tradeInItems.length === 0 && tradeOutItems.length === 0)}
+                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loading ? 'Processing...' : 'Complete Trade'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

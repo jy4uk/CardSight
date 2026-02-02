@@ -304,6 +304,14 @@ export default function PSAMarketData({ data, loading, error, onRetry }) {
                     <p className="text-xs sm:text-sm font-semibold text-gray-900 line-clamp-2 sm:line-clamp-1">{psa.name}</p>
                     <p className="text-[10px] sm:text-xs text-gray-600 truncate">{psa.set}</p>
                   </div>
+                  <div>
+                    <a
+                      href="https://app.cardladder.com/sales-history"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >Search Pricing on Card Ladder</a>
+                    </div>
                   {psa.grade && (
                     <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-red-600 text-white text-[10px] sm:text-xs font-bold rounded flex-shrink-0">
                       {psa.grade}
