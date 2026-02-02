@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart } from 'lucide-react';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart, Sun, Moon } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
@@ -15,7 +15,9 @@ import BarcodeGeneratorPage from './components/BarcodeGeneratorPage';
 import CartDrawer from './components/CartDrawer';
 import SignupModal from './components/SignupModal';
 import { useAuth, FEATURES } from './context/AuthContextNew';
+import MobileBottomNav from './components/MobileBottomNav';
 import { useCart } from './context/CartContext';
+import { useTheme } from './context/ThemeContext';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode } from './api';
 
@@ -91,12 +93,14 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   const [showFilters, setShowFilters] = useState(false);
   const [trades, setTrades] = useState([]);
   const [showTradeModal, setShowTradeModal] = useState(false);
-  const [tradesSubView, setTradesSubView] = useState('history'); // 'history' or 'pending'
   const [inventorySubView, setInventorySubView] = useState('grid'); // 'grid' or 'pending'
   const [inventorySort, setInventorySort] = useState('price_high'); // 'newest', 'oldest', 'price_high', 'price_low'
 
   // Cart system
   const { addToCart, setError: setCartError, cartCount, setIsCartOpen } = useCart();
+  
+  // Theme system
+  const { theme, toggleTheme, isDark } = useTheme();
 
   // Handle barcode scan - fetch item and add to cart
   const handleBarcodeScan = useCallback(async (barcode) => {
@@ -406,35 +410,38 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   }, [inventory, searchQuery, filters, inventorySort]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 pb-20 sm:pb-0 transition-colors duration-300">
+      {/* Header - Premium Glassmorphism */}
+      <header className="glass dark:border-slate-700/60 border-b border-slate-200/60 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
+              {/* Logo & Brand */}
               <div className="flex items-center gap-2">
-                <Package className="w-7 h-7 text-blue-600" />
-                <h1 className="text-xl font-bold text-gray-900">Card Pilot</h1>
+                <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/20">
+                  <Package className="w-4 h-4 text-white" />
+                </div>
+                <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Card Pilot</h1>
                 {isAuthenticated && (
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
+                  <span className="badge-premium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-700/50">
                     Admin
                   </span>
                 )}
                 {!isAuthenticated && (
-                  <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                  <span className="badge-premium bg-slate-100 text-slate-600 border border-slate-200/50">
                     Guest
                   </span>
                 )}
               </div>
               
-              {/* Navigation Tabs */}
-              <div className="hidden sm:flex gap-1 bg-gray-100 p-1 rounded-lg">
+              {/* Navigation Tabs - Pill Style */}
+              <div className="hidden sm:flex gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
                 <button
                   onClick={() => setCurrentView('inventory')}
-                  className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                  className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
                     currentView === 'inventory'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
                   }`}
                 >
                   <Package className="w-4 h-4 sm:hidden" />
@@ -445,10 +452,10 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                   <>
                     <button
                       onClick={() => setCurrentView('intake')}
-                      className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
                         currentView === 'intake'
-                          ? 'bg-white text-purple-600 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
+                          ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-400 shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
                       }`}
                     >
                       <ArrowLeftRight className="w-4 h-4" />
@@ -456,10 +463,10 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                     </button>
                     <button
                       onClick={() => setCurrentView('insights')}
-                      className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                      className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
                         currentView === 'insights'
-                          ? 'bg-white text-blue-600 shadow-sm'
-                          : 'text-gray-600 hover:text-gray-900'
+                          ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
                       }`}
                     >
                       <BarChart3 className="w-4 h-4" />
@@ -471,10 +478,10 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                 {isAuthenticated && (
                   <button
                     onClick={() => setCurrentView('barcodes')}
-                    className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
+                    className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
                       currentView === 'barcodes'
-                        ? 'bg-white text-green-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
                     }`}
                   >
                     <FileText className="w-4 h-4" />
@@ -488,13 +495,13 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
             <div className="flex items-center gap-2 sm:hidden">
               <button
                 onClick={() => setMobileMenuOpen((v) => !v)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               >
                 {mobileMenuOpen ? (
-                  <X className="w-6 h-6 text-gray-700" />
+                  <X className="w-6 h-6 text-slate-700 dark:text-slate-300" />
                 ) : (
-                  <Menu className="w-6 h-6 text-gray-700" />
+                  <Menu className="w-6 h-6 text-slate-700 dark:text-slate-300" />
                 )}
               </button>
             </div>
@@ -505,28 +512,18 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                 <>
                   <button
                     onClick={loadInventory}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                     title="Refresh"
                   >
-                    <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-5 h-5 text-slate-600 dark:text-slate-400 ${loading ? 'animate-spin' : ''}`} />
                   </button>
-                  {hasFeature(FEATURES.ADD_ITEM) && (
-                    <button
-                      onClick={() => setShowAddModal(true)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white 
-                                 font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span className="hidden sm:inline">Add Item</span>
-                    </button>
-                  )}
-                  {hasEditPermission && (
+                  {hasFeature(FEATURES.BULK_ACTIONS) && (
                     <button
                       onClick={toggleMultiSelectMode}
                       className={`flex items-center gap-1.5 px-4 py-2 font-semibold rounded-lg transition-colors ${
                         isMultiSelectMode 
                           ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-600'
                       }`}
                     >
                       <CheckSquare className="w-5 h-5" />
@@ -538,41 +535,43 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
               {/* Cart Button */}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Cart"
+                className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                title="Shopping Cart"
               >
-                <ShoppingCart className="w-5 h-5 text-gray-600" />
+                <ShoppingCart className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                    {cartCount}
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    {cartCount > 9 ? '9+' : cartCount}
                   </span>
                 )}
               </button>
-              
-              {/* User Menu */}
+              {/* Admin Login / Logout Button */}
               {isAuthenticated ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700 hidden md:inline">
-                    {user?.username || user?.firstName}
-                  </span>
-                  <button
-                    onClick={logout}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors"
-                    title="Logout"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span className="hidden sm:inline">Logout</span>
-                  </button>
-                </div>
+                <button
+                  onClick={logout}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-600 dark:text-slate-400 hover:text-rose-600"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
               ) : (
                 <button
                   onClick={openLoginModal}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  title="Admin Login"
                 >
                   <Lock className="w-4 h-4" />
                   <span className="hidden sm:inline">Login</span>
                 </button>
               )}
+              {/* Dark Mode Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-500 dark:text-slate-400"
+                title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 
@@ -774,15 +773,15 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
 
               {/* Results Count & Sort */}
               <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-slate-500 dark:text-slate-400">
                   {filteredInventory.length} {filteredInventory.length === 1 ? 'card' : 'cards'} available
                 </span>
                 <div className="flex items-center gap-2">
-                  <ArrowUpDown className="w-4 h-4 text-gray-400" />
+                  <ArrowUpDown className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                   <select
                     value={inventorySort}
                     onChange={(e) => setInventorySort(e.target.value)}
-                    className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1.5 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   >
                     <option value="newest">Newest First</option>
                     <option value="oldest">Oldest First</option>
@@ -794,14 +793,14 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
 
         {/* Error State */}
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-4">
+                <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 px-4 py-3 rounded-xl mb-4">
                   {error}
                 </div>
               )}
 
               {/* Loading State */}
               {loading && inventory.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-slate-400">
                   <RefreshCw className="w-8 h-8 animate-spin mb-3" />
                   <p>Loading inventory...</p>
                 </div>
@@ -809,8 +808,8 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
 
               {/* Empty State */}
               {!loading && filteredInventory.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                  <Package className="w-12 h-12 mb-3 text-gray-300" />
+                <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-slate-400">
+                  <Package className="w-12 h-12 mb-3 text-slate-300 dark:text-slate-600" />
                   <p className="font-medium">No cards found</p>
                   <p className="text-sm">
                     {inventory.length === 0 
@@ -822,15 +821,15 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
 
               {/* Multi-select Toolbar */}
               {isMultiSelectMode && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <div className="bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 rounded-lg p-3 mb-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex items-center gap-4">
-                      <span className="text-sm font-medium text-blue-900">
+                      <span className="text-sm font-medium text-indigo-900 dark:text-indigo-200">
                         {selectedItems.size} selected
                       </span>
                       <button
                         onClick={selectAll}
-                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
                       >
                         {selectedItems.size === filteredInventory.length ? 'Deselect All' : 'Select All'}
                       </button>
@@ -838,19 +837,19 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
                         onClick={bulkAddToCart}
-                        className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
+                        className="px-3 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded hover:bg-emerald-700 transition-colors"
                       >
                         Add to Cart
                       </button>
                       <button
                         onClick={bulkDelete}
-                        className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded hover:bg-red-700 transition-colors"
+                        className="px-3 py-1.5 bg-rose-600 text-white text-sm font-medium rounded hover:bg-rose-700 transition-colors"
                       >
                         Delete
                       </button>
                       <button
                         onClick={toggleMultiSelectMode}
-                        className="px-3 py-1.5 bg-gray-600 text-white text-sm font-medium rounded hover:bg-gray-700 transition-colors"
+                        className="px-3 py-1.5 bg-slate-600 text-white text-sm font-medium rounded hover:bg-slate-700 transition-colors"
                       >
                         Cancel
                       </button>
@@ -931,6 +930,13 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
 
       {/* Shopping Cart Drawer */}
       <CartDrawer onCheckoutComplete={loadInventory} />
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav
+        currentView={currentView}
+        onViewChange={setCurrentView}
+        hasInsightsFeature={hasFeature(FEATURES.VIEW_INSIGHTS)}
+      />
     </div>
   );
 }

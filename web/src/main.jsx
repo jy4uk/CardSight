@@ -5,15 +5,18 @@ import App from './App.jsx'
 import { AuthProvider } from './context/AuthContextNew'
 import { CartProvider } from './context/CartContext'
 import { PendingPurchaseProvider } from './context/PendingPurchaseContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <CartProvider>
-        <PendingPurchaseProvider>
-          <App />
-        </PendingPurchaseProvider>
-      </CartProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <CartProvider>
+          <PendingPurchaseProvider>
+            <App />
+          </PendingPurchaseProvider>
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
   </StrictMode>,
 )

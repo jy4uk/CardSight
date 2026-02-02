@@ -74,23 +74,23 @@ export default function PurchaseHistory({ inventoryItems = [], compact = false }
       {/* Stats Summary - hide in compact mode */}
       {stats && !compact && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          <div className="bg-green-50 rounded-lg p-3">
-            <div className="text-xs text-green-600 font-medium">Total Purchases</div>
-            <div className="text-xl font-bold text-green-800">{stats.totalPurchases}</div>
+          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+            <div className="text-xs text-green-600 dark:text-green-400 font-medium">Total Purchases</div>
+            <div className="text-xl font-bold text-green-800 dark:text-green-200">{stats.totalPurchases}</div>
           </div>
-          <div className="bg-blue-50 rounded-lg p-3">
-            <div className="text-xs text-blue-600 font-medium">Total Spent</div>
-            <div className="text-xl font-bold text-blue-800">{formatCurrency(stats.totalSpent)}</div>
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+            <div className="text-xs text-blue-600 dark:text-blue-400 font-medium">Total Spent</div>
+            <div className="text-xl font-bold text-blue-800 dark:text-blue-200">{formatCurrency(stats.totalSpent)}</div>
           </div>
-          <div className="bg-purple-50 rounded-lg p-3">
-            <div className="text-xs text-purple-600 font-medium">Market Value</div>
-            <div className="text-xl font-bold text-purple-800">{formatCurrency(stats.totalMarketValue)}</div>
+          <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
+            <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">Market Value</div>
+            <div className="text-xl font-bold text-purple-800 dark:text-purple-200">{formatCurrency(stats.totalMarketValue)}</div>
           </div>
-          <div className={`rounded-lg p-3 ${stats.profit >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-            <div className={`text-xs font-medium ${stats.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <div className={`rounded-lg p-3 ${stats.profit >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
+            <div className={`text-xs font-medium ${stats.profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
               Potential Profit
             </div>
-            <div className={`text-xl font-bold ${stats.profit >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>
+            <div className={`text-xl font-bold ${stats.profit >= 0 ? 'text-emerald-800 dark:text-emerald-200' : 'text-red-800 dark:text-red-200'}`}>
               {formatCurrency(stats.profit)}
             </div>
           </div>
@@ -100,29 +100,29 @@ export default function PurchaseHistory({ inventoryItems = [], compact = false }
       {/* Purchases List */}
       <div className="space-y-3">
         {groupedPurchases.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <ShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No purchases recorded yet</p>
-            <p className="text-gray-400 text-sm">Use the "Record Purchase" button to add your first purchase</p>
+          <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+            <ShoppingBag className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-500 dark:text-slate-400">No purchases recorded yet</p>
+            <p className="text-slate-400 dark:text-slate-500 text-sm">Use the "Record Purchase" button to add your first purchase</p>
           </div>
         ) : (
           groupedPurchases.map(group => (
-            <div key={group.date} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div key={group.date} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
               {/* Group Header */}
               <div 
-                className="p-3 sm:p-4 cursor-pointer hover:bg-gray-50"
+                className="p-3 sm:p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50"
                 onClick={() => setExpandedDate(expandedDate === group.date ? null : group.date)}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center flex-shrink-0">
+                      <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 dark:text-green-400" />
                     </div>
                     <div className="min-w-0">
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-slate-900 dark:text-slate-100">
                         {group.items.length} card{group.items.length !== 1 ? 's' : ''} purchased
                       </div>
-                      <div className="text-xs sm:text-sm text-gray-500 flex items-center gap-1 sm:gap-2 flex-wrap">
+                      <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1 sm:gap-2 flex-wrap">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           {group.date}
@@ -132,15 +132,15 @@ export default function PurchaseHistory({ inventoryItems = [], compact = false }
                   </div>
                   <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                     <div className="text-right">
-                      <div className="text-sm font-semibold text-gray-900">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {formatCurrency(group.totalCost)}
                       </div>
-                      <div className="text-xs text-gray-500">spent</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">spent</div>
                     </div>
                     {expandedDate === group.date ? (
-                      <ChevronUp className="w-5 h-5 text-gray-400" />
+                      <ChevronUp className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                     ) : (
-                      <ChevronDown className="w-5 h-5 text-gray-400" />
+                      <ChevronDown className="w-5 h-5 text-slate-400 dark:text-slate-500" />
                     )}
                   </div>
                 </div>
@@ -148,10 +148,10 @@ export default function PurchaseHistory({ inventoryItems = [], compact = false }
 
               {/* Expanded Details */}
               {expandedDate === group.date && group.items && group.items.length > 0 && (
-                <div className="border-t border-gray-200 bg-gray-50 p-3 sm:p-4">
+                <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-3 sm:p-4">
                   <div className="space-y-2">
                     {group.items.map((item, idx) => (
-                      <div key={item.id || `item-${idx}`} className="flex items-center gap-3 bg-white rounded-lg p-2 shadow-sm">
+                      <div key={item.id || `item-${idx}`} className="flex items-center gap-3 bg-white dark:bg-slate-800 rounded-lg p-2 shadow-sm border border-slate-100 dark:border-slate-700">
                         {item.image_url ? (
                           <img 
                             src={item.image_url} 
@@ -159,26 +159,26 @@ export default function PurchaseHistory({ inventoryItems = [], compact = false }
                             className="w-10 h-14 object-cover rounded"
                           />
                         ) : (
-                          <div className="w-10 h-14 bg-gray-100 rounded flex items-center justify-center">
-                            <Package className="w-4 h-4 text-gray-400" />
+                          <div className="w-10 h-14 bg-slate-100 dark:bg-slate-700 rounded flex items-center justify-center">
+                            <Package className="w-4 h-4 text-slate-400 dark:text-slate-500" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm text-gray-900 truncate">
+                          <div className="font-medium text-sm text-slate-900 dark:text-slate-100 truncate">
                             {item.card_name || 'Unknown Card'}
                           </div>
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
                             {item.set_name && <span>{item.set_name}</span>}
                             {item.card_number && <span> • #{item.card_number}</span>}
                             {item.condition && <span> • {item.condition}</span>}
                           </div>
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <div className="text-sm font-medium text-gray-900">
+                          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
                             {formatCurrency(item.purchase_price)}
                           </div>
                           {item.front_label_price && (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
                               MV: {formatCurrency(item.front_label_price)}
                             </div>
                           )}

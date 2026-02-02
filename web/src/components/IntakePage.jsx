@@ -28,17 +28,17 @@ export default function IntakePage({
           {/* Left Column - Purchases */}
           <div className="flex flex-col min-h-0 gap-4">
             {/* Scan Pending Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
               <div 
-                className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50 cursor-pointer"
+                className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-sky-50 to-cyan-50 dark:from-sky-900/20 dark:to-cyan-900/20 cursor-pointer"
                 onClick={() => setShowPendingBarcodes(!showPendingBarcodes)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Scan className="w-5 h-5 text-blue-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">Scan Pending</h2>
+                    <Scan className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Scan Pending</h2>
                   </div>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
                     {showPendingBarcodes ? 'Click to collapse' : 'Click to expand'}
                   </span>
                 </div>
@@ -51,17 +51,17 @@ export default function IntakePage({
             </div>
 
             {/* Purchases Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex-1 flex flex-col min-h-0">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex-1 flex flex-col min-h-0">
               {/* Header */}
-              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
+              <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/20 dark:to-green-900/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <ShoppingBag className="w-5 h-5 text-green-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">Purchases</h2>
+                    <ShoppingBag className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Purchases</h2>
                   </div>
                   <button
                     onClick={() => setShowPurchaseModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white text-sm font-semibold rounded-lg hover:bg-emerald-700 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                     Record Purchase
@@ -81,17 +81,17 @@ export default function IntakePage({
 
           {/* Right Column - Trades */}
           <div className="flex flex-col min-h-0">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full flex flex-col">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 h-full flex flex-col">
               {/* Header */}
-              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+              <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-violet-50 to-indigo-50 dark:from-violet-900/20 dark:to-indigo-900/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <ArrowLeftRight className="w-5 h-5 text-purple-600" />
-                    <h2 className="text-lg font-semibold text-gray-900">Trades</h2>
+                    <ArrowLeftRight className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Trades</h2>
                   </div>
                   <button
                     onClick={onOpenTradeModal}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white text-sm font-semibold rounded-lg hover:bg-purple-700 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 text-white text-sm font-semibold rounded-lg hover:bg-violet-700 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
                     Record Trade

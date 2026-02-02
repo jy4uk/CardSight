@@ -85,6 +85,35 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     ).slice(0, 10);
   }, [availableItems, tradeOutSearch]);
 
+  // Auto-add item when barcode is scanned (exact barcode match)
+  useEffect(() => {
+    if (!tradeOutSearch.trim()) return;
+    
+    // Check for exact barcode match
+    const exactMatch = availableItems.find(
+      item => item.barcode_id && item.barcode_id.toLowerCase() === tradeOutSearch.toLowerCase()
+    );
+    
+    if (exactMatch) {
+      // Add item and clear search
+      if (!tradeOutItems.find(item => item.inventory_id === exactMatch.id)) {
+        setTradeOutItems(prev => [...prev, {
+          inventory_id: exactMatch.id,
+          card_name: exactMatch.card_name,
+          set_name: exactMatch.set_name,
+          card_value: parseFloat(exactMatch.front_label_price) || 0,
+          image_url: exactMatch.image_url,
+          condition: exactMatch.condition,
+          card_type: exactMatch.card_type,
+          grade: exactMatch.grade,
+          barcode_id: exactMatch.barcode_id
+        }]);
+      }
+      setTradeOutSearch('');
+      setShowTradeOutDropdown(false);
+    }
+  }, [tradeOutSearch, availableItems, tradeOutItems]);
+
   // Calculate totals - use stored trade_value which may include overrides
   const tradeInTotal = tradeInItems.reduce((sum, item) => sum + (parseFloat(item.card_value) || 0), 0);
   const tradeInValue = tradeInItems.reduce((sum, item) => sum + (parseFloat(item.trade_value) || 0), 0);

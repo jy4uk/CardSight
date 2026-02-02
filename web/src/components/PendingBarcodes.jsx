@@ -93,14 +93,14 @@ export default function PendingBarcodes({ onComplete }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+        <RefreshCw className="w-6 h-6 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-red-700 dark:text-red-300">
         <AlertCircle className="w-5 h-5 inline mr-2" />
         {error}
       </div>
@@ -109,10 +109,10 @@ export default function PendingBarcodes({ onComplete }) {
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg">
-        <Check className="w-12 h-12 text-green-500 mx-auto mb-3" />
-        <p className="text-gray-700 font-medium">All caught up!</p>
-        <p className="text-gray-500 text-sm">No cards pending barcode assignment</p>
+      <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+        <Check className="w-12 h-12 text-green-500 dark:text-green-400 mx-auto mb-3" />
+        <p className="text-slate-700 dark:text-slate-200 font-medium">All caught up!</p>
+        <p className="text-slate-500 dark:text-slate-400 text-sm">No cards pending barcode assignment</p>
       </div>
     );
   }
@@ -120,26 +120,26 @@ export default function PendingBarcodes({ onComplete }) {
   return (
     <div className="space-y-4">
       {/* Stats */}
-      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-3">
-        <Package className="w-5 h-5 text-orange-600" />
-        <span className="text-orange-800 font-medium">
+      <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 flex items-center gap-3">
+        <Package className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+        <span className="text-orange-800 dark:text-orange-200 font-medium">
           {items.length} card{items.length !== 1 ? 's' : ''} pending barcode assignment
         </span>
         <button
           onClick={loadItems}
-          className="ml-auto p-1 hover:bg-orange-100 rounded"
+          className="ml-auto p-1 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded"
         >
-          <RefreshCw className="w-4 h-4 text-orange-600" />
+          <RefreshCw className="w-4 h-4 text-orange-600 dark:text-orange-400" />
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Item List */}
-        <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-            <h3 className="font-medium text-gray-700">Pending Cards</h3>
+        <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+          <div className="bg-slate-50 dark:bg-slate-800 px-4 py-2 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="font-medium text-slate-700 dark:text-slate-300">Pending Cards</h3>
           </div>
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto bg-white dark:bg-slate-900">
             {items.map(item => (
               <button
                 key={item.id}
@@ -148,29 +148,29 @@ export default function PendingBarcodes({ onComplete }) {
                   setBarcodeInput('');
                   setAssignError(null);
                 }}
-                className={`w-full flex items-center gap-3 p-3 text-left border-b border-gray-100 last:border-0 transition-colors
-                  ${selectedItem?.id === item.id ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                className={`w-full flex items-center gap-3 p-3 text-left border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors
+                  ${selectedItem?.id === item.id ? 'bg-blue-50 dark:bg-blue-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'}`}
               >
                 {item.image_url ? (
                   <img src={item.image_url} alt="" className="w-12 h-16 object-cover rounded" />
                 ) : (
-                  <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
+                  <div className="w-12 h-16 bg-slate-200 dark:bg-slate-700 rounded flex items-center justify-center text-slate-400 dark:text-slate-500 text-xs">
                     No img
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm truncate">{item.card_name}</div>
-                  <div className="text-xs text-gray-500 truncate">
+                  <div className="font-medium text-sm truncate text-slate-900 dark:text-slate-100">{item.card_name}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
                     {item.set_name} • {getConditionOrGrade(item)}
                   </div>
                   {item.customer_name && (
-                    <div className="text-xs text-purple-600">
+                    <div className="text-xs text-purple-600 dark:text-purple-400">
                       From: {item.customer_name} • {formatDate(item.trade_date)}
                     </div>
                   )}
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-sm">${parseFloat(item.front_label_price || 0).toFixed(2)}</div>
+                  <div className="font-semibold text-sm text-slate-900 dark:text-slate-100">${parseFloat(item.front_label_price || 0).toFixed(2)}</div>
                 </div>
               </button>
             ))}
@@ -178,7 +178,7 @@ export default function PendingBarcodes({ onComplete }) {
         </div>
 
         {/* Scan Panel */}
-        <div className="border border-gray-200 rounded-lg p-4">
+        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 bg-white dark:bg-slate-900">
           {selectedItem ? (
             <div className="space-y-4">
               {/* Selected Card Preview */}
@@ -186,15 +186,15 @@ export default function PendingBarcodes({ onComplete }) {
                 {selectedItem.image_url ? (
                   <img src={selectedItem.image_url} alt="" className="w-24 h-32 object-cover rounded-lg shadow" />
                 ) : (
-                  <div className="w-24 h-32 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400">
+                  <div className="w-24 h-32 bg-slate-200 dark:bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500">
                     No image
                   </div>
                 )}
                 <div>
-                  <h3 className="font-semibold text-lg">{selectedItem.card_name}</h3>
-                  <p className="text-gray-600">{selectedItem.set_name}</p>
-                  <p className="text-sm text-gray-500">{getConditionOrGrade(selectedItem)}</p>
-                  <p className="text-lg font-bold text-blue-600 mt-2">
+                  <h3 className="font-semibold text-lg text-slate-900 dark:text-slate-100">{selectedItem.card_name}</h3>
+                  <p className="text-slate-600 dark:text-slate-400">{selectedItem.set_name}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{getConditionOrGrade(selectedItem)}</p>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-2">
                     ${parseFloat(selectedItem.front_label_price || 0).toFixed(2)}
                   </p>
                 </div>
@@ -202,7 +202,7 @@ export default function PendingBarcodes({ onComplete }) {
 
               {/* Barcode Input */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 italic">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 italic">
                   <Scan className="w-4 h-4 inline mr-1" />
                   Scan or Enter Barcode
                 </label>
@@ -214,7 +214,8 @@ export default function PendingBarcodes({ onComplete }) {
                     onChange={(e) => setBarcodeInput(e.target.value)}
                     onKeyDown={handleBarcodeKeyDown}
                     placeholder="Scan barcode..."
-                    className="flex-1 px-4 col-span-2 py-3 border border-gray-300 rounded-lg text-lg font-mono
+                    className="flex-1 px-4 col-span-2 py-3 border border-slate-300 dark:border-slate-600 rounded-lg text-lg font-mono
+                               bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100
                                focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-sm"
                     autoComplete="off"
                   />
@@ -222,7 +223,7 @@ export default function PendingBarcodes({ onComplete }) {
                     onClick={handleAssignBarcode}
                     disabled={!barcodeInput.trim() || assigning}
                     className="px-6 py-3 bg-blue-600 col-span-1 text-white rounded-lg font-medium
-                               hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed
+                               hover:bg-blue-700 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed
                                flex items-center justify-center text-center"
                   >
                     {assigning ? (
@@ -233,14 +234,14 @@ export default function PendingBarcodes({ onComplete }) {
                     Assign
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Scan the barcode sticker you're applying to this card
                 </p>
               </div>
 
               {/* Error */}
               {assignError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm flex items-center gap-2">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
                   <AlertCircle className="w-4 h-4" />
                   {assignError}
                 </div>
@@ -255,14 +256,14 @@ export default function PendingBarcodes({ onComplete }) {
                   setBarcodeInput('');
                   setAssignError(null);
                 }}
-                className="w-full py-2 text-gray-600 hover:bg-gray-100 rounded-lg text-sm"
+                className="w-full py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-sm"
               >
                 Skip to next card
               </button>
             </div>
           ) : (
-            <div className="text-center py-12 text-gray-500">
-              <Scan className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+              <Scan className="w-12 h-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
               <p>Select a card to assign a barcode</p>
             </div>
           )}
