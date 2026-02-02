@@ -1,8 +1,9 @@
 import { X, Package, Trash2, Image as ImageIcon, Calendar, DollarSign } from 'lucide-react';
+import { useAuth } from '../context/AuthContextNew';
 
-export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDelete, onFetchImage, onSell, isAdmin = false }) {
+export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDelete, onFetchImage, onSell }) {
   if (!isOpen || !item) return null;
-
+  const { isAdminMode } = useAuth();
   const renderDetails = () => {
     return (
       <div className="space-y-4">
@@ -68,7 +69,7 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
                 }
               </p>
             </div>
-            {isAdmin && (
+            {isAdminMode && (
               <>
                 <div>
                   <p className="text-gray-500">Purchase Date</p>
@@ -84,7 +85,7 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
             )}
           </div>
 
-          {isAdmin && item.notes && (
+          {isAdminMode && item.notes && (
             <div>
               <p className="text-gray-500 text-sm mb-1">Notes</p>
               <p className="text-gray-700 text-sm">{item.notes}</p>
@@ -92,7 +93,7 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
           )}
 
           {/* Action Buttons */}
-          {isAdmin && (
+          {isAdminMode && (
             <div className="flex gap-2 pt-4 flex-wrap">
               {onSell && (
                 <button

@@ -1,107 +1,155 @@
 import { useState } from 'react';
-import { Lock, Eye, EyeOff, X } from 'lucide-react';
+import { X, Mail, Lock, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContextNew';
 
-export default function LoginModal({ onClose, onLogin }) {
+export default function LoginModal() {
+  const { login, closeLoginModal, switchToSignup, showLoginModal, autoShowLogin } = useAuth();
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  if (!showLoginModal) return null;
+
+  const handleClose = () => {
+    // If auto-show is enabled, don't allow closing the modal
+    if (autoShowLogin) {
+      // Clear form but keep modal open
+      setEmailOrUsername('');
+      setPassword('');
+      setRememberMe(false);
+      setError('');
+      return;
+    }
+    
+    // Normal close behavior
+    setEmailOrUsername('');
+    setPassword('');
+    setRememberMe(false);
+    setError('');
+    closeLoginModal();
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    const result = await onLogin(password);
+    const result = await login(emailOrUsername, password, rememberMe);
     
     if (!result.success) {
-      setError(result.error || 'Invalid password');
+      setError(result.error);
       setLoading(false);
     }
-    // On success, modal will be closed by AuthContext
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Lock className="w-5 h-5 text-blue-600" />
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900">Admin Login</h2>
-          </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+        {!autoShowLogin && (
           <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+            onClick={handleClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X size={24} />
           </button>
-        </div>
+        )}
 
-        {/* Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Password Input */}
+        <h2 className="text-2xl font-bold mb-6 text-gray-800">
+  {autoShowLogin ? 'Login Required' : 'Welcome Back'}
+</h2>
+{autoShowLogin && (
+  <p className="text-sm text-gray-600 mb-4">
+    Please log in to access the CardPilot application.
+  </p>
+)}
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+            <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email or Username
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="username or email@example.com"
+                required
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-gray-400" />
-              </div>
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
-                type={showPassword ? 'text' : 'password'}
+                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="Enter admin password"
-                autoFocus
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="••••••••"
+                required
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                ) : (
-                  <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                )}
-              </button>
             </div>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Buttons */}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !password}
-              className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                'Sign In'
-              )}
-            </button>
+          <div className="flex items-center">
+            <input
+              id="remember-me"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+              Remember me for 30 days
+            </label>
           </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed font-medium"
+          >
+            {loading ? 'Logging in...' : 'Log In'}
+          </button>
         </form>
+
+        <div className="mt-4 text-center">
+          <button
+            onClick={() => {/* TODO: Open forgot password modal */}}
+            className="text-sm text-blue-600 hover:text-blue-700"
+          >
+            Forgot password?
+          </button>
+        </div>
+
+        <div className="mt-6 pt-6 border-t border-gray-200 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{' '}
+            <button
+              onClick={switchToSignup}
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Sign up
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

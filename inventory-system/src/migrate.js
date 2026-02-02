@@ -1,4 +1,10 @@
 import { query } from './services/db.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function runMigration() {
   try {
@@ -24,7 +30,28 @@ async function runMigration() {
     await query(`CREATE INDEX IF NOT EXISTS idx_transactions_show_id ON transactions(show_id)`);
     await query(`CREATE INDEX IF NOT EXISTS idx_transactions_sale_date ON transactions(sale_date)`);
     
-    console.log('✅ Migration completed successfully!');
+    console.log('✅ Card shows migration completed!');
+    
+    // Run multi-user migration
+    console.log('\nRunning multi-user authentication migration...');
+    const migrationPath = path.join(__dirname, 'migrations', 'add_multiuser_support.sql');
+    const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+    
+    // Execute the migration SQL
+    await query(migrationSQL);
+    
+    console.log('✅ Multi-user migration completed!');
+    
+    // Run username migration
+    console.log('\nRunning username column migration...');
+    const usernameMigrationPath = path.join(__dirname, 'migrations', 'add_username_column.sql');
+    const usernameMigrationSQL = fs.readFileSync(usernameMigrationPath, 'utf8');
+    
+    // Execute the username migration SQL
+    await query(usernameMigrationSQL);
+    
+    console.log('✅ Username migration completed!');
+    console.log('\n🎉 All migrations completed successfully!');
   } catch (err) {
     console.error('❌ Migration failed:', err);
     process.exit(1);
