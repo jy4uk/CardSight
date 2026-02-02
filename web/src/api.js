@@ -1,7 +1,14 @@
+import apiClient from './utils/apiClient.js';
+
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export async function fetchInventory() {
-  const res = await fetch(`${API_BASE}/inventory`);
+  const res = await apiClient.get('/inventory');
+  return res.data;
+}
+
+export async function fetchPublicInventory(username) {
+  const res = await fetch(`${API_BASE}/inventory/public?username=${encodeURIComponent(username)}`);
   if (!res.ok) throw new Error('Failed to fetch inventory');
   return res.json();
 }

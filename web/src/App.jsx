@@ -6,20 +6,24 @@ import SellModal from './components/SellModal';
 import SearchFilter from './components/SearchFilter';
 import AlertModal from './components/AlertModal';
 import Insights from './components/Insights';
-import LoginPage from './components/LoginPage';
 import LoginModal from './components/LoginModal';
 import TradeModal from './components/modals/TradeModal';
 import TradeHistory from './components/TradeHistory';
 import PendingBarcodes from './components/PendingBarcodes';
 import BarcodeGeneratorPage from './components/BarcodeGeneratorPage';
 import CartDrawer from './components/CartDrawer';
-import { useAuth, FEATURES } from './context/AuthContext';
+import SignupModal from './components/SignupModal';
+import { useAuth, FEATURES } from './context/AuthContextNew';
 import { useCart } from './context/CartContext';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
-import { fetchInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode } from './api';
+import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode } from './api';
 
 function App() {
-  const { user, loading: authLoading, logout, hasFeature, isAdmin, showLoginModal, openLoginModal, closeLoginModal, login } = useAuth();
+  const { user, loading: authLoading, logout, hasFeature, isAuthenticated, autoShowLogin } = useAuth();
+  
+  // Read username from URL query parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const usernameParam = urlParams.get('username');
 
   // Show loading spinner while checking auth
   if (authLoading) {
@@ -30,24 +34,45 @@ function App() {
     );
   }
 
+  // If username param exists, allow public access (don't force login)
+  // Otherwise, if auto-show login is enabled and user is not authenticated, show only login modal
+  if (autoShowLogin && !isAuthenticated && !usernameParam) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <LoginModal />
+        <SignupModal />
+      </div>
+    );
+  }
+
   // Render main app content (always show inventory, login is via modal)
   return (
     <>
       <AppContent 
         logout={logout} 
-        hasFeature={hasFeature} 
-        isAdmin={isAdmin} 
-        user={user} 
-        openLoginModal={openLoginModal}
+        hasFeature={hasFeature}
+        isAuthenticated={isAuthenticated}
+        user={user}
+        usernameParam={usernameParam}
       />
-      {showLoginModal && (
-        <LoginModal onClose={closeLoginModal} onLogin={login} />
-      )}
+      <LoginModal />
+      <SignupModal />
     </>
   );
 }
 
-function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
+function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }) {
+  // Get auth functions from context
+  const { openLoginModal, canEdit } = useAuth();
+  
+  // Determine viewing mode: 
+  // If user is logged in, always show their own inventory (ignore URL param)
+  // If user is NOT logged in and URL param exists, show public profile
+  const isViewingProfile = !isAuthenticated && !!usernameParam;
+  const hasEditPermission = isAuthenticated; // Logged in users always have edit permission on their own data
+
+  console.log(isAuthenticated, usernameParam, isViewingProfile);
+  
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -99,8 +124,21 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchInventory();
-      setInventory(data.items || []);
+      
+      // If user is authenticated, always fetch their own inventory
+      if (isAuthenticated) {
+        const data = await fetchInventory();
+        setInventory(data.items || []);
+      } 
+      // If not authenticated but viewing a public profile, fetch that user's inventory
+      else if (isViewingProfile) {
+        const data = await fetchPublicInventory(usernameParam);
+        setInventory(data.items || []);
+      }
+      // Otherwise, no inventory to show
+      else {
+        setInventory([]);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -374,12 +412,12 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
               <div className="flex items-center gap-2">
                 <Package className="w-7 h-7 text-blue-600" />
                 <h1 className="text-xl font-bold text-gray-900">Card Pilot</h1>
-                {isAdmin() && (
+                {isAuthenticated && (
                   <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
                     Admin
                   </span>
                 )}
-                {!isAdmin() && (
+                {!isAuthenticated && (
                   <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
                     Guest
                   </span>
@@ -400,7 +438,7 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                   <span className="hidden sm:inline">Inventory</span>
                   <span className="sm:hidden">Inv</span>
                 </button>
-                {hasFeature(FEATURES.VIEW_INSIGHTS) && (
+                {isAuthenticated && (
                   <>
                     <button
                       onClick={() => setCurrentView('trades')}
@@ -427,7 +465,7 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                   </>
                 )}
                 {/* Admin-only barcode generator */}
-                {isAdmin() && (
+                {isAuthenticated && (
                   <button
                     onClick={() => setCurrentView('barcodes')}
                     className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-colors flex items-center gap-1 ${
@@ -479,7 +517,7 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                       <span className="hidden sm:inline">Add Item</span>
                     </button>
                   )}
-                  {hasFeature(FEATURES.BULK_ACTIONS) && (
+                  {hasEditPermission && (
                     <button
                       onClick={toggleMultiSelectMode}
                       className={`flex items-center gap-1.5 px-4 py-2 font-semibold rounded-lg transition-colors ${
@@ -498,32 +536,38 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
               <button
                 onClick={() => setIsCartOpen(true)}
                 className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Shopping Cart"
+                title="Cart"
               >
                 <ShoppingCart className="w-5 h-5 text-gray-600" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                    {cartCount > 9 ? '9+' : cartCount}
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {cartCount}
                   </span>
                 )}
               </button>
-              {/* Admin Login / Logout Button */}
-              {isAdmin() ? (
-                <button
-                  onClick={logout}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-600 hover:text-red-600"
-                  title="Logout"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
+              
+              {/* User Menu */}
+              {isAuthenticated ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700 hidden md:inline">
+                    {user?.username || user?.firstName}
+                  </span>
+                  <button
+                    onClick={logout}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 font-medium rounded-lg hover:bg-red-100 transition-colors"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={openLoginModal}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors"
-                  title="Admin Login"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <Lock className="w-4 h-4" />
-                  <span className="hidden sm:inline">Admin</span>
+                  <span className="hidden sm:inline">Login</span>
                 </button>
               )}
             </div>
@@ -554,7 +598,7 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                     >
                       Inventory
                     </button>
-                    {hasFeature(FEATURES.VIEW_INSIGHTS) ? (
+                    {(hasFeature(FEATURES.VIEW_INSIGHTS) && isAuthenticated) ? (
                       <>
                         <button
                           onClick={() => {
@@ -648,8 +692,19 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                     </div>
                   )}
 
-                  <div className="border-t border-gray-200 pt-3">
-                    {isAdmin() ? (
+                  <div className="border-t border-gray-200 pt-3 space-y-2">
+                    {/* User Info */}
+                    {isAuthenticated && user && (
+                      <div className="px-3 py-2 bg-gray-50 rounded-lg">
+                        <p className="text-sm font-medium text-gray-900">
+                          {user.firstName || user.email}
+                        </p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+                    )}
+                    
+                    {/* Login/Logout */}
+                    {isAuthenticated ? (
                       <button
                         onClick={() => {
                           logout();
@@ -666,10 +721,10 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                           openLoginModal();
                           setMobileMenuOpen(false);
                         }}
-                        className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                        className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
                       >
                         <Lock className="w-4 h-4" />
-                        Admin Login
+                        Login
                       </button>
                     )}
                   </div>
@@ -684,7 +739,7 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
       {currentView === 'inventory' ? (
         <main className="max-w-7xl mx-auto px-4 py-4">
           {/* Inventory Sub-view Toggle */}
-          {isAdmin() && (
+          {isAuthenticated && (
             <div className="flex items-center gap-4 mb-4">
               <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                 <button
@@ -829,7 +884,6 @@ function AppContent({ logout, hasFeature, isAdmin, openLoginModal }) {
                     isMultiSelectMode={isMultiSelectMode}
                     isSelected={selectedItems.has(item.id)}
                     onToggleSelect={toggleItemSelection}
-                    isAdmin={isAdmin()}
                   />
                 ))}
               </div>

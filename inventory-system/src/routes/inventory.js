@@ -3,12 +3,58 @@ import { addInventoryItem, getInventoryByBarcode, getAllInventory, updateInvento
 import { createPaymentIntent } from '../services/stripeService.js';
 import { searchCardImage, searchPokemonCards } from '../services/imageService.js';
 import { query } from '../services/db.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { UserService } from '../auth/user-service.js';
 
 const router = express.Router();
+const userService = new UserService();
+
+// Public endpoint to get inventory by username (no auth required)
+router.get('/public', async (req, res) => {
+  try {
+    const { username } = req.query;
+    
+    if (!username) {
+      return res.status(400).json({ success: false, error: 'Username parameter is required' });
+    }
+
+    // Get user by username
+    const user = await userService.getUserByUsername(username);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Fetch user's inventory
+    const items = await query(
+      `SELECT * FROM inventory WHERE user_id = $1 AND status = 'IN_STOCK' AND hidden = FALSE ORDER BY id DESC`,
+      [user.id]
+    );
+
+    res.json({ 
+      success: true, 
+      items,
+      user: {
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Apply authentication to all other inventory routes
+router.use(authenticateToken);
 
 router.get('/', async (req, res) => {
   try {
-    const items = await getAllInventory();
+    // Filter inventory by authenticated user's ID
+    const userId = req.user.userId;
+    const items = await query(
+      `SELECT * FROM inventory WHERE user_id = $1 AND status = 'IN_STOCK' ORDER BY id DESC`,
+      [userId]
+    );
     res.json({ success: true, items });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -17,12 +63,13 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const data = { ...req.body };
+    const userId = req.user.userId;
+    const data = { ...req.body, user_id: userId };
 
     // Friendly duplicate barcode handling (only if barcode_id is not empty)
     const barcodeToCheck = data.barcode_id?.toString().trim();
     if (barcodeToCheck) {
-      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1`, [barcodeToCheck]);
+      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1 AND user_id = $2`, [barcodeToCheck, userId]);
       if (existing.length > 0) {
         return res.status(400).json({ success: false, error: 'Barcode already in use' });
       }
@@ -94,7 +141,8 @@ router.get('/search-images', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const rows = await query('DELETE FROM inventory WHERE id = $1 RETURNING *', [id]);
+    const userId = req.user.userId;
+    const rows = await query('DELETE FROM inventory WHERE id = $1 AND user_id = $2 RETURNING *', [id, userId]);
     if (rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Item not found' });
     }
@@ -125,13 +173,20 @@ router.post('/:barcode/update-image', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
+    const userId = req.user.userId;
     // Friendly duplicate barcode handling (only if barcode_id is being updated and not empty)
     const barcodeToCheck = req.body?.barcode_id?.toString().trim();
     if (barcodeToCheck) {
-      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1 AND id <> $2`, [barcodeToCheck, req.params.id]);
+      const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1 AND id <> $2 AND user_id = $3`, [barcodeToCheck, req.params.id, userId]);
       if (existing.length > 0) {
         return res.status(400).json({ success: false, error: 'Barcode already in use' });
       }
+    }
+
+    // Verify item belongs to user before updating
+    const checkOwnership = await query('SELECT id FROM inventory WHERE id = $1 AND user_id = $2', [req.params.id, userId]);
+    if (checkOwnership.length === 0) {
+      return res.status(404).json({ success: false, msg: 'Item not found' });
     }
 
     const item = await updateInventoryItem(req.params.id, req.body);
@@ -147,9 +202,10 @@ router.put('/:id', async (req, res) => {
 
 router.get('/:barcode', async (req, res) => {
   try {
-    const item = await getInventoryByBarcode(req.params.barcode);
-    if (!item) return res.status(404).json({ success: false, msg: 'Not found' });
-    res.json({ success: true, item });
+    const userId = req.user.userId;
+    const rows = await query('SELECT * FROM inventory WHERE barcode_id = $1 AND user_id = $2', [req.params.barcode, userId]);
+    if (rows.length === 0) return res.status(404).json({ success: false, msg: 'Not found' });
+    res.json({ success: true, item: rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -157,9 +213,11 @@ router.get('/:barcode', async (req, res) => {
 
 router.post('/:barcode/sell', async (req, res) => {
   try {
+    const userId = req.user.userId;
     const { sale_price, currency = 'usd' } = req.body;
-    const item = await getInventoryByBarcode(req.params.barcode);
-    if (!item) return res.status(404).json({ success: false, msg: 'Item not found' });
+    const rows = await query('SELECT * FROM inventory WHERE barcode_id = $1 AND user_id = $2', [req.params.barcode, userId]);
+    if (rows.length === 0) return res.status(404).json({ success: false, msg: 'Item not found' });
+    const item = rows[0];
 
     const paymentIntent = await createPaymentIntent(sale_price, currency, { inventory_id: item.id, barcode_id: item.barcode_id });
     res.json({ success: true, clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
@@ -170,6 +228,7 @@ router.post('/:barcode/sell', async (req, res) => {
 
 router.post('/:barcode/sell-direct', async (req, res) => {
   try {
+    const userId = req.user.userId;
     const { sale_price, payment_method } = req.body;
     const validMethods = ['cash', 'venmo', 'zelle', 'cashapp', 'credit_card'];
     
@@ -177,8 +236,9 @@ router.post('/:barcode/sell-direct', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid payment method for direct sale' });
     }
 
-    const item = await getInventoryByBarcode(req.params.barcode);
-    if (!item) return res.status(404).json({ success: false, msg: 'Item not found' });
+    const rows = await query('SELECT * FROM inventory WHERE barcode_id = $1 AND user_id = $2', [req.params.barcode, userId]);
+    if (rows.length === 0) return res.status(404).json({ success: false, msg: 'Item not found' });
+    const item = rows[0];
     if (item.status === 'SOLD') return res.status(400).json({ success: false, msg: 'Item already sold' });
 
     const { recordDirectSale } = await import('../services/inventoryService.js');
