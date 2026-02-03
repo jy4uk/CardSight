@@ -10,12 +10,14 @@ import tradesRoutes from './trades.js';
 import psaLookupRoutes from './psaLookup.js';
 import tcgRoutes from './tcg.js';
 import savedDealsRoutes from './savedDeals.js';
+import usersRoutes from './users.js';
 
 const router = express.Router();
 // Legacy admin mode auth (preserved for backward compatibility)
 router.use('/auth/admin', authRoutes);
 // New user authentication system
 router.use('/auth', authNewRoutes);
+router.use('/users', usersRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/pricing', pricingRoutes);
 router.use('/stripe', stripeRoutes);
