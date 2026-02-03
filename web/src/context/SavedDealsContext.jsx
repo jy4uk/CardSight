@@ -1,10 +1,11 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+import apiClient from '../utils/apiClient.js';
+import { useAuth } from './AuthContextNew.jsx';
 
 const SavedDealsContext = createContext(null);
 
 export function SavedDealsProvider({ children }) {
+  const { user } = useAuth();
   const [savedDeals, setSavedDeals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -14,12 +15,11 @@ export function SavedDealsProvider({ children }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/saved-deals`);
-      const data = await res.json();
-      if (data.success) {
-        setSavedDeals(data.deals);
+      const res = await apiClient.get('/saved-deals');
+      if (res.data.success) {
+        setSavedDeals(res.data.deals);
       } else {
-        setError(data.error);
+        setError(res.data.error);
       }
     } catch (err) {
       setError(err.message);
@@ -33,18 +33,13 @@ export function SavedDealsProvider({ children }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/saved-deals`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dealData)
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSavedDeals(prev => [data.deal, ...prev]);
-        return { success: true, deal: data.deal };
+      const res = await apiClient.post('/saved-deals', dealData);
+      if (res.data.success) {
+        setSavedDeals(prev => [res.data.deal, ...prev]);
+        return { success: true, deal: res.data.deal };
       } else {
-        setError(data.error);
-        return { success: false, error: data.error };
+        setError(res.data.error);
+        return { success: false, error: res.data.error };
       }
     } catch (err) {
       setError(err.message);
@@ -57,12 +52,11 @@ export function SavedDealsProvider({ children }) {
   // Get a single deal by ID (with availability check)
   const getDeal = useCallback(async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/saved-deals/${id}`);
-      const data = await res.json();
-      if (data.success) {
-        return { success: true, deal: data.deal };
+      const res = await apiClient.get(`/saved-deals/${id}`);
+      if (res.data.success) {
+        return { success: true, deal: res.data.deal };
       } else {
-        return { success: false, error: data.error };
+        return { success: false, error: res.data.error };
       }
     } catch (err) {
       return { success: false, error: err.message };
@@ -72,17 +66,12 @@ export function SavedDealsProvider({ children }) {
   // Update a deal
   const updateDeal = useCallback(async (id, updates) => {
     try {
-      const res = await fetch(`${API_BASE}/saved-deals/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSavedDeals(prev => prev.map(d => d.id === id ? data.deal : d));
-        return { success: true, deal: data.deal };
+      const res = await apiClient.put(`/saved-deals/${id}`, updates);
+      if (res.data.success) {
+        setSavedDeals(prev => prev.map(d => d.id === id ? res.data.deal : d));
+        return { success: true, deal: res.data.deal };
       } else {
-        return { success: false, error: data.error };
+        return { success: false, error: res.data.error };
       }
     } catch (err) {
       return { success: false, error: err.message };
@@ -92,15 +81,12 @@ export function SavedDealsProvider({ children }) {
   // Delete a deal
   const deleteDeal = useCallback(async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/saved-deals/${id}`, {
-        method: 'DELETE'
-      });
-      const data = await res.json();
-      if (data.success) {
+      const res = await apiClient.delete(`/saved-deals/${id}`);
+      if (res.data.success) {
         setSavedDeals(prev => prev.filter(d => d.id !== id));
         return { success: true };
       } else {
-        return { success: false, error: data.error };
+        return { success: false, error: res.data.error };
       }
     } catch (err) {
       return { success: false, error: err.message };
@@ -110,18 +96,21 @@ export function SavedDealsProvider({ children }) {
   // Validate deal availability
   const validateDeal = useCallback(async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/saved-deals/${id}/validate`);
-      const data = await res.json();
-      return data;
+      const res = await apiClient.get(`/saved-deals/${id}/validate`);
+      return res.data;
     } catch (err) {
       return { success: false, error: err.message };
     }
   }, []);
 
-  // Load deals on mount
+  // Load deals when user is authenticated
   useEffect(() => {
-    fetchSavedDeals();
-  }, [fetchSavedDeals]);
+    if (user) {
+      fetchSavedDeals();
+    } else {
+      setSavedDeals([]);
+    }
+  }, [user, fetchSavedDeals]);
 
   const value = {
     savedDeals,

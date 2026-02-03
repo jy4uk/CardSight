@@ -61,6 +61,16 @@ async function runMigration() {
     await query(betaCodesMigrationSQL);
     
     console.log('✅ Beta codes migration completed!');
+
+    // Run saved deals migration
+    console.log('\nRunning saved deals migration...');
+    const savedDealsMigrationPath = path.join(__dirname, 'migrations', 'add_saved_deals.sql');
+    const savedDealsMigrationSQL = fs.readFileSync(savedDealsMigrationPath, 'utf8');
+    
+    // Execute the saved deals migration SQL
+    await query(savedDealsMigrationSQL);
+    
+    console.log('✅ Saved deals migration completed!');
     console.log('\n🎉 All migrations completed successfully!');
   } catch (err) {
     console.error('❌ Migration failed:', err);
