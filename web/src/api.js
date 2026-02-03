@@ -14,13 +14,18 @@ export async function fetchPublicInventory(username) {
 }
 
 export async function fetchInventoryByBarcode(barcode) {
-  const res = await fetch(`${API_BASE}/inventory/${barcode}`);
-  if (!res.ok) throw new Error('Item not found');
-  return res.json();
+  const res = await apiClient.get(`/inventory/${barcode}`);
+  if (!res.data.success) {
+    throw new Error(res.data.error || 'Item not found');
+  }
+  return res.data;
 }
 
 export async function addInventoryItem(item) {
   const res = await apiClient.post('/inventory', item);
+  if (!res.data.success) {
+    throw new Error(res.data.error || 'Failed to add item');
+  }
   return res.data;
 }
 
@@ -50,26 +55,37 @@ export async function processPayment(readerId, paymentIntentId) {
   return res.json();
 }
 
-export async function sellDirectly(identifier, salePrice, paymentMethod) {
-  if (!identifier) throw new Error('Item identifier (barcode or id) is required');
-  const res = await apiClient.post(`/inventory/${identifier}/sell-direct`, { sale_price: salePrice, payment_method: paymentMethod });
+export async function sellDirectly(barcode, salePrice, paymentMethod) {
+  const res = await apiClient.post(`/inventory/${barcode}/sell-direct`, {
+    sale_price: salePrice,
+    payment_method: paymentMethod
+  });
+  if (!res.data.success) {
+    throw new Error(res.data.error || res.data.msg || 'Failed to record sale');
+  }
   return res.data;
 }
 
 export async function initiateStripeSale(barcode, salePrice) {
-  const res = await apiClient.post(`/inventory/${barcode}/sell`, { sale_price: salePrice });
+  const res = await apiClient.post(`/inventory/${barcode}/sell`, {
+    sale_price: salePrice
+  });
+  if (!res.data.success) {
+    throw new Error(res.data.error || res.data.msg || 'Failed to initiate payment');
+  }
   return res.data;
 }
 
 export async function updateItemImage(barcode) {
-  const res = await fetch(`${API_BASE}/inventory/${barcode}/update-image`, {
-    method: 'POST',
-  });
-  return res.json();
+  const res = await apiClient.post(`/inventory/${barcode}/update-image`);
+  return res.data;
 }
 
 export async function updateInventoryItem(id, data) {
   const res = await apiClient.put(`/inventory/${id}`, data);
+  if (!res.data.success) {
+    throw new Error(res.data.error || 'Failed to update item');
+  }
   return res.data;
 }
 
@@ -117,7 +133,10 @@ export async function searchCardImages(
 }
 
 export async function fetchInsights(timeRange = '30d') {
-  const res = await apiClient.get('/insights', { params: { timeRange } });
+  const res = await apiClient.get(`/insights?timeRange=${timeRange}`);
+  if (!res.data.success) {
+    throw new Error(res.data.error || 'Failed to fetch insights');
+  }
   return res.data;
 }
 
@@ -152,14 +171,9 @@ export const fetchBatchPricing = async (barcodeIds) => {
 
 export const updateAllPricing = async () => {
   try {
-    const response = await fetch(`${API_BASE}/pricing/update`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-    if (!response.ok) throw new Error('Failed to update pricing');
-    return await response.json();
+    const response = await apiClient.post('/pricing/update');
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to update pricing');
+    return response.data;
   } catch (error) {
     console.error('Error updating pricing:', error);
     throw error;
@@ -179,15 +193,9 @@ export const fetchPricingAnalytics = async () => {
 
 export const addCardShow = async (cardShowData) => {
   try {
-    const response = await fetch(`${API_BASE}/insights/card-shows`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify(cardShowData)
-    });
-    if (!response.ok) throw new Error('Failed to add card show');
-    return await response.json();
+    const response = await apiClient.post('/insights/card-shows', cardShowData);
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to add card show');
+    return response.data;
   } catch (error) {
     console.error('Error adding card show:', error);
     throw error;
@@ -196,11 +204,9 @@ export const addCardShow = async (cardShowData) => {
 
 export const deleteCardShow = async (showId) => {
   try {
-    const response = await fetch(`${API_BASE}/insights/card-shows/${showId}`, {
-      method: 'DELETE'
-    });
-    if (!response.ok) throw new Error('Failed to delete card show');
-    return await response.json();
+    const response = await apiClient.delete(`/insights/card-shows/${showId}`);
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to delete card show');
+    return response.data;
   } catch (error) {
     console.error('Error deleting card show:', error);
     throw error;
@@ -210,8 +216,9 @@ export const deleteCardShow = async (showId) => {
 // Trades API
 export const fetchTrades = async () => {
   try {
-    const res = await apiClient.get('/trades');
-    return res.data;
+    const response = await apiClient.get('/trades');
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to fetch trades');
+    return response.data;
   } catch (error) {
     console.error('Error fetching trades:', error);
     throw error;
@@ -220,8 +227,9 @@ export const fetchTrades = async () => {
 
 export const createTrade = async (tradeData) => {
   try {
-    const res = await apiClient.post('/trades', tradeData);
-    return res.data;
+    const response = await apiClient.post('/trades', tradeData);
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to create trade');
+    return response.data;
   } catch (error) {
     console.error('Error creating trade:', error);
     throw error;
@@ -230,8 +238,9 @@ export const createTrade = async (tradeData) => {
 
 export const deleteTrade = async (tradeId) => {
   try {
-    const res = await apiClient.delete(`/trades/${tradeId}`);
-    return res.data;
+    const response = await apiClient.delete(`/trades/${tradeId}`);
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to delete trade');
+    return response.data;
   } catch (error) {
     console.error('Error deleting trade:', error);
     throw error;
@@ -240,8 +249,9 @@ export const deleteTrade = async (tradeId) => {
 
 export const fetchPendingBarcodes = async () => {
   try {
-    const res = await apiClient.get('/trades/pending-barcodes');
-    return res.data;
+    const response = await apiClient.get('/trades/pending-barcodes');
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to fetch pending barcodes');
+    return response.data;
   } catch (error) {
     console.error('Error fetching pending barcodes:', error);
     throw error;
@@ -250,8 +260,14 @@ export const fetchPendingBarcodes = async () => {
 
 export const assignBarcode = async (inventoryId, barcodeId) => {
   try {
-    const res = await apiClient.post('/trades/assign-barcode', { inventory_id: inventoryId, barcode_id: barcodeId });
-    return res.data;
+    const response = await apiClient.post('/trades/assign-barcode', {
+      inventory_id: inventoryId,
+      barcode_id: barcodeId
+    });
+    if (!response.data.success) {
+      throw new Error(response.data.error || 'Failed to assign barcode');
+    }
+    return response.data;
   } catch (error) {
     console.error('Error assigning barcode:', error);
     throw error;

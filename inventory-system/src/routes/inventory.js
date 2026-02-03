@@ -93,6 +93,95 @@ router.post('/', async (req, res) => {
   }
 });
 
+// POST /inventory/bulk - Bulk add inventory items
+router.post('/bulk', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Items array is required and must not be empty' 
+      });
+    }
+
+    if (items.length > 1000) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Maximum 1000 items can be added at once' 
+      });
+    }
+
+    const results = {
+      success: [],
+      failed: [],
+      total: items.length
+    };
+
+    // Process items in a transaction
+    for (let i = 0; i < items.length; i++) {
+      try {
+        const itemData = { ...items[i], user_id: userId };
+        
+        // Skip if barcode already exists for this user
+        const barcodeToCheck = itemData.barcode_id?.toString().trim();
+        if (barcodeToCheck) {
+          const existing = await query(
+            `SELECT id FROM inventory WHERE barcode_id = $1 AND user_id = $2`, 
+            [barcodeToCheck, userId]
+          );
+          if (existing.length > 0) {
+            results.failed.push({
+              index: i,
+              item: items[i],
+              error: 'Barcode already in use'
+            });
+            continue;
+          }
+        }
+
+        // Auto-fetch image if not provided and card_type is raw
+        if (!itemData.image_url && itemData.card_name && (!itemData.card_type || itemData.card_type === 'raw')) {
+          try {
+            const imageResult = await searchCardImage(itemData.card_name, itemData.set_name, itemData.game || 'pokemon');
+            if (imageResult?.imageUrl) {
+              itemData.image_url = imageResult.imageUrl;
+            }
+          } catch (imageErr) {
+            // Continue without image if fetch fails
+            console.warn(`Failed to fetch image for item ${i}:`, imageErr.message);
+          }
+        }
+
+        const item = await addInventoryItem(itemData);
+        results.success.push({
+          index: i,
+          item
+        });
+      } catch (err) {
+        results.failed.push({
+          index: i,
+          item: items[i],
+          error: err.message || 'Failed to add item'
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Added ${results.success.length} of ${results.total} items`,
+      results
+    });
+  } catch (err) {
+    console.error('Bulk add error:', err);
+    res.status(500).json({ 
+      success: false, 
+      error: err.message 
+    });
+  }
+});
+
 // Search for card image
 router.get('/search-image', async (req, res) => {
   try {

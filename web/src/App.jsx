@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart, Sun, Moon } from 'lucide-react';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart, Sun, Moon, Settings } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
@@ -15,12 +15,14 @@ import BarcodeGeneratorPage from './components/BarcodeGeneratorPage';
 import CartDrawer from './components/CartDrawer';
 import SignupModal from './components/SignupModal';
 import LandingPage from './components/LandingPage';
+import AccountSettings from './components/AccountSettings';
 import { useAuth, FEATURES } from './context/AuthContextNew';
 import MobileBottomNav from './components/MobileBottomNav';
 import { useCart } from './context/CartContext';
 import { useTheme } from './context/ThemeContext';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode } from './api';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   const { user, loading: authLoading, logout, hasFeature, isAuthenticated, showLoginModal } = useAuth();
@@ -95,6 +97,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   const [resumedTradeDeal, setResumedTradeDeal] = useState(null);
   const [inventorySubView, setInventorySubView] = useState('grid'); // 'grid' or 'pending'
   const [inventorySort, setInventorySort] = useState('price_high'); // 'newest', 'oldest', 'price_high', 'price_low'
+  const [showSettings, setShowSettings] = useState(false);
 
   // Cart system
   const { addToCart, setError: setCartError, cartCount, setIsCartOpen } = useCart();
@@ -548,15 +551,24 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                   </span>
                 )}
               </button>
-              {/* Admin Login / Logout Button */}
+              {/* Settings & Logout Buttons */}
               {isAuthenticated ? (
-                <button
-                  onClick={logout}
-                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-600 dark:text-slate-400 hover:text-rose-600"
-                  title="Logout"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-600 dark:text-slate-400 hover:text-blue-600"
+                    title="Settings"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={logout}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-600 dark:text-slate-400 hover:text-rose-600"
+                    title="Logout"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={openLoginModal}
@@ -694,18 +706,30 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                       </div>
                     )}
                     
-                    {/* Login/Logout */}
+                    {/* Settings & Login/Logout */}
                     {isAuthenticated ? (
-                      <button
-                        onClick={() => {
-                          logout();
-                          setMobileMenuOpen(false);
-                        }}
-                        className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Logout
-                      </button>
+                      <>
+                        <button
+                          onClick={() => {
+                            setShowSettings(true);
+                            setMobileMenuOpen(false);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Settings className="w-4 h-4" />
+                          Settings
+                        </button>
+                        <button
+                          onClick={() => {
+                            logout();
+                            setMobileMenuOpen(false);
+                          }}
+                          className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </button>
+                      </>
                     ) : (
                       <button
                         onClick={() => {
@@ -905,6 +929,35 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
 
       {/* Shopping Cart Drawer */}
       <CartDrawer onCheckoutComplete={loadInventory} />
+
+      {/* Account Settings Modal */}
+      {showSettings && (
+        <AccountSettings onClose={() => setShowSettings(false)} />
+      )}
+
+      {/* Toast Notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: isDark ? '#1e293b' : '#fff',
+            color: isDark ? '#f1f5f9' : '#0f172a',
+          },
+          success: {
+            iconTheme: {
+              primary: '#10b981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
 
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav

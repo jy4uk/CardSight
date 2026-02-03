@@ -45,65 +45,80 @@ export default function LoginModal() {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="login-title"
+    >
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
         {!autoShowLogin && (
           <button
+            type="button"
             onClick={handleClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 touch-target"
+            aria-label="Close login modal"
           >
-            <X size={24} />
+            <X size={24} aria-hidden="true" />
           </button>
         )}
 
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">
-  {autoShowLogin ? 'Login Required' : 'Welcome Back'}
-</h2>
-{autoShowLogin && (
-  <p className="text-sm text-gray-600 mb-4">
-    Please log in to access the CardPilot application.
-  </p>
-)}
+        <h2 id="login-title" className="text-2xl font-bold mb-6 text-gray-800">
+          {autoShowLogin ? 'Login Required' : 'Welcome Back'}
+        </h2>
+        {autoShowLogin && (
+          <p className="text-sm text-gray-600 mb-4">
+            Please log in to access the CardPilot application.
+          </p>
+        )}
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
-            <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
+          <div 
+            className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2"
+            role="alert"
+            aria-live="polite"
+          >
+            <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} aria-hidden="true" />
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email-username" className="block text-sm font-medium text-gray-700 mb-1">
               Email or Username
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} aria-hidden="true" />
               <input
+                id="email-username"
                 type="text"
                 value={emailOrUsername}
                 onChange={(e) => setEmailOrUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target"
                 placeholder="username or email@example.com"
                 required
                 autoFocus
+                aria-required="true"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} aria-hidden="true" />
               <input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent touch-target"
                 placeholder="••••••••"
                 required
+                aria-required="true"
               />
             </div>
           </div>
@@ -124,7 +139,8 @@ export default function LoginModal() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed font-medium"
+            className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed font-medium touch-target"
+            aria-busy={loading}
           >
             {loading ? 'Logging in...' : 'Log In'}
           </button>
@@ -132,8 +148,9 @@ export default function LoginModal() {
 
         <div className="mt-4 text-center">
           <button
+            type="button"
             onClick={() => {/* TODO: Open forgot password modal */}}
-            className="text-sm text-blue-600 hover:text-blue-700"
+            className="text-sm text-blue-600 hover:text-blue-700 touch-target"
           >
             Forgot password?
           </button>
@@ -143,8 +160,9 @@ export default function LoginModal() {
           <p className="text-sm text-gray-600">
             Don't have an account?{' '}
             <button
+              type="button"
               onClick={switchToSignup}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              className="text-blue-600 hover:text-blue-700 font-medium touch-target"
             >
               Sign up
             </button>

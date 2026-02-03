@@ -10,14 +10,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "dev:ts": "nodemon --exec tsx src/server.ts",
+    "start": "node src/server.js",
+    "start:ts": "node dist/server.js",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "migrate": "node src/migrate.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@types/cookie-parser": "^1.4.10",
-    "@types/jsonwebtoken": "^9.0.10",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.2",
     "cookie-parser": "^1.4.7",
@@ -30,6 +33,16 @@
     "stripe": "^20.2.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.2.0",
+    "@types/pg": "^8.16.0",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
