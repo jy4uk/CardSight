@@ -154,7 +154,7 @@ export default function SearchFilter({
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">$</span>
                 <input
-                  type="number"
+                  inputMode="decimal"
                   value={filters.minPrice || ''}
                   onChange={(e) => onFilterChange({ ...filters, minPrice: e.target.value })}
                   placeholder="0"
@@ -172,7 +172,7 @@ export default function SearchFilter({
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-sm">$</span>
                 <input
-                  type="number"
+                  inputMode="decimal"
                   value={filters.maxPrice || ''}
                   onChange={(e) => onFilterChange({ ...filters, maxPrice: e.target.value })}
                   placeholder="999"

@@ -378,7 +378,7 @@ export default function BarcodeGeneratorPage() {
               </label>
               <input
                 id="count"
-                type="number"
+                inputMode="decimal"
                 min="0"
                 max="1000"
                 value={count}
@@ -496,7 +496,7 @@ export default function BarcodeGeneratorPage() {
                       Label length (mm)
                     </label>
                     <input
-                      type="number"
+                      inputMode="decimal"
                       min="25"
                       max="60"
                       value={labelLengthMm}

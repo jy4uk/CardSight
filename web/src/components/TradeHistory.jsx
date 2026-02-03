@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeftRight, Calendar, User, DollarSign, Trash2, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeftRight, Calendar, User, DollarSign, Trash2, Eye, ChevronDown, ChevronUp, Pencil, Check, X } from 'lucide-react';
+import AlertModal from './AlertModal';
 
-export default function TradeHistory({ trades = [], onDelete, onRefresh, compact = false }) {
+export default function TradeHistory({ trades = [], onDelete, onRefresh, onUpdateTradeItem, compact = false }) {
   const [expandedTrade, setExpandedTrade] = useState(null);
   const [stats, setStats] = useState(null);
+  const [editingItem, setEditingItem] = useState(null); // { tradeId, itemIdx, field }
+  const [editValue, setEditValue] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // tradeId to delete
 
   // Calculate stats
   useEffect(() => {
@@ -33,9 +37,14 @@ export default function TradeHistory({ trades = [], onDelete, onRefresh, compact
     });
   };
 
-  const handleDelete = async (tradeId) => {
-    if (window.confirm('Are you sure you want to delete this trade? This will restore traded-out items to inventory and remove trade-in items.')) {
-      await onDelete(tradeId);
+  const handleDelete = (tradeId) => {
+    setDeleteConfirm(tradeId);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirm) {
+      await onDelete(deleteConfirm);
+      setDeleteConfirm(null);
     }
   };
 
@@ -151,12 +160,71 @@ export default function TradeHistory({ trades = [], onDelete, onRefresh, compact
                     <div>
                       <h4 className="text-sm font-semibold text-green-700 dark:text-green-400 mb-2">Cards Received (Trade-In)</h4>
                       <div className="space-y-1">
-                        {trade.items.filter(i => i.direction === 'in').map((item, idx) => (
-                          <div key={idx} className="flex justify-between text-sm bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
-                            <span className="text-slate-900 dark:text-slate-100">{item.card_name} <span className="text-slate-400 dark:text-slate-500">({item.set_name})</span></span>
-                            <span className="font-medium text-slate-900 dark:text-slate-100">${parseFloat(item.card_value || 0).toFixed(2)}</span>
-                          </div>
-                        ))}
+                        {trade.items.filter(i => i.direction === 'in').map((item, idx) => {
+                          const isEditing = editingItem?.tradeId === trade.id && editingItem?.itemId === item.id;
+                          return (
+                            <div key={idx} className="flex flex-col gap-1 text-sm bg-white dark:bg-slate-800 p-2 rounded border border-slate-100 dark:border-slate-700">
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-900 dark:text-slate-100">{item.card_name} <span className="text-slate-400 dark:text-slate-500">({item.set_name})</span></span>
+                              </div>
+                              <div className="flex justify-between items-center text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-500 dark:text-slate-400">Market:</span>
+                                  {isEditing && editingItem?.field === 'card_value' ? (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-slate-500">$</span>
+                                      <input
+                                        inputMode="decimal"
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        className="w-20 px-1 py-0.5 border rounded text-xs dark:bg-slate-700 dark:border-slate-600"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') {
+                                            onUpdateTradeItem?.(item.id, 'card_value', parseFloat(editValue) || 0);
+                                            setEditingItem(null);
+                                          } else if (e.key === 'Escape') {
+                                            setEditingItem(null);
+                                          }
+                                        }}
+                                      />
+                                      <button
+                                        onClick={() => {
+                                          onUpdateTradeItem?.(item.id, 'card_value', parseFloat(editValue) || 0);
+                                          setEditingItem(null);
+                                        }}
+                                        className="p-0.5 text-green-600 hover:text-green-700"
+                                      >
+                                        <Check className="w-3 h-3" />
+                                      </button>
+                                      <button
+                                        onClick={() => setEditingItem(null)}
+                                        className="p-0.5 text-red-600 hover:text-red-700"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span
+                                      className="font-medium text-slate-900 dark:text-slate-100 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 flex items-center gap-1"
+                                      onClick={() => {
+                                        setEditingItem({ tradeId: trade.id, itemId: item.id, field: 'card_value' });
+                                        setEditValue(parseFloat(item.card_value || 0).toFixed(2));
+                                      }}
+                                    >
+                                      ${parseFloat(item.card_value || 0).toFixed(2)}
+                                      <Pencil className="w-3 h-3 opacity-50" />
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-500 dark:text-slate-400">Credit:</span>
+                                  <span className="font-medium text-green-600 dark:text-green-400">${parseFloat(item.trade_value || item.card_value || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                         {trade.items.filter(i => i.direction === 'in').length === 0 && (
                           <p className="text-slate-400 dark:text-slate-500 text-sm">No trade-in items</p>
                         )}
@@ -192,6 +260,16 @@ export default function TradeHistory({ trades = [], onDelete, onRefresh, compact
           ))
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AlertModal
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={confirmDelete}
+        type="delete"
+        title="Delete Trade"
+        message="Are you sure you want to delete this trade? This will restore traded-out items to inventory and remove trade-in items."
+      />
     </div>
   );
 }

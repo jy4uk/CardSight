@@ -821,7 +821,7 @@ export default function PurchasePanel({ inventoryItems = [], onPurchaseComplete 
             <div className="relative">
               <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
-                type="number"
+                inputMode="decimal"
                 value={formData.purchase_price}
                 onChange={(e) => setFormData(prev => ({ ...prev, purchase_price: e.target.value }))}
                 placeholder="0.00"
@@ -836,7 +836,7 @@ export default function PurchasePanel({ inventoryItems = [], onPurchaseComplete 
             <div className="relative">
               <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
-                type="number"
+                inputMode="decimal"
                 value={formData.front_label_price}
                 onChange={(e) => setFormData(prev => ({ ...prev, front_label_price: e.target.value }))}
                 placeholder="0.00"
@@ -899,7 +899,7 @@ export default function PurchasePanel({ inventoryItems = [], onPurchaseComplete 
                         <div className="relative">
                           <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
                           <input
-                            type="number"
+                            inputMode="decimal"
                             step="0.01"
                             value={editingData.purchase_price}
                             onChange={(e) => setEditingData(prev => ({ ...prev, purchase_price: e.target.value }))}

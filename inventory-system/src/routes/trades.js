@@ -66,6 +66,44 @@ router.get('/stats/summary', authenticateToken, async (req, res) => {
   }
 });
 
+// Update a trade item (e.g., market price)
+router.put('/items/:itemId', authenticateToken, async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { field, value } = req.body;
+    
+    // Only allow updating specific fields
+    const allowedFields = ['card_value', 'trade_value'];
+    if (!allowedFields.includes(field)) {
+      return res.status(400).json({ success: false, error: 'Invalid field' });
+    }
+    
+    // Verify the trade item belongs to a trade owned by this user
+    const [item] = await query(`
+      SELECT ti.*, t.user_id 
+      FROM trade_items ti
+      JOIN trades t ON ti.trade_id = t.id
+      WHERE ti.id = $1
+    `, [itemId]);
+    
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Trade item not found' });
+    }
+    
+    if (item.user_id !== req.user.userId) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
+    }
+    
+    // Update the field
+    await query(`UPDATE trade_items SET ${field} = $1 WHERE id = $2`, [value, itemId]);
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update trade item error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Get single trade by ID
 router.get('/:id', authenticateToken, async (req, res) => {
   try {

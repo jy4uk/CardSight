@@ -87,7 +87,7 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 text-lg">$</span>
               <input
-                type="number"
+                inputMode="decimal"
                 value={salePrice}
                 onChange={(e) => setSalePrice(e.target.value)}
                 placeholder="0.00"

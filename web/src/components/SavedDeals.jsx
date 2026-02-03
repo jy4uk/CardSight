@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Bookmark, ShoppingBag, ArrowLeftRight, Trash2, Play, AlertTriangle, Clock, User, Loader2, Package } from 'lucide-react';
 import { useSavedDeals } from '../context/SavedDealsContext';
 import { formatDate } from '../utils';
+import AlertModal from './AlertModal';
 
 // Extract card images from deal data
 const getCardImages = (deal) => {
@@ -40,12 +41,21 @@ export default function SavedDeals({ onResumePurchase, onResumeTrade, compact = 
   const { savedDeals, loading, deleteDeal, getDeal } = useSavedDeals();
   const [deletingId, setDeletingId] = useState(null);
   const [resumingId, setResumingId] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [unavailableWarning, setUnavailableWarning] = useState(null); // { deal, itemNames }
+  const [errorModal, setErrorModal] = useState(null); // error message
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this saved deal? This cannot be undone.')) return;
-    setDeletingId(id);
-    await deleteDeal(id);
-    setDeletingId(null);
+  const handleDelete = (id) => {
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteConfirm) {
+      setDeletingId(deleteConfirm);
+      await deleteDeal(deleteConfirm);
+      setDeletingId(null);
+      setDeleteConfirm(null);
+    }
   };
 
   const handleResume = async (deal) => {
@@ -55,7 +65,7 @@ export default function SavedDeals({ onResumePurchase, onResumeTrade, compact = 
     const result = await getDeal(deal.id);
     
     if (!result.success) {
-      alert('Failed to load deal: ' + result.error);
+      setErrorModal('Failed to load deal: ' + result.error);
       setResumingId(null);
       return;
     }
@@ -65,23 +75,24 @@ export default function SavedDeals({ onResumePurchase, onResumeTrade, compact = 
     // Check for unavailable items and warn user
     if (fullDeal.has_unavailable_items && fullDeal.unavailable_items?.length > 0) {
       const itemNames = fullDeal.unavailable_items.map(i => i.card_name).join(', ');
-      const proceed = window.confirm(
-        `Warning: Some items in this trade are no longer available:\n\n${itemNames}\n\nThese items have been sold or traded since this deal was saved. Do you want to continue anyway? You'll need to remove or replace these items.`
-      );
-      if (!proceed) {
-        setResumingId(null);
-        return;
-      }
+      setUnavailableWarning({ deal: fullDeal, itemNames });
+      return;
     }
 
+    // Continue with resume
+    resumeDeal(fullDeal);
+  };
+
+  const resumeDeal = (fullDeal) => {
+    setResumingId(null);
+    setUnavailableWarning(null);
+
     // Resume the appropriate modal
-    if (deal.deal_type === 'purchase') {
+    if (fullDeal.deal_type === 'purchase') {
       onResumePurchase?.(fullDeal);
     } else {
       onResumeTrade?.(fullDeal);
     }
-    
-    setResumingId(null);
   };
 
   if (loading && savedDeals.length === 0) {
@@ -233,6 +244,43 @@ export default function SavedDeals({ onResumePurchase, onResumeTrade, compact = 
           </div>
         );
       })}
+
+      {/* Delete Confirmation Modal */}
+      <AlertModal
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={confirmDelete}
+        type="delete"
+        title="Delete Saved Deal"
+        message="Delete this saved deal? This cannot be undone."
+      />
+
+      {/* Error Modal */}
+      <AlertModal
+        isOpen={errorModal !== null}
+        onClose={() => setErrorModal(null)}
+        type="error"
+        title="Error"
+        message={errorModal}
+        showCancel={false}
+      />
+
+      {/* Unavailable Items Warning Modal */}
+      <AlertModal
+        isOpen={unavailableWarning !== null}
+        onClose={() => {
+          setUnavailableWarning(null);
+          setResumingId(null);
+        }}
+        onConfirm={() => {
+          if (unavailableWarning?.deal) {
+            resumeDeal(unavailableWarning.deal);
+          }
+        }}
+        type="error"
+        title="Items Unavailable"
+        message={unavailableWarning ? `Some items in this trade are no longer available:\n\n${unavailableWarning.itemNames}\n\nThese items have been sold or traded since this deal was saved. Do you want to continue anyway? You'll need to remove or replace these items.` : ''}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import AddPurchaseModal from './modals/AddPurchaseModal';
 import PendingBarcodes from './PendingBarcodes';
 import SavedDeals from './SavedDeals';
 import { useSavedDeals } from '../context/SavedDealsContext';
+import { updateTradeItem } from '../api';
 
 export default function IntakePage({ 
   trades, 
@@ -93,6 +94,10 @@ export default function IntakePage({
                 trades={trades} 
                 onDelete={onDeleteTrade}
                 onRefresh={onRefreshTrades}
+                onUpdateTradeItem={async (itemId, field, value) => {
+                  await updateTradeItem(itemId, field, value);
+                  onRefreshTrades?.();
+                }}
                 compact={true}
               />
             </div>

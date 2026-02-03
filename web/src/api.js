@@ -258,6 +258,16 @@ export const assignBarcode = async (inventoryId, barcodeId) => {
   }
 };
 
+export const updateTradeItem = async (itemId, field, value) => {
+  try {
+    const res = await apiClient.put(`/trades/items/${itemId}`, { field, value });
+    return res.data;
+  } catch (error) {
+    console.error('Error updating trade item:', error);
+    throw error;
+  }
+};
+
 // PSA Lookup API
 export const fetchPSAData = async (certNumber) => {
   try {

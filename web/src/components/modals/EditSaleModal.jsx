@@ -70,7 +70,7 @@ export default function EditSaleModal({ isOpen, onClose, transaction, onSave }) 
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400">$</span>
               <input
-                type="number"
+                inputMode="decimal"
                 value={salePrice}
                 onChange={(e) => setSalePrice(e.target.value)}
                 step="0.01"

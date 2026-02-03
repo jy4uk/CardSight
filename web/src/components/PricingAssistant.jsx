@@ -173,7 +173,7 @@ export default function PricingAssistant({ isOpen, onClose, card, onSave }) {
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                   <input
-                    type="number"
+                    inputMode="decimal"
                     value={pricingData.marketPrice}
                     onChange={(e) => setPricingData(prev => ({ ...prev, marketPrice: e.target.value }))}
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -190,7 +190,7 @@ export default function PricingAssistant({ isOpen, onClose, card, onSave }) {
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                   <input
-                    type="number"
+                    inputMode="decimal"
                     value={pricingData.lowPrice}
                     onChange={(e) => setPricingData(prev => ({ ...prev, lowPrice: e.target.value }))}
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -207,7 +207,7 @@ export default function PricingAssistant({ isOpen, onClose, card, onSave }) {
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                   <input
-                    type="number"
+                    inputMode="decimal"
                     value={pricingData.midPrice}
                     onChange={(e) => setPricingData(prev => ({ ...prev, midPrice: e.target.value }))}
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -224,7 +224,7 @@ export default function PricingAssistant({ isOpen, onClose, card, onSave }) {
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                   <input
-                    type="number"
+                    inputMode="decimal"
                     value={pricingData.highPrice}
                     onChange={(e) => setPricingData(prev => ({ ...prev, highPrice: e.target.value }))}
                     className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -242,7 +242,7 @@ export default function PricingAssistant({ isOpen, onClose, card, onSave }) {
               <div className="relative">
                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                 <input
-                  type="number"
+                  inputMode="decimal"
                   value={pricingData.sellingPrice}
                   onChange={(e) => setPricingData(prev => ({ ...prev, sellingPrice: e.target.value }))}
                   className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"

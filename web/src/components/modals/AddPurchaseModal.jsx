@@ -836,7 +836,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                 <div className="relative">
                   <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    type="number"
+                    inputMode="decimal"
                     value={formData.purchase_price}
                     onChange={(e) => setFormData(prev => ({ ...prev, purchase_price: e.target.value }))}
                     placeholder="0.00"
@@ -851,7 +851,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                 <div className="relative">
                   <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    type="number"
+                    inputMode="decimal"
                     value={formData.front_label_price}
                     onChange={(e) => setFormData(prev => ({ ...prev, front_label_price: e.target.value }))}
                     placeholder="0.00"
@@ -969,7 +969,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                             <div className="relative flex-1">
                               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 value={editingData.purchase_price}
                                 onChange={(e) => setEditingData(prev => ({ ...prev, purchase_price: e.target.value }))}
                                 className="w-full pl-5 pr-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
@@ -980,7 +980,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                             <div className="relative flex-1">
                               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">$</span>
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 value={editingData.front_label_price}
                                 onChange={(e) => setEditingData(prev => ({ ...prev, front_label_price: e.target.value }))}
                                 className="w-full pl-5 pr-1 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"

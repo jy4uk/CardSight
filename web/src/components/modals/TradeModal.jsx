@@ -1246,7 +1246,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                             <div className="relative">
                               <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 step="0.01"
                                 value={editingTradeInData.card_value}
                                 onChange={(e) => setEditingTradeInData(prev => ({ ...prev, card_value: e.target.value }))}
@@ -1259,7 +1259,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                             <div className="relative">
                               <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
                               <input
-                                type="number"
+                                inputMode="decimal"
                                 step="0.01"
                                 value={editingTradeInData.trade_value}
                                 onChange={(e) => setEditingTradeInData(prev => ({ ...prev, trade_value: e.target.value }))}
@@ -1479,7 +1479,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
               <div>
                 <label className="text-xs text-gray-600">Cash to Customer (override)</label>
                 <input
-                  type="number"
+                  inputMode="decimal"
                   value={cashToCustomer}
                   onChange={(e) => setCashToCustomer(parseFloat(e.target.value) || 0)}
                   className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
@@ -1489,7 +1489,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
               <div>
                 <label className="text-xs text-gray-600">Cash from Customer (override)</label>
                 <input
-                  type="number"
+                  inputMode="decimal"
                   value={cashFromCustomer}
                   onChange={(e) => setCashFromCustomer(parseFloat(e.target.value) || 0)}
                   className="w-full px-2 py-1 border border-gray-300 rounded text-sm"

@@ -186,7 +186,7 @@ export default function CartDrawer({ onCheckoutComplete }) {
                         <div className="flex items-center gap-1">
                           <span className="text-gray-500">$</span>
                           <input
-                            type="number"
+                            inputMode="decimal"
                             step="0.01"
                             value={editPrice}
                             onChange={(e) => setEditPrice(e.target.value)}
