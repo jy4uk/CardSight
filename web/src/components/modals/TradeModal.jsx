@@ -1,11 +1,54 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Plus, Trash2, ArrowRight, ArrowLeft, DollarSign, Percent, User, Calendar, Search, Loader2, Scan, Bookmark, AlertTriangle } from 'lucide-react';
+import { X, Plus, Trash2, ArrowRight, ArrowLeft, DollarSign, Percent, User, Calendar, Search, Loader2, Scan, Bookmark, AlertTriangle, Pencil, Check } from 'lucide-react';
 import { fetchPSAData, isPSACertNumber, searchTCGProducts } from '../../api';
 import { useSavedDeals } from '../../context/SavedDealsContext';
 import PSAMarketData from '../PSAMarketData';
 import { CONDITIONS, GRADES, GAMES, CARD_TYPES } from '../../constants';
 
 const DEFAULT_TRADE_PERCENTAGE = 80;
+
+// Helper: title case
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+// Helper: clean card name for lookup (remove periods/spaces for One Piece style)
+const cleanForCardLookup = (name) => {
+  if (!name) return '';
+  return name.replace(/[.\s']/g, '');
+};
+
+// Helper: strip trailing numbers and variant suffixes
+const cleanCardName = (name) => {
+  if (!name) return '';
+  let cleaned = name.replace(/\s+\d+\s+\d+$/, '').replace(/\s+-\s+\d+\/\d+$/, '').trim();
+  const variantSuffixes = [
+    /\s+Alternate Full Art$/i, /\s+Full Art$/i, /\s+Special Art Rare$/i,
+    /\s+Illustration Rare$/i, /\s+Ultra Rare$/i, /\s+Secret Rare$/i,
+  ];
+  for (const suffix of variantSuffixes) {
+    cleaned = cleaned.replace(suffix, '');
+  }
+  return cleaned.trim();
+};
+
+// Helper: strip set code prefixes
+const cleanSetName = (name) => {
+  if (!name) return '';
+  return name.replace(/^[A-Za-z]+\d*:\s*/i, '').trim();
+};
+
+// Helper: detect game from TCG categoryId
+const detectGameFromProduct = (product) => {
+  switch (product.categoryId) {
+    case 3: return 'pokemon';
+    case 68: return 'onepiece';
+    case 1: return 'mtg';
+    case 2: return 'yugioh';
+    default: return 'pokemon';
+  }
+};
 
 export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems = [], resumedDeal = null }) {
   const { saveDeal, deleteDeal } = useSavedDeals();
@@ -43,17 +86,20 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     condition: 'NM',
     grade: '',
     grade_qualifier: '',
-    card_value: '',
+    card_value: '',  // This is the market value (front_label_price)
     trade_percentage: DEFAULT_TRADE_PERCENTAGE,
-    trade_value_override: null,
+    trade_value_override: null,  // This becomes purchase_price when added to inventory
     image_url: '',
     cert_number: '',
+    tcg_product_id: null,
     notes: ''
   });
   // TCG product matching state
   const [tcgProducts, setTcgProducts] = useState([]);
   const [tcgLoading, setTcgLoading] = useState(false);
   const [selectedTcgProduct, setSelectedTcgProduct] = useState(null);
+  const [showAllTcgResults, setShowAllTcgResults] = useState(false);
+  const [preSelectionFormData, setPreSelectionFormData] = useState(null);
   const tcgDebounceRef = useRef(null);
   
   // PSA lookup state
@@ -63,6 +109,10 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   const psaDebounceRef = useRef(null);
   const psaFetchedRef = useRef(null);
   const barcodeInputRef = useRef(null);
+  
+  // Editing staged trade-in items
+  const [editingTradeInIndex, setEditingTradeInIndex] = useState(null);
+  const [editingTradeInData, setEditingTradeInData] = useState({});
 
   // Available inventory items (IN_STOCK only, not already in trade-out)
   const availableItems = useMemo(() => {
@@ -152,7 +202,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       setTradeInForm({
         barcode_id: '', card_name: '', set_name: '', card_number: '', game: 'pokemon',
         card_type: 'raw', condition: 'NM', grade: '', grade_qualifier: '',
-        card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null, image_url: '', cert_number: '', notes: ''
+        card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null, 
+        image_url: '', cert_number: '', tcg_product_id: null, notes: ''
       });
       setShowAddTradeInForm(false);
       setTradeOutSearch('');
@@ -170,6 +221,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       setTcgProducts([]);
       setTcgLoading(false);
       setSelectedTcgProduct(null);
+      setShowAllTcgResults(false);
+      setPreSelectionFormData(null);
       if (tcgDebounceRef.current) {
         clearTimeout(tcgDebounceRef.current);
         tcgDebounceRef.current = null;
@@ -179,6 +232,9 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       setSaveCustomerNote('');
       setResumedDealId(null);
       setUnavailableItems([]);
+      // Reset editing state
+      setEditingTradeInIndex(null);
+      setEditingTradeInData({});
     }
   }, [isOpen]);
 
@@ -240,17 +296,101 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       if (result.success && result.psa) {
         setPsaData(result);
         
+        // Extract numeric grade from PSA grade (e.g., "GEM MT 10" -> "10")
+        const extractNumericGrade = (psaGrade) => {
+          if (!psaGrade) return '';
+          const match = psaGrade.match(/(\d+(?:\.\d+)?)/);
+          return match ? match[1] : '';
+        };
+
+        // Strip PSA variant prefixes from card name (e.g., "Fa/Lugia V" -> "Lugia V")
+        const cleanPSACardName = (name) => {
+          if (!name) return '';
+          const prefixPattern = /^(Fa|Sr|Ar|Sar|Ir|Sir|Ur|Chr|Csr|Tg|Gg|Rr|Pr|Hr)\//i;
+          return name.replace(prefixPattern, '').trim();
+        };
+
+        // Game prefixes to detect and strip from set name
+        const GAME_PREFIXES = [
+          { pattern: /^POKEMON\s+/i, game: 'pokemon' },
+          { pattern: /^ONE PIECE\s+/i, game: 'onepiece' },
+          { pattern: /^ONEPIECE\s+/i, game: 'onepiece' },
+          { pattern: /^MTG\s+/i, game: 'mtg' },
+          { pattern: /^MAGIC\s+/i, game: 'mtg' },
+          { pattern: /^MAGIC:?\s*THE GATHERING\s+/i, game: 'mtg' },
+          { pattern: /^YU-?GI-?OH!?\s+/i, game: 'yugioh' },
+          { pattern: /^YUGIOH!?\s+/i, game: 'yugioh' },
+        ];
+
+        // Parse set name: extract game prefix, series, set code, and true set name
+        const parseSetName = (rawSet) => {
+          if (!rawSet) return { game: null, series: '', setName: '', tcgSetName: '' };
+          
+          let setName = rawSet;
+          let detectedGame = null;
+
+          for (const { pattern, game } of GAME_PREFIXES) {
+            if (pattern.test(setName)) {
+              detectedGame = game;
+              setName = setName.replace(pattern, '');
+              break;
+            }
+          }
+
+          // Handle One Piece set format
+          const onePieceMatch = setName.match(/^(OP\d+[A-Z]?)-(.+)$/i);
+          if (onePieceMatch || detectedGame === 'onepiece') {
+            if (onePieceMatch) {
+              const setCode = onePieceMatch[1].toUpperCase();
+              const lexicalName = toTitleCase(onePieceMatch[2].trim());
+              return { 
+                game: 'onepiece', 
+                setName: `${lexicalName} - ${setCode}`,
+                tcgSetName: lexicalName
+              };
+            }
+          }
+
+          // Extract Pokemon series prefixes
+          const POKEMON_SERIES_PREFIXES = [
+            { pattern: /^(SWORD\s*&?\s*SHIELD)\s+/i, series: 'Sword & Shield' },
+            { pattern: /^(SUN\s*&?\s*MOON)\s+/i, series: 'Sun & Moon' },
+            { pattern: /^(SCARLET\s*&?\s*VIOLET)\s+/i, series: 'Scarlet & Violet' },
+          ];
+
+          if (detectedGame === 'pokemon') {
+            for (const { pattern } of POKEMON_SERIES_PREFIXES) {
+              if (pattern.test(setName)) {
+                setName = setName.replace(pattern, '');
+                break;
+              }
+            }
+          }
+
+          const finalSetName = toTitleCase(setName.trim());
+          return { game: detectedGame, setName: finalSetName, tcgSetName: finalSetName };
+        };
+
+        const { game: detectedGame, setName: parsedSetName, tcgSetName } = parseSetName(result.psa.set);
+        const cardName = toTitleCase(cleanPSACardName(result.psa.name));
+        const cardNumber = result.psa.number;
+
         // Auto-fill form fields from PSA data
         setTradeInForm(prev => ({
           ...prev,
           card_type: 'psa',
           cert_number: certNumber,
-          card_name: result.psa.name || prev.card_name,
-          set_name: result.psa.set || prev.set_name,
-          card_number: result.psa.number || prev.card_number,
-          grade: result.psa.grade || prev.grade,
-          image_url: result.psa.imageUrl || prev.image_url,
+          game: detectedGame || prev.game,
+          card_name: cardName || prev.card_name,
+          set_name: parsedSetName || prev.set_name,
+          card_number: cardNumber || prev.card_number,
+          grade: extractNumericGrade(result.psa.grade) || prev.grade,
         }));
+
+        // Trigger TCG product search for image matching
+        if (cardName && cardName.trim().length >= 2) {
+          handleTCGSearch(cardName, tcgSetName || parsedSetName, cardNumber);
+        }
       } else {
         setPsaError(result.error || 'PSA certification not found');
       }
@@ -281,35 +421,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     }
   };
 
-  // Title case helper
-  const toTitleCase = (str) => {
-    if (!str) return '';
-    return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-  };
-
-  // Strip variant suffixes from card name
-  const cleanCardName = (name) => {
-    if (!name) return '';
-    let cleaned = name.replace(/\s+\d+\s+\d+$/, '').replace(/\s+-\s+\d+\/\d+$/, '').trim();
-    const variantSuffixes = [
-      /\s+Alternate Full Art$/i, /\s+Full Art$/i, /\s+Special Art Rare$/i,
-      /\s+Special Illustration Rare$/i, /\s+Illustration Rare$/i, /\s+Ultra Rare$/i,
-      /\s+Secret Rare$/i, /\s+Rainbow Rare$/i, /\s+Gold Rare$/i,
-      /\s+Black Star Promo$/i, /\s+Promo$/i, /\s+Shiny$/i,
-    ];
-    for (const suffix of variantSuffixes) {
-      cleaned = cleaned.replace(suffix, '');
-    }
-    return cleaned.trim();
-  };
-
-  // Strip set code prefixes like "Swsh12:" from set names
-  const cleanSetName = (name) => {
-    if (!name) return '';
-    return name.replace(/^[A-Za-z]+\d*:\s*/i, '').trim();
-  };
-
-  // TCG product search with debouncing
+  // TCG product search with 4-step fallback for different naming conventions
   const handleTCGSearch = async (cardName, setName, cardNumber) => {
     if (!cardName || cardName.trim().length < 2) {
       setTcgProducts([]);
@@ -318,11 +430,38 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     
     setTcgLoading(true);
     try {
-      const result = await searchTCGProducts(cardName, setName, cardNumber, 3);
+      // First try with original card name
+      let result = await searchTCGProducts(cardName, setName, cardNumber, 9);
+      
+      // If no results and name contains periods or multiple words, try cleaned version (One Piece style)
+      if ((!result.success || !result.products || result.products.length === 0) && 
+          (cardName.includes('.') || cardName.includes(' '))) {
+        const cleanedName = cleanForCardLookup(cardName);
+        if (cleanedName !== cardName) {
+          result = await searchTCGProducts(cleanedName, setName, cardNumber, 9);
+        }
+      }
+      
+      // If still no results and set name was provided, try without set name
+      if ((!result.success || !result.products || result.products.length === 0) && setName) {
+        result = await searchTCGProducts(cardName, '', cardNumber, 9);
+        
+        // Also try cleaned name without set name
+        if ((!result.success || !result.products || result.products.length === 0) && 
+            (cardName.includes('.') || cardName.includes(' '))) {
+          const cleanedName = cleanForCardLookup(cardName);
+          if (cleanedName !== cardName) {
+            result = await searchTCGProducts(cleanedName, '', cardNumber, 9);
+          }
+        }
+      }
+      
       if (result.success && result.products) {
         setTcgProducts(result.products);
+        setShowAllTcgResults(false);
       } else {
         setTcgProducts([]);
+        setShowAllTcgResults(false);
       }
     } catch (err) {
       console.error('TCG search error:', err);
@@ -334,19 +473,38 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
 
   // Select a TCG product and auto-populate form fields
   const selectTCGProduct = (product) => {
+    // Save current form state before making changes (for restore on deselect)
+    setPreSelectionFormData({ ...tradeInForm });
     setSelectedTcgProduct(product);
     
     const formattedCardName = toTitleCase(cleanCardName(product.cleanName || product.name || ''));
     const formattedSetName = toTitleCase(cleanSetName(product.setName || ''));
+    const detectedGame = detectGameFromProduct(product);
     
-    setTradeInForm(prev => ({
-      ...prev,
-      image_url: product.imageUrl || prev.image_url,
-      card_name: formattedCardName,
-      set_name: formattedSetName,
-      card_number: product.cardNumber || '',
-      game: 'pokemon',
-    }));
+    setTradeInForm(prev => {
+      const isGradedCard = prev.card_type !== 'raw';
+      
+      // For graded cards, only update image and game - preserve PSA data for other fields
+      if (isGradedCard) {
+        return {
+          ...prev,
+          image_url: product.imageUrl || prev.image_url,
+          tcg_product_id: product.productId,
+          game: prev.game || detectedGame,
+        };
+      }
+      // For raw cards, populate all fields including game
+      return {
+        ...prev,
+        image_url: product.imageUrl || prev.image_url,
+        tcg_product_id: product.productId,
+        card_name: formattedCardName,
+        set_name: formattedSetName,
+        card_number: product.cardNumber || prev.card_number,
+        game: prev.game || detectedGame,
+        condition: prev.condition || 'NM',
+      };
+    });
     setTcgProducts([]);
   };
 
@@ -398,13 +556,15 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       card_value: cardValue,
       trade_percentage: tradePct,
       trade_value: tradeValue,
-      front_label_price: cardValue
+      front_label_price: cardValue,  // Market value
+      purchase_price: tradeValue,     // What we're "paying" (trade credit)
     }]);
     // Reset form but keep it open for adding more
     setTradeInForm({
       barcode_id: '', card_name: '', set_name: '', card_number: '', game: tradeInForm.game,
       card_type: 'raw', condition: 'NM', grade: '', grade_qualifier: '',
-      card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null, image_url: '', cert_number: '', notes: ''
+      card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null, 
+      image_url: '', cert_number: '', tcg_product_id: null, notes: ''
     });
     // Reset PSA state for next card
     setPsaData(null);
@@ -413,6 +573,50 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     // Reset TCG state for next card
     setTcgProducts([]);
     setSelectedTcgProduct(null);
+    setPreSelectionFormData(null);
+    
+    // Focus barcode input for next scan
+    if (barcodeInputRef.current) {
+      barcodeInputRef.current.focus();
+    }
+  };
+
+  // Start editing a staged trade-in item
+  const startEditingTradeIn = (index) => {
+    const item = tradeInItems[index];
+    setEditingTradeInIndex(index);
+    setEditingTradeInData({
+      card_name: item.card_name || '',
+      card_value: item.card_value || '',
+      trade_value: item.trade_value || '',
+      condition: item.condition || 'NM',
+      grade: item.grade || '',
+    });
+  };
+
+  // Save edited trade-in item
+  const saveEditingTradeIn = () => {
+    if (editingTradeInIndex === null) return;
+    const updated = [...tradeInItems];
+    updated[editingTradeInIndex] = {
+      ...updated[editingTradeInIndex],
+      card_name: editingTradeInData.card_name,
+      card_value: parseFloat(editingTradeInData.card_value) || 0,
+      trade_value: parseFloat(editingTradeInData.trade_value) || 0,
+      front_label_price: parseFloat(editingTradeInData.card_value) || 0,
+      purchase_price: parseFloat(editingTradeInData.trade_value) || 0,
+      condition: editingTradeInData.condition,
+      grade: editingTradeInData.grade,
+    };
+    setTradeInItems(updated);
+    setEditingTradeInIndex(null);
+    setEditingTradeInData({});
+  };
+
+  // Cancel editing trade-in item
+  const cancelEditingTradeIn = () => {
+    setEditingTradeInIndex(null);
+    setEditingTradeInData({});
   };
 
   const updateTradeInItem = (index, field, value) => {
@@ -696,103 +900,96 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     />
                   </div>
 
-                  {/* TCG Product Matches */}
-                  {tradeInForm.card_type === 'raw' && (
+                  {/* TCG Loading Spinner */}
+                  {tcgLoading && tcgProducts.length === 0 && !selectedTcgProduct && (
+                    <div className="flex items-center justify-center py-3">
+                      <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                      <span className="ml-2 text-sm text-gray-500">Looking up Image(s)...</span>
+                    </div>
+                  )}
+
+                  {/* TCG Product Grid - shows 3 by default, carousel if more */}
+                  {tcgProducts.length > 0 && !selectedTcgProduct && (
                     <div>
-                      {tcgProducts.length > 0 && !selectedTcgProduct && (
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-medium text-gray-600">
                           Match Card {tcgLoading && <Loader2 className="inline w-3 h-3 ml-1 animate-spin" />}
                         </label>
-                      )}
-                      {tcgProducts.length > 0 && (
-                        <div className="grid grid-cols-3 gap-1">
-                          {tcgProducts.map((product) => (
+                        {tcgProducts.length > 3 && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAllTcgResults(!showAllTcgResults)}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            {showAllTcgResults ? 'Show less' : `Show more (${tcgProducts.length})`}
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Carousel view when expanded and more than 3 results */}
+                      {showAllTcgResults && tcgProducts.length > 3 ? (
+                        <div className="overflow-x-auto pb-2 -mx-1">
+                          <div className="flex gap-2 px-1" style={{ width: 'max-content' }}>
+                            {tcgProducts.map((product) => (
+                              <button
+                                key={product.productId}
+                                type="button"
+                                onClick={() => selectTCGProduct(product)}
+                                className="w-20 flex-shrink-0 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-green-400 transition-all text-left"
+                              >
+                                <div className="relative">
+                                  {product.imageUrl ? (
+                                    <img src={product.imageUrl} alt={product.name} className="w-full aspect-[2.5/3.5] object-cover" />
+                                  ) : (
+                                    <div className="w-full aspect-[2.5/3.5] bg-gray-100 flex items-center justify-center">
+                                      <span className="text-gray-400 text-xs">No image</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="px-1 py-0.5 bg-gray-50 text-[10px] leading-tight">
+                                  <p className="font-medium text-gray-900 truncate">{(product.cleanName || product.name || '').replace(/\s+\d+\s+\d+$/, '')}</p>
+                                  <p className="text-gray-500 truncate">{product.setName} • #{product.cardNumber || '—'}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        /* Grid view - default 3 items */
+                        <div className="flex gap-2">
+                          {tcgProducts.slice(0, 3).map((product) => (
                             <button
                               key={product.productId}
                               type="button"
                               onClick={() => selectTCGProduct(product)}
-                              className={`rounded overflow-hidden border-2 transition-all text-left
-                                ${selectedTcgProduct?.productId === product.productId 
-                                  ? 'border-green-500 ring-1 ring-green-200' 
-                                  : 'border-gray-200 hover:border-green-300'}`}
+                              className="w-20 flex-shrink-0 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-green-400 transition-all text-left"
                             >
-                              {product.imageUrl && (
-                                <img 
-                                  src={product.imageUrl} 
-                                  alt={product.name}
-                                  className="w-full aspect-[2.5/3.5] object-cover"
-                                />
-                              )}
-                              <div className="p-1">
-                                <p className="text-xs font-medium text-gray-900 truncate">
-                                  {toTitleCase(cleanCardName(product.cleanName || product.name))}
-                                </p>
-                                <p className="text-xs text-gray-500 truncate">
-                                  {toTitleCase(cleanSetName(product.setName))} • {product.cardNumber}
-                                </p>
+                              <div className="relative">
+                                {product.imageUrl ? (
+                                  <img src={product.imageUrl} alt={product.name} className="w-full aspect-[2.5/3.5] object-cover" />
+                                ) : (
+                                  <div className="w-full aspect-[2.5/3.5] bg-gray-100 flex items-center justify-center">
+                                    <span className="text-gray-400 text-xs">No image</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="px-1 py-0.5 bg-gray-50 text-[10px] leading-tight">
+                                <p className="font-medium text-gray-900 truncate">{(product.cleanName || product.name || '').replace(/\s+\d+\s+\d+$/, '')}</p>
+                                <p className="text-gray-500 truncate">{product.setName} • #{product.cardNumber || '—'}</p>
                               </div>
                             </button>
                           ))}
                         </div>
                       )}
-                      
-                      {/* Selected TCG Product Display */}
-                      {selectedTcgProduct && (
-                        <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-                          {selectedTcgProduct.imageUrl && (
-                            <img 
-                              src={selectedTcgProduct.imageUrl} 
-                              alt={selectedTcgProduct.name}
-                              className="w-10 h-auto rounded"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-900 truncate">{selectedTcgProduct.cleanName || selectedTcgProduct.name}</p>
-                            {selectedTcgProduct.setName && (
-                              <p className="text-xs text-gray-500 truncate">{selectedTcgProduct.setName}</p>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedTcgProduct(null);
-                              setTradeInForm(prev => ({ ...prev, image_url: '' }));
-                              if (tradeInForm.card_name) handleTCGSearch(tradeInForm.card_name, tradeInForm.set_name, tradeInForm.card_number);
-                            }}
-                            className="p-1 hover:bg-green-100 rounded"
-                          >
-                            <X className="w-3 h-3 text-gray-500" />
-                          </button>
-                        </div>
-                      )}
-                      
-                      {/* TCGPlayer Link */}
-                      {selectedTcgProduct?.url && (
-                        <a
-                          href={(() => {
-                            const conditionMap = {
-                              'NM': 'Near+Mint',
-                              'LP': 'Lightly+Played',
-                              'MP': 'Moderately+Played',
-                              'HP': 'Heavily+Played',
-                              'DMG': 'Damaged',
-                            };
-                            const baseUrl = selectedTcgProduct.url;
-                            const condition = conditionMap[tradeInForm.condition] || 'Near+Mint';
-                            const separator = baseUrl.includes('?') ? '&' : '?';
-                            return `${baseUrl}${separator}Language=English&Condition=${condition}&page=1`;
-                          })()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline mt-1"
-                        >
-                          View on TCGPlayer →
-                        </a>
-                      )}
                     </div>
                   )}
-                  
-                  <div className="grid grid-cols-3 gap-2">
+
+                  {/* No matches message */}
+                  {tradeInForm.card_name && tradeInForm.card_name.length >= 2 && !tcgLoading && tcgProducts.length === 0 && !selectedTcgProduct && (
+                    <p className="text-xs text-gray-500">No matching cards found. Try adjusting the card name.</p>
+                  )}
+
+                  <div className="grid grid-cols-4 gap-2">
                     <input
                       type="text"
                       value={tradeInForm.card_number}
@@ -800,30 +997,101 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                       placeholder="Card #"
                       className="px-2 py-1.5 border border-gray-300 rounded text-sm"
                     />
-                    <div className="flex items-center gap-1">
+                    <div className="col-span-2 flex items-center gap-1">
                       <span className="text-gray-500 text-sm">$</span>
                       <input
-                        type="number"
                         value={tradeInForm.card_value}
                         onChange={(e) => setTradeInForm(prev => ({ ...prev, card_value: e.target.value }))}
-                        placeholder="Value *"
-                        step="0.01"
-                        className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm"
+                        placeholder="Market Value *"
+                        className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm min-w-0"
                       />
                     </div>
                     <div className="flex items-center gap-1">
                       <input
-                        type="number"
                         value={tradeInForm.trade_percentage}
                         onChange={(e) => setTradeInForm(prev => ({ ...prev, trade_percentage: e.target.value }))}
                         placeholder="%"
                         min="0"
                         max="100"
-                        className="w-16 px-2 py-1.5 border border-gray-300 rounded text-sm"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
                       />
-                      <span className="text-gray-500 text-sm">%</span>
+                      <span className="text-gray-500 text-sm shrink-0">%</span>
                     </div>
                   </div>
+
+                  {/* Selected card preview - moved below card number/price row */}
+                  {selectedTcgProduct && tcgProducts.length === 0 && (
+                    <div className="flex items-center gap-3 p-2 bg-green-50 rounded-lg border border-green-200">
+                      {selectedTcgProduct.imageUrl && (
+                        <img src={selectedTcgProduct.imageUrl} alt={selectedTcgProduct.name} className="w-12 h-auto rounded" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{selectedTcgProduct.cleanName || selectedTcgProduct.name}</p>
+                        {selectedTcgProduct.setName && (
+                          <p className="text-xs text-gray-500 truncate">{selectedTcgProduct.setName}</p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Restore form state to before selection
+                          if (preSelectionFormData) {
+                            setTradeInForm(preSelectionFormData);
+                            if (preSelectionFormData.card_name) {
+                              handleTCGSearch(preSelectionFormData.card_name, preSelectionFormData.set_name, preSelectionFormData.card_number);
+                            }
+                          } else {
+                            setTradeInForm(prev => ({ ...prev, tcg_product_id: null, image_url: '' }));
+                            if (tradeInForm.card_name) handleTCGSearch(tradeInForm.card_name, tradeInForm.set_name, tradeInForm.card_number);
+                          }
+                          setSelectedTcgProduct(null);
+                          setPreSelectionFormData(null);
+                        }}
+                        className="p-1 hover:bg-green-100 rounded"
+                      >
+                        <X className="w-4 h-4 text-gray-500" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* TCGPlayer Link - only for raw cards */}
+                  {selectedTcgProduct?.url && tradeInForm.card_type === 'raw' && (
+                    <a
+                      href={(() => {
+                        const conditionMap = {
+                          'NM': 'Near+Mint',
+                          'LP': 'Lightly+Played',
+                          'MP': 'Moderately+Played',
+                          'HP': 'Heavily+Played',
+                          'DMG': 'Damaged',
+                        };
+                        const baseUrl = selectedTcgProduct.url;
+                        const condition = conditionMap[tradeInForm.condition] || 'Near+Mint';
+                        const separator = baseUrl.includes('?') ? '&' : '?';
+                        return `${baseUrl}${separator}Language=English&Condition=${condition}&page=1`;
+                      })()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      View on TCGPlayer →
+                    </a>
+                  )}
+
+                  {/* Card Ladder Link - for graded cards */}
+                  {tradeInForm.card_type !== 'raw' && tradeInForm.barcode_id && (
+                    <a
+                      href="https://app.cardladder.com/sales-history"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => {
+                        navigator.clipboard.writeText(tradeInForm.barcode_id);
+                      }}
+                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      Search on Card Ladder (cert # copied) →
+                    </a>
+                  )}
 
                   {/* Live Trade Value Calculation with Override */}
                   {tradeInForm.card_value && (
@@ -928,13 +1196,6 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                       >
                         .5
                       </button>
-                      <input
-                        type="text"
-                        value={tradeInForm.cert_number}
-                        onChange={(e) => setTradeInForm(prev => ({ ...prev, cert_number: e.target.value }))}
-                        placeholder="Cert #"
-                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                      />
                     </div>
                   )}
 
@@ -960,41 +1221,111 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
               {/* Trade-In Items List */}
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {tradeInItems.map((item, index) => (
-                  <div key={item.id} className="bg-white p-2 rounded-lg border border-green-200">
-                    <div className="flex gap-2 items-start">
-                      {item.image_url && (
-                        <img src={item.image_url} alt="" className="w-10 h-14 object-cover rounded" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm truncate">{item.card_name}</div>
-                        <div className="text-xs text-gray-500 truncate">
-                          {item.set_name} • {getConditionOrGrade(item)}
+                  <div 
+                    key={item.id} 
+                    className={`rounded-lg p-2 ${editingTradeInIndex === index ? 'bg-blue-50 border border-blue-200' : 'bg-white border border-green-200'}`}
+                  >
+                    {editingTradeInIndex === index ? (
+                      /* Editing Mode */
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          {item.image_url && (
+                            <img src={item.image_url} alt="" className="w-10 h-14 object-cover rounded" />
+                          )}
+                          <input
+                            type="text"
+                            value={editingTradeInData.card_name}
+                            onChange={(e) => setEditingTradeInData(prev => ({ ...prev, card_name: e.target.value }))}
+                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                            placeholder="Card Name"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Market Value</label>
+                            <div className="relative">
+                              <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editingTradeInData.card_value}
+                                onChange={(e) => setEditingTradeInData(prev => ({ ...prev, card_value: e.target.value }))}
+                                className="w-full pl-6 pr-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Trade Value</label>
+                            <div className="relative">
+                              <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editingTradeInData.trade_value}
+                                onChange={(e) => setEditingTradeInData(prev => ({ ...prev, trade_value: e.target.value }))}
+                                className="w-full pl-6 pr-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={cancelEditingTradeIn}
+                            className="px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={saveEditingTradeIn}
+                            className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-1"
+                          >
+                            <Check className="w-3 h-3" />
+                            Save
+                          </button>
                         </div>
                       </div>
-                      <button onClick={() => removeTradeInItem(index)} className="p-1 text-red-500 hover:bg-red-50 rounded">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    {/* Value and Trade Value display */}
-                    <div className="mt-2 bg-green-100 border border-green-200 rounded-lg p-2 flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2 text-green-700">
-                        <span>Value: ${parseFloat(item.card_value).toFixed(2)}</span>
-                        <span className="text-xs text-green-600">
-                          ({parseFloat(item.card_value) > 0 
-                            ? ((parseFloat(item.trade_value) / parseFloat(item.card_value)) * 100).toFixed(0) 
-                            : 0}%)
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-green-700">Trade $</span>
-                        <input
-                          type="text"
-                          value={item.trade_value}
-                          onChange={(e) => updateTradeInItem(index, 'trade_value', e.target.value)}
-                          className="w-16 px-1 py-0.5 border border-green-300 rounded text-sm font-bold text-green-800 bg-white"
-                        />
-                      </div>
-                    </div>
+                    ) : (
+                      /* Normal View */
+                      <>
+                        <div className="flex gap-2 items-start">
+                          {item.image_url && (
+                            <img src={item.image_url} alt="" className="w-10 h-14 object-cover rounded" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm truncate">{item.card_name}</div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {item.set_name} • {getConditionOrGrade(item)}
+                            </div>
+                          </div>
+                          <button onClick={() => startEditingTradeIn(index)} className="p-1 text-gray-500 hover:bg-gray-100 rounded">
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button onClick={() => removeTradeInItem(index)} className="p-1 text-red-500 hover:bg-red-50 rounded">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {/* Value and Trade Value display */}
+                        <div className="mt-2 bg-green-100 border border-green-200 rounded-lg p-2 flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 text-green-700">
+                            <span>Value: ${parseFloat(item.card_value).toFixed(2)}</span>
+                            <span className="text-xs text-green-600">
+                              ({parseFloat(item.card_value) > 0 
+                                ? ((parseFloat(item.trade_value) / parseFloat(item.card_value)) * 100).toFixed(0) 
+                                : 0}%)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-green-700">Trade $</span>
+                            <input
+                              type="text"
+                              value={item.trade_value}
+                              onChange={(e) => updateTradeInItem(index, 'trade_value', e.target.value)}
+                              className="w-16 px-1 py-0.5 border border-green-300 rounded text-sm font-bold text-green-800 bg-white"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
                 {tradeInItems.length === 0 && !showAddTradeInForm && (

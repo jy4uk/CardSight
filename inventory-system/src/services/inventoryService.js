@@ -79,3 +79,39 @@ export async function recordDirectSale(inventoryId, salePrice, paymentMethod) {
   const rows = await query(`SELECT * FROM inventory WHERE id=$1`, [inventoryId]);
   return rows[0];
 }
+
+export async function removeSale(inventoryId, restoreToInventory = true) {
+  if (restoreToInventory) {
+    // Restore item to inventory
+    await query(
+      `UPDATE inventory SET status='IN_STOCK', sale_price=NULL, sale_date=NULL WHERE id=$1`,
+      [inventoryId]
+    );
+  } else {
+    // Delete the inventory item entirely
+    await query(`DELETE FROM inventory WHERE id=$1`, [inventoryId]);
+  }
+  
+  // Delete the transaction record
+  await query(`DELETE FROM transactions WHERE inventory_id=$1`, [inventoryId]);
+  
+  return { success: true };
+}
+
+export async function updateSale(inventoryId, salePrice, paymentMethod) {
+  // Update inventory sale_price
+  await query(
+    `UPDATE inventory SET sale_price=$1 WHERE id=$2`,
+    [salePrice, inventoryId]
+  );
+  
+  // Update transaction record
+  await query(
+    `UPDATE transactions SET sale_price=$1, net_amount=$1, payment_method=$2 WHERE inventory_id=$3`,
+    [salePrice, paymentMethod, inventoryId]
+  );
+  
+  // Return updated item
+  const rows = await query(`SELECT * FROM inventory WHERE id=$1`, [inventoryId]);
+  return rows[0];
+}

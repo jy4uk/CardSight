@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, Package, DollarSign, BarChart3, Calendar, Filter, Clock, MapPin, Plus, ArrowLeftRight } from 'lucide-react';
-import { fetchInsights, addCardShow, deleteCardShow } from '../api';
+import { TrendingUp, Package, DollarSign, BarChart3, Calendar, Filter, Clock, MapPin, Plus, ArrowLeftRight, Pencil, Trash2 } from 'lucide-react';
+import { fetchInsights, addCardShow, deleteCardShow, removeSale, updateSale } from '../api';
 import SalesDetailsModal from './modals/SalesDetailsModal';
 import InventoryBreakdownModal from './modals/InventoryBreakdownModal';
 import InventoryTypeModal from './modals/InventoryTypeModal';
@@ -8,6 +8,8 @@ import SalesHistoryModal from './modals/SalesHistoryModal';
 import CardShowDetailsModal from './modals/CardShowDetailsModal';
 import AddCardShowModal from './AddCardShowModal';
 import InventoryValueModal from './modals/InventoryValueModal';
+import RemoveSaleModal from './modals/RemoveSaleModal';
+import EditSaleModal from './modals/EditSaleModal';
 
 export default function Insights() {
   const [timeRange, setTimeRange] = useState('30d');
@@ -30,6 +32,8 @@ export default function Insights() {
   });
   const [modalState, setModalState] = useState({ isOpen: false, type: null, data: null });
   const [showAddCardShowModal, setShowAddCardShowModal] = useState(false);
+  const [removeSaleModal, setRemoveSaleModal] = useState({ isOpen: false, transaction: null });
+  const [editSaleModal, setEditSaleModal] = useState({ isOpen: false, transaction: null });
 
   useEffect(() => {
     loadInsights();
@@ -96,6 +100,16 @@ export default function Insights() {
       console.error('Error deleting card show:', error);
       throw error;
     }
+  };
+
+  const handleRemoveSale = async (inventoryId, restoreToInventory) => {
+    await removeSale(inventoryId, restoreToInventory);
+    loadInsights();
+  };
+
+  const handleUpdateSale = async (inventoryId, salePrice, paymentMethod) => {
+    await updateSale(inventoryId, salePrice, paymentMethod);
+    loadInsights();
   };
 
   const MetricCard = ({ title, value, icon: Icon, trend, color = 'blue', modalType, modalData }) => {
@@ -211,7 +225,7 @@ export default function Insights() {
             modalData={metrics.recentTransactions}
           />
           <MetricCard
-            title="Total Revenue"
+            title="Lifetime Revenue"
             value={`$${metrics.totalRevenue.toLocaleString()}`}
             icon={DollarSign}
             trend={15.2}
@@ -316,10 +330,10 @@ export default function Insights() {
             {metrics.recentTransactions?.length > 0 ? (
               metrics.recentTransactions.map((transaction, index) => (
                 <div key={index} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700 last:border-0">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-slate-900 dark:text-slate-100">{transaction.cardName}</p>
-                      <span className={`px-2 py-1 text-xs font-medium rounded ${
+                      <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{transaction.cardName}</p>
+                      <span className={`px-2 py-1 text-xs font-medium rounded flex-shrink-0 ${
                         transaction.transactionType === 'sale' 
                           ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' 
                           : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
@@ -327,20 +341,46 @@ export default function Insights() {
                         {transaction.transactionType === 'sale' ? 'Sale' : 'Trade'}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
                       {transaction.setName} • {new Date(transaction.date).toLocaleDateString()}
                       {transaction.transactionType === 'trade' && transaction.customerName && ` • ${transaction.customerName}`}
                     </p>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-semibold ${
-                      transaction.transactionType === 'sale' ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'
-                    }`}>
-                      ${transaction.value.toFixed(2)}
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {transaction.transactionType === 'sale' ? 'Profit' : 'Value'}: ${Math.abs(transaction.profit).toFixed(2)}
-                    </p>
+                  <div className="flex items-center gap-3 ml-4">
+                    <div className="text-right">
+                      <p className={`font-semibold ${
+                        transaction.transactionType === 'sale' ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'
+                      }`}>
+                        ${transaction.value?.toFixed(2)}
+                      </p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        {transaction.transactionType === 'sale' ? 'Profit' : 'Value'}: ${Math.abs(transaction.profit || 0).toFixed(2)}
+                      </p>
+                    </div>
+                    {transaction.transactionType === 'sale' && transaction.inventoryId && (
+                      <div className="flex gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditSaleModal({ isOpen: true, transaction });
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                          title="Edit sale"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRemoveSaleModal({ isOpen: true, transaction });
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                          title="Remove sale"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))
@@ -423,6 +463,18 @@ export default function Insights() {
         isOpen={showAddCardShowModal}
         onClose={() => setShowAddCardShowModal(false)}
         onAdd={handleAddCardShow}
+      />
+      <RemoveSaleModal
+        isOpen={removeSaleModal.isOpen}
+        onClose={() => setRemoveSaleModal({ isOpen: false, transaction: null })}
+        transaction={removeSaleModal.transaction}
+        onRemove={handleRemoveSale}
+      />
+      <EditSaleModal
+        isOpen={editSaleModal.isOpen}
+        onClose={() => setEditSaleModal({ isOpen: false, transaction: null })}
+        transaction={editSaleModal.transaction}
+        onSave={handleUpdateSale}
       />
     </div>
   );

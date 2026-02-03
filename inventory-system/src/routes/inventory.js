@@ -226,7 +226,7 @@ router.post('/:barcode/sell', async (req, res) => {
   }
 });
 
-router.post('/:barcode/sell-direct', async (req, res) => {
+router.post('/:identifier/sell-direct', async (req, res) => {
   try {
     const userId = req.user.userId;
     const { sale_price, payment_method } = req.body;
@@ -236,13 +236,102 @@ router.post('/:barcode/sell-direct', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid payment method for direct sale' });
     }
 
-    const rows = await query('SELECT * FROM inventory WHERE barcode_id = $1 AND user_id = $2', [req.params.barcode, userId]);
+    // Try to find by barcode_id first, then by id
+    const identifier = req.params.identifier;
+    let rows = await query('SELECT * FROM inventory WHERE barcode_id = $1 AND user_id = $2', [identifier, userId]);
+    if (rows.length === 0) {
+      // Try by id if numeric
+      const numId = parseInt(identifier, 10);
+      if (!isNaN(numId)) {
+        rows = await query('SELECT * FROM inventory WHERE id = $1 AND user_id = $2', [numId, userId]);
+      }
+    }
     if (rows.length === 0) return res.status(404).json({ success: false, msg: 'Item not found' });
     const item = rows[0];
     if (item.status === 'SOLD') return res.status(400).json({ success: false, msg: 'Item already sold' });
 
     const { recordDirectSale } = await import('../services/inventoryService.js');
     const result = await recordDirectSale(item.id, sale_price, payment_method.toUpperCase());
+    
+    res.json({ success: true, item: result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Remove a sale - either restore to inventory or delete all records
+router.post('/:id/remove-sale', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { restore_to_inventory } = req.body;
+    const itemId = parseInt(req.params.id, 10);
+    
+    if (isNaN(itemId)) {
+      return res.status(400).json({ success: false, error: 'Invalid item ID' });
+    }
+
+    // Verify item exists and belongs to user
+    const rows = await query('SELECT * FROM inventory WHERE id = $1 AND user_id = $2', [itemId, userId]);
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Item not found' });
+    }
+    
+    const item = rows[0];
+    if (item.status !== 'SOLD') {
+      return res.status(400).json({ success: false, error: 'Item is not sold' });
+    }
+
+    const { removeSale } = await import('../services/inventoryService.js');
+    await removeSale(itemId, restore_to_inventory !== false);
+    
+    res.json({ success: true, restored: restore_to_inventory !== false });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Edit a sale - update sale price and payment method
+router.put('/:id/update-sale', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { sale_price, payment_method } = req.body;
+    const itemId = parseInt(req.params.id, 10);
+    
+    console.log('Update sale request:', { itemId, sale_price, payment_method, userId, body: req.body });
+    
+    if (isNaN(itemId)) {
+      return res.status(400).json({ success: false, error: 'Invalid item ID' });
+    }
+    
+    const validMethods = ['CASH', 'VENMO', 'ZELLE', 'CASHAPP', 'CREDIT_CARD'];
+    if (payment_method && !validMethods.includes(payment_method.toUpperCase())) {
+      return res.status(400).json({ success: false, error: `Invalid payment method: ${payment_method}` });
+    }
+
+    // First try to find item with user check, then without (for older items)
+    let rows = await query('SELECT * FROM inventory WHERE id = $1 AND user_id = $2', [itemId, userId]);
+    if (rows.length === 0) {
+      // Try without user_id check for older items
+      rows = await query('SELECT * FROM inventory WHERE id = $1', [itemId]);
+    }
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Item not found' });
+    }
+    
+    const item = rows[0];
+    
+    // Also check if there's a transaction for this item
+    const txRows = await query('SELECT * FROM transactions WHERE inventory_id = $1', [itemId]);
+    const hasTransaction = txRows.length > 0;
+    
+    // Allow editing if item is sold OR has a transaction record
+    if (item.status !== 'SOLD' && !hasTransaction) {
+      return res.status(400).json({ success: false, error: `Item is not sold (status: ${item.status})` });
+    }
+
+    const { updateSale } = await import('../services/inventoryService.js');
+    const result = await updateSale(itemId, sale_price, payment_method?.toUpperCase());
     
     res.json({ success: true, item: result });
   } catch (err) {

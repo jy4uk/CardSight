@@ -129,18 +129,25 @@ router.post('/', async (req, res) => {
     ]);
 
     // Add trade-in items (cards coming IN from customer)
+    const userId = req.user?.userId;
     for (const item of trade_in_items) {
-      // Use per-card trade percentage if provided, otherwise fall back to global
+      // Use per-card trade value if provided, otherwise calculate from percentage
       const itemTradePercentage = parseFloat(item.trade_percentage) || trade_percentage || 80;
-      const itemTradeValue = (parseFloat(item.card_value) || 0) * (itemTradePercentage / 100);
+      const itemTradeValue = item.trade_value !== undefined && item.trade_value !== null
+        ? parseFloat(item.trade_value) || 0
+        : (parseFloat(item.card_value) || 0) * (itemTradePercentage / 100);
       
-      // Create new inventory item for trade-in card with PENDING_BARCODE status
+      // Create new inventory item for trade-in card
+      // Use barcode_id if provided, otherwise set status to PENDING_BARCODE
+      const hasBarcode = item.barcode_id && item.barcode_id.trim();
+      const status = hasBarcode ? 'IN_STOCK' : 'PENDING_BARCODE';
+      
       const [newItem] = await query(`
-        INSERT INTO inventory (barcode_id, card_name, set_name, game, card_type, condition, purchase_price, purchase_date, front_label_price, status, notes, cert_number, card_number, grade, grade_qualifier, image_url)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PENDING_BARCODE', $10, $11, $12, $13, $14, $15)
+        INSERT INTO inventory (barcode_id, card_name, set_name, game, card_type, condition, purchase_price, purchase_date, front_label_price, status, notes, cert_number, card_number, grade, grade_qualifier, image_url, tcg_product_id, user_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         RETURNING *
       `, [
-        null, // No barcode yet - will be assigned later
+        hasBarcode ? item.barcode_id.trim() : null,
         item.card_name,
         item.set_name,
         item.game || 'pokemon',
@@ -149,12 +156,15 @@ router.post('/', async (req, res) => {
         itemTradeValue, // Purchase price is the trade value (what we're paying for it)
         trade_date || new Date(),
         item.front_label_price || item.card_value,
+        status,
         `Trade-in from ${customer_name || 'customer'} @ ${itemTradePercentage}%`,
-        item.cert_number || '',
-        item.card_number || '',
+        item.cert_number || null,
+        item.card_number || null,
         item.grade || null,
         item.grade_qualifier || null,
-        item.image_url || null
+        item.image_url || null,
+        item.tcg_product_id || null,
+        userId
       ]);
 
       // Record trade item with per-card trade value

@@ -145,7 +145,7 @@ router.get('/', async (req, res) => {
           'sale' as transaction_type,
           transactions.sale_price as value,
           transactions.sale_date as date,
-          (transactions.sale_price - inventory.purchase_price) as profit,
+          COALESCE(transactions.sale_price - inventory.purchase_price, transactions.sale_price) as profit,
           inventory.card_name,
           inventory.set_name,
           inventory.game,
@@ -156,7 +156,9 @@ router.get('/', async (req, res) => {
           transactions.show_id,
           COALESCE(purchase_shows.show_name, '') as purchase_show_name,
           NULL as trade_id,
-          NULL as customer_name
+          NULL as customer_name,
+          inventory.id as inventory_id,
+          transactions.payment_method
         FROM transactions
         JOIN inventory ON transactions.inventory_id = inventory.id
         LEFT JOIN card_shows ON transactions.show_id = card_shows.id
@@ -169,7 +171,7 @@ router.get('/', async (req, res) => {
           'trade' as transaction_type,
           ti.trade_value as value,
           t.trade_date as date,
-          (ti.trade_value - i.purchase_price) as profit,
+          COALESCE(ti.trade_value - i.purchase_price, ti.trade_value) as profit,
           COALESCE(i.card_name, ti.card_name) as card_name,
           COALESCE(i.set_name, ti.set_name) as set_name,
           COALESCE(i.game, 'pokemon') as game,
@@ -180,7 +182,9 @@ router.get('/', async (req, res) => {
           t.show_id,
           COALESCE(purchase_shows.show_name, '') as purchase_show_name,
           t.id as trade_id,
-          t.customer_name
+          t.customer_name,
+          i.id as inventory_id,
+          NULL as payment_method
         FROM trades t
         JOIN trade_items ti ON t.id = ti.trade_id
         JOIN inventory i ON ti.inventory_id = i.id
@@ -282,7 +286,9 @@ router.get('/', async (req, res) => {
         showId: row.show_id,
         purchaseShowName: row.purchase_show_name,
         tradeId: row.trade_id,
-        customerName: row.customer_name
+        customerName: row.customer_name,
+        inventoryId: row.inventory_id,
+        paymentMethod: row.payment_method
       })),
       inventoryValueByDate: inventoryValueByDate.map(row => ({
         date: row.date,
@@ -403,7 +409,7 @@ router.delete('/card-shows/:id', async (req, res) => {
       SELECT * FROM card_shows WHERE id = $1
     `, [id]);
 
-    if (showCheck.rows.length === 0) {
+    if (showCheck.length === 0) {
       return res.status(404).json({ success: false, error: 'Card show not found' });
     }
 

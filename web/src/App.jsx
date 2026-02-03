@@ -280,10 +280,13 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   };
 
   const handleSell = async ({ item, salePrice, paymentMethod }) => {
+    // Use barcode_id if available, otherwise fall back to item id
+    const identifier = item.barcode_id || item.id;
+    
     if (paymentMethod === 'stripe') {
       // TEMPORARILY: Process credit card like cash (manual collection)
       // Treat as direct sale - trusting manual credit card collection
-      await sellDirectly(item.barcode_id, salePrice, 'credit_card');
+      await sellDirectly(identifier, salePrice, 'credit_card');
       
       /* STRIPE TERMINAL CODE - COMMENTED OUT FOR FUTURE USE
       // Stripe Terminal flow
@@ -307,7 +310,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
       */
     } else {
       // Direct sale (cash, venmo, zelle, cashapp)
-      await sellDirectly(item.barcode_id, salePrice, paymentMethod);
+      await sellDirectly(identifier, salePrice, paymentMethod);
     }
   };
 

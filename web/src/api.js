@@ -20,13 +20,8 @@ export async function fetchInventoryByBarcode(barcode) {
 }
 
 export async function addInventoryItem(item) {
-  const res = await fetch(`${API_BASE}/inventory`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(item),
-  });
-  if (!res.ok) throw new Error('Failed to add item');
-  return res.json();
+  const res = await apiClient.post('/inventory', item);
+  return res.data;
 }
 
 export async function createPayment(amount, metadata = {}) {
@@ -55,30 +50,15 @@ export async function processPayment(readerId, paymentIntentId) {
   return res.json();
 }
 
-export async function sellDirectly(barcode, salePrice, paymentMethod) {
-  const res = await fetch(`${API_BASE}/inventory/${barcode}/sell-direct`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sale_price: salePrice, payment_method: paymentMethod }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || data.msg || 'Failed to record sale');
-  }
-  return res.json();
+export async function sellDirectly(identifier, salePrice, paymentMethod) {
+  if (!identifier) throw new Error('Item identifier (barcode or id) is required');
+  const res = await apiClient.post(`/inventory/${identifier}/sell-direct`, { sale_price: salePrice, payment_method: paymentMethod });
+  return res.data;
 }
 
 export async function initiateStripeSale(barcode, salePrice) {
-  const res = await fetch(`${API_BASE}/inventory/${barcode}/sell`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sale_price: salePrice }),
-  });
-  if (!res.ok) {
-    const data = await res.json();
-    throw new Error(data.error || data.msg || 'Failed to initiate payment');
-  }
-  return res.json();
+  const res = await apiClient.post(`/inventory/${barcode}/sell`, { sale_price: salePrice });
+  return res.data;
 }
 
 export async function updateItemImage(barcode) {
@@ -89,27 +69,23 @@ export async function updateItemImage(barcode) {
 }
 
 export async function updateInventoryItem(id, data) {
-  const res = await fetch(`${API_BASE}/inventory/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || 'Failed to update item');
-  }
-  return res.json();
+  const res = await apiClient.put(`/inventory/${id}`, data);
+  return res.data;
 }
 
 export async function deleteInventoryItem(id) {
-  const res = await fetch(`${API_BASE}/inventory/${id}`, {
-    method: 'DELETE',
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || 'Failed to delete item');
-  }
-  return res.json();
+  const res = await apiClient.delete(`/inventory/${id}`);
+  return res.data;
+}
+
+export async function removeSale(itemId, restoreToInventory = true) {
+  const res = await apiClient.post(`/inventory/${itemId}/remove-sale`, { restore_to_inventory: restoreToInventory });
+  return res.data;
+}
+
+export async function updateSale(itemId, salePrice, paymentMethod) {
+  const res = await apiClient.put(`/inventory/${itemId}/update-sale`, { sale_price: salePrice, payment_method: paymentMethod });
+  return res.data;
 }
 
 export async function searchCardImages(
