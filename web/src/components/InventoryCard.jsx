@@ -146,12 +146,12 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
                 e.stopPropagation();
                 onToggleSelect?.(item.id);
               }}
-              className="p-1 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-800 rounded-full shadow-md transition-colors"
+              className="p-2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-800 rounded-full shadow-md transition-colors min-w-[40px] min-h-[40px] flex items-center justify-center"
             >
               {isSelected ? (
-                <CheckSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <CheckSquare className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
               ) : (
-                <Square className="w-5 h-5 text-slate-400 dark:text-slate-500" />
+                <Square className="w-6 h-6 text-slate-400 dark:text-slate-500" />
               )}
             </button>
           </div>
@@ -161,46 +161,46 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
         <div ref={menuRef} className="absolute top-1 right-1">
           <button
             onClick={handleMenuClick}
-            className="p-1.5 bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-800 rounded-full shadow-sm transition-colors"
+            className="p-2 bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-800 rounded-full shadow-sm transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
-            <MoreVertical className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+            <MoreVertical className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-8 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 py-1 min-w-[120px] z-50">
+            <div className="absolute right-0 top-10 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-2 min-w-[140px] z-50">
               {onSell && (
                 <button
                   onClick={handleSell}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-emerald-600 dark:text-emerald-400 font-medium min-h-[44px]"
                 >
-                  <DollarSign className="w-4 h-4" />
+                  <DollarSign className="w-5 h-5" />
                   Sell
                 </button>
               )}
               {onEdit && (
                 <button
                   onClick={handleEdit}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-300"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-slate-700 dark:text-slate-300 min-h-[44px]"
                 >
-                  <Edit className="w-4 h-4" />
+                  <Edit className="w-5 h-5" />
                   Edit
                 </button>
               )}
               {onFetchImage && !item.image_url && (
                 <button
                   onClick={handleFetchImage}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-indigo-600 dark:text-indigo-400"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-indigo-600 dark:text-indigo-400 min-h-[44px]"
                 >
-                  <ImageIcon className="w-4 h-4" />
+                  <ImageIcon className="w-5 h-5" />
                   Fetch Image
                 </button>
               )}
               {onDelete && (
                 <button
                   onClick={handleDelete}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 text-rose-600 dark:text-rose-400"
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-rose-600 dark:text-rose-400 min-h-[44px]"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-5 h-5" />
                   Delete
                 </button>
               )}

@@ -115,128 +115,131 @@ export default function SavedDeals({ onResumePurchase, onResumeTrade, compact = 
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {savedDeals.map((deal) => {
         const isPurchase = deal.deal_type === 'purchase';
         const hasWarning = deal.has_unavailable_items;
         const isDeleting = deletingId === deal.id;
         const isResuming = resumingId === deal.id;
         const cardImages = getCardImages(deal);
-        const maxThumbnails = 4;
+        const maxThumbnails = 5;
         const extraCount = cardImages.length - maxThumbnails;
         
         return (
           <div
             key={deal.id}
-            className={`rounded-lg p-3 border transition-colors ${
+            className={`rounded-xl overflow-hidden border transition-colors ${
               hasWarning 
                 ? 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-700' 
-                : 'bg-gray-50 border-gray-200 dark:bg-slate-700 dark:border-slate-600'
+                : 'bg-slate-50 border-slate-200 dark:bg-slate-800 dark:border-slate-700'
             }`}
           >
-            <div className="flex justify-between items-start">
-              {/* Icon */}
-              <div className="flex ">
-                <div className={`p-2 flex items-center justify-center rounded-lg ${isPurchase ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-violet-100 dark:bg-violet-900/30'}`}>
-                  {isPurchase ? (
-                    <ShoppingBag className={`w-4 h-4 ${isPurchase ? 'text-emerald-600 dark:text-emerald-400' : 'text-violet-600 dark:text-violet-400'}`} />
-                  ) : (
-                    <ArrowLeftRight className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                  )}
-                </div>
+            {/* Card Images Row - Visual preview at top */}
+            {cardImages.length > 0 && (
+              <div className="flex gap-1 p-3 pb-0 overflow-x-auto">
+                {cardImages.slice(0, maxThumbnails).map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="w-14 h-20 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-700 flex-shrink-0 shadow-sm"
+                    title={img.name}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+                {extraCount > 0 && (
+                  <div className="w-14 h-20 rounded-lg bg-slate-200 dark:bg-slate-700 flex items-center justify-center flex-shrink-0">
+                    <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">+{extraCount}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
-              {/* Content */}
-              <div className="pl-4 flex flex-col min-w-0">
+            {/* Content */}
+            <div className="p-3 space-y-3">
+              {/* Header Row: Type badge + Warning */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${
+                  <div className={`p-1.5 rounded-lg ${isPurchase ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-violet-100 dark:bg-violet-900/30'}`}>
+                    {isPurchase ? (
+                      <ShoppingBag className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                      <ArrowLeftRight className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                    )}
+                  </div>
+                  <span className={`text-sm font-semibold ${
                     isPurchase 
-                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300' 
-                      : 'bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300'
+                      ? 'text-emerald-700 dark:text-emerald-400' 
+                      : 'text-violet-700 dark:text-violet-400'
                   }`}>
                     {isPurchase ? 'Purchase' : 'Trade'}
                   </span>
-                  {hasWarning && (
-                    <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
-                      <AlertTriangle className="w-3 h-3" />
-                      Items unavailable
-                    </span>
-                  )}
                 </div>
-                
-                {deal.customer_name && (
-                  <div className="flex items-center gap-1 mt-1 text-sm font-medium text-gray-900 dark:text-gray-100">
-                    <User className="w-3 h-3 text-gray-400" />
+                {hasWarning && (
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded-full">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Unavailable
+                  </span>
+                )}
+              </div>
+
+              {/* Customer Info */}
+              {deal.customer_name && (
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                  <span className="text-base font-medium text-slate-900 dark:text-slate-100">
                     {deal.customer_name}
-                  </div>
-                )}
-                
-                {deal.customer_note && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                    {deal.customer_note}
-                  </p>
-                )}
-                
-                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  <span>{deal.total_items} card{deal.total_items !== 1 ? 's' : ''}</span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
-                    ${Number(deal.total_value || 0).toFixed(2)}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {formatDate(deal.created_at)}
-                  </span>
-                </div>
-              </div>
-              </div>
-
-
-            {/* Card Thumbnails */}
-              {cardImages.length > 0 && (
-                <div className="flex items-center gap-1">
-                  {cardImages.slice(0, maxThumbnails).map((img, idx) => (
-                    <div
-                      key={idx}
-                      className="w-8 h-11 rounded overflow-hidden bg-gray-200 dark:bg-slate-600 flex-shrink-0"
-                      title={img.name}
-                    >
-                      <img
-                        src={img.url}
-                        alt={img.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                  {extraCount > 0 && (
-                    <div className="w-8 h-11 rounded bg-gray-200 dark:bg-slate-600 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">+{extraCount}</span>
-                    </div>
-                  )}
                 </div>
               )}
+              
+              {deal.customer_note && (
+                <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
+                  {deal.customer_note}
+                </p>
+              )}
 
-              {/* Actions */}
-              <div className="flex items-center gap-1">
+              {/* Stats Row */}
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-1.5">
+                  <Package className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-600 dark:text-slate-400">{deal.total_items} card{deal.total_items !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">
+                  ${Number(deal.total_value || 0).toFixed(2)}
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 ml-auto">
+                  <Clock className="w-4 h-4" />
+                  <span>{formatDate(deal.created_at)}</span>
+                </div>
+              </div>
+
+              {/* Actions - Full width buttons on mobile */}
+              <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => handleResume(deal)}
                   disabled={isResuming || isDeleting}
-                  className="flex items-center gap-1 px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors min-h-[48px]"
                 >
                   {isResuming ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Play className="w-3 h-3" />
+                    <Play className="w-4 h-4" />
                   )}
-                  Resume
+                  Resume Deal
                 </button>
                 <button
                   onClick={() => handleDelete(deal.id)}
                   disabled={isResuming || isDeleting}
-                  className="p-1.5 text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors"
+                  className="flex items-center justify-center px-4 py-3 text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-xl disabled:opacity-50 transition-colors min-h-[48px] min-w-[48px]"
                 >
                   {isDeleting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-5 h-5" />
                   )}
                 </button>
               </div>

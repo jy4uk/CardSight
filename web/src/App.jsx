@@ -498,7 +498,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
             <div className="flex items-center gap-2 sm:hidden">
               <button
                 onClick={() => setMobileMenuOpen((v) => !v)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                className="p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               >
                 {mobileMenuOpen ? (
@@ -583,85 +583,57 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
             <>
               <button
                 type="button"
-                className="fixed inset-0 top-16 bg-black/10 z-40 sm:hidden"
+                className="fixed inset-0 top-16 bg-black/20 dark:bg-black/40 z-40 sm:hidden"
                 onClick={() => setMobileMenuOpen(false)}
                 aria-label="Close menu overlay"
               />
-              <div className="sm:hidden absolute left-0 right-0 top-16 bg-white border-b border-gray-200 shadow-lg z-50">
-                <div className="px-4 py-3 space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
+              <div className="sm:hidden absolute left-0 right-0 top-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 shadow-xl z-50">
+                <div className="px-4 py-4 space-y-4">
+                  {/* Quick Actions Row */}
+                  <div className="flex gap-3">
+                    {/* Cart Button */}
                     <button
                       onClick={() => {
-                        setCurrentView('inventory');
+                        setIsCartOpen(true);
                         setMobileMenuOpen(false);
                       }}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                        currentView === 'inventory'
-                          ? 'bg-blue-50 border-blue-200 text-blue-700'
-                          : 'bg-white border-gray-200 text-gray-700'
-                      }`}
+                      className="flex-1 flex items-center justify-center gap-3 px-4 py-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-xl font-medium min-h-[48px]"
                     >
-                      Inventory
-                    </button>
-                    {(hasFeature(FEATURES.VIEW_INSIGHTS) && isAuthenticated) ? (
-                      <>
-                        <button
-                          onClick={() => {
-                            setCurrentView('intake');
-                            setMobileMenuOpen(false);
-                          }}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                            currentView === 'intake'
-                              ? 'bg-purple-50 border-purple-200 text-purple-700'
-                              : 'bg-white border-gray-200 text-gray-700'
-                          }`}
-                        >
-                          Intake
-                        </button>
-                        <button
-                          onClick={() => {
-                            setCurrentView('insights');
-                            setMobileMenuOpen(false);
-                          }}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                            currentView === 'insights'
-                              ? 'bg-blue-50 border-blue-200 text-blue-700'
-                              : 'bg-white border-gray-200 text-gray-700'
-                          }`}
-                        >
-                          Insights
-                        </button>
-                        {hasFeature(FEATURES.BARCODE_GENERATOR) && (
-                          <button
-                            onClick={() => {
-                              setCurrentView('barcodes');
-                              setMobileMenuOpen(false);
-                            }}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                              currentView === 'barcodes'
-                                ? 'bg-green-50 border-green-200 text-green-700'
-                                : 'bg-white border-gray-200 text-gray-700'
-                            }`}
-                          >
-                            Barcodes
-                          </button>
+                      <div className="relative">
+                        <ShoppingCart className="w-5 h-5" />
+                        {cartCount > 0 && (
+                          <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                            {cartCount > 9 ? '9+' : cartCount}
+                          </span>
                         )}
-                      </>
-                    ) : (
-                      <div className="col-span-2" />
-                    )}
+                      </div>
+                      <span>Cart</span>
+                    </button>
+
+                    {/* Theme Toggle */}
+                    <button
+                      onClick={() => {
+                        toggleTheme();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center justify-center gap-3 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-medium min-h-[48px] min-w-[100px]"
+                    >
+                      {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                      <span>{isDark ? 'Light' : 'Dark'}</span>
+                    </button>
                   </div>
 
+                  {/* Inventory Actions (only show when on inventory view) */}
                   {currentView === 'inventory' && (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="flex gap-3">
                       <button
                         onClick={() => {
                           loadInventory();
                           setMobileMenuOpen(false);
                         }}
-                        className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-medium min-h-[48px]"
                       >
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                       </button>
                       {hasFeature(FEATURES.BULK_ACTIONS) && (
@@ -670,27 +642,28 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                             toggleMultiSelectMode();
                             setMobileMenuOpen(false);
                           }}
-                          className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium min-h-[48px] ${
                             isMultiSelectMode
-                              ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                           }`}
                         >
-                          <CheckSquare className="w-4 h-4" />
-                          {isMultiSelectMode ? 'Exit Multi-Select' : 'Multi-Select'}
+                          <CheckSquare className="w-5 h-5" />
+                          {isMultiSelectMode ? 'Exit Select' : 'Multi-Select'}
                         </button>
                       )}
                     </div>
                   )}
 
-                  <div className="border-t border-gray-200 pt-3 space-y-2">
+                  {/* User Section */}
+                  <div className="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-3">
                     {/* User Info */}
                     {isAuthenticated && user && (
-                      <div className="px-3 py-2 bg-gray-50 rounded-lg">
-                        <p className="text-sm font-medium text-gray-900">
+                      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {user.firstName || user.email}
                         </p>
-                        <p className="text-xs text-gray-500">{user.email}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
                       </div>
                     )}
                     
@@ -701,9 +674,9 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                           logout();
                           setMobileMenuOpen(false);
                         }}
-                        className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors flex items-center justify-center gap-2"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 rounded-xl font-medium min-h-[48px]"
                       >
-                        <LogOut className="w-4 h-4" />
+                        <LogOut className="w-5 h-5" />
                         Logout
                       </button>
                     ) : (
@@ -712,9 +685,9 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                           openLoginModal();
                           setMobileMenuOpen(false);
                         }}
-                        className="w-full px-3 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium min-h-[48px]"
                       >
-                        <Lock className="w-4 h-4" />
+                        <Lock className="w-5 h-5" />
                         Login
                       </button>
                     )}
@@ -728,7 +701,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
 
       {/* Main Content */}
       {currentView === 'inventory' ? (
-        <main className="max-w-7xl mx-auto px-4 py-4">
+        <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
               {/* Search & Filters */}
               <div className="mb-4">
                 <SearchFilter
@@ -828,8 +801,8 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                 </div>
               )}
 
-        {/* Inventory Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+        {/* Inventory Grid - More space between cards on mobile */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
                 {filteredInventory.map((item) => (
                   <InventoryCard
                     key={item.id}
@@ -911,6 +884,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
         currentView={currentView}
         onViewChange={setCurrentView}
         hasInsightsFeature={hasFeature(FEATURES.VIEW_INSIGHTS)}
+        hasBarcodeFeature={hasFeature(FEATURES.BARCODE_GENERATOR)}
       />
     </div>
   );

@@ -35,7 +35,8 @@ export default function PendingBarcodes({ onComplete }) {
 
   useEffect(() => {
     if (selectedItem && barcodeInputRef.current) {
-      barcodeInputRef.current.focus();
+      // Use preventScroll to avoid pulling page down when focusing
+      barcodeInputRef.current.focus({ preventScroll: true });
     }
   }, [selectedItem]);
 

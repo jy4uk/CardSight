@@ -1515,8 +1515,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
           </div>
         )}
 
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-2">
+        {/* Footer - with safe area padding for bottom nav on mobile */}
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom)+4rem)] sm:pb-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 space-y-2">
           {/* Save Dialog */}
           {showSaveDialog ? (
             <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">

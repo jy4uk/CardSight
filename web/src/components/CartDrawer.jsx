@@ -88,8 +88,8 @@ export default function CartDrawer({ onCheckoutComplete }) {
         onClick={() => setIsCartOpen(false)}
       />
       
-      {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white dark:bg-slate-900 shadow-xl z-50 flex flex-col">
+      {/* Drawer - Full screen on mobile, side drawer on desktop */}
+      <div className="fixed inset-0 sm:inset-auto sm:right-0 sm:top-0 sm:h-full sm:w-full sm:max-w-md bg-white dark:bg-slate-900 shadow-xl z-50 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-2">
@@ -184,7 +184,7 @@ export default function CartDrawer({ onCheckoutComplete }) {
                     {editingItemId === item.id ? (
                       <>
                         <div className="flex items-center gap-1">
-                          <span className="text-gray-500">$</span>
+                          <span className="text-slate-500 dark:text-slate-400">$</span>
                           <input
                             inputMode="decimal"
                             step="0.01"
@@ -194,46 +194,46 @@ export default function CartDrawer({ onCheckoutComplete }) {
                               if (e.key === 'Enter') saveEdit(item.id);
                               if (e.key === 'Escape') cancelEdit();
                             }}
-                            className="w-20 px-2 py-1 text-sm border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-right"
+                            className="w-24 px-3 py-2 text-sm border border-indigo-300 dark:border-indigo-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-right bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
                             autoFocus
                           />
                         </div>
-                        <div className="flex gap-1 mt-1">
+                        <div className="flex gap-2 mt-2">
                           <button
                             onClick={() => saveEdit(item.id)}
-                            className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                            className="p-2.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="Save"
                           >
-                            <Check className="w-4 h-4" />
+                            <Check className="w-5 h-5" />
                           </button>
                           <button
                             onClick={cancelEdit}
-                            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition-colors"
+                            className="p-2.5 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="Cancel"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-5 h-5" />
                           </button>
                         </div>
                       </>
                     ) : (
                       <>
-                        <span className="font-semibold text-gray-900">
+                        <span className="font-semibold text-slate-900 dark:text-slate-100 text-lg">
                           ${parseFloat(item.front_label_price || item.purchase_price || 0).toFixed(2)}
                         </span>
-                        <div className="flex gap-1">
+                        <div className="flex gap-2 mt-1">
                           <button
                             onClick={() => startEditing(item)}
-                            className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition-colors"
+                            className="p-2.5 text-indigo-500 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="Edit price"
                           >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-5 h-5" />
                           </button>
                           <button
                             onClick={() => removeFromCart(item.id)}
-                            className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
+                            className="p-2.5 text-rose-500 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                             title="Remove from cart"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         </div>
                       </>
@@ -245,30 +245,30 @@ export default function CartDrawer({ onCheckoutComplete }) {
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer - Safe area padding on mobile */}
         {cartItems.length > 0 && !checkoutSuccess && (
-          <div className="border-t border-gray-200 p-4 space-y-3">
+          <div className="border-t border-slate-200 dark:border-slate-700 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] space-y-4 bg-white dark:bg-slate-900">
             {/* Checkout Error */}
             {checkoutError && (
-              <div className="p-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                <p className="text-sm text-red-700">{checkoutError}</p>
+              <div className="p-3 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-xl flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0" />
+                <p className="text-sm text-rose-700 dark:text-rose-300">{checkoutError}</p>
               </div>
             )}
 
             {/* Payment Method Selection */}
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Payment Method</p>
-              <div className="grid grid-cols-4 gap-2">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Payment Method</p>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {PAYMENT_METHODS.map((method) => (
                   <button
                     key={method.id}
                     onClick={() => setSelectedPaymentMethod(method.id)}
                     disabled={isCheckingOut}
-                    className={`px-2 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                    className={`px-3 py-3 text-sm font-medium rounded-xl border-2 transition-colors min-h-[48px] ${
                       selectedPaymentMethod === method.id
-                        ? 'bg-blue-50 border-blue-500 text-blue-700'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-500 text-indigo-700 dark:text-indigo-300'
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
                     } ${isCheckingOut ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {method.label}
@@ -278,30 +278,30 @@ export default function CartDrawer({ onCheckoutComplete }) {
             </div>
 
             {/* Total */}
-            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-              <span className="text-gray-600">Total ({cartCount} items)</span>
-              <span className="text-xl font-bold text-gray-900">
+            <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
+              <span className="text-slate-600 dark:text-slate-400">Total ({cartCount} items)</span>
+              <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                 ${cartTotal.toFixed(2)}
               </span>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 onClick={clearCart}
                 disabled={isCheckingOut}
-                className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3.5 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed min-h-[52px]"
               >
                 Clear Cart
               </button>
               <button
                 onClick={handleCheckout}
                 disabled={isCheckingOut}
-                className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3.5 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-h-[52px]"
               >
                 {isCheckingOut ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     Processing...
                   </>
                 ) : (

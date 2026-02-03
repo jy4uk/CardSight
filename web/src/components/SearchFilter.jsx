@@ -21,22 +21,22 @@ export default function SearchFilter({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search cards..."
-            className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl 
+            className="w-full pl-10 pr-10 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl 
                        focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base text-slate-900 dark:text-slate-100
-                       placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                       placeholder:text-slate-400 dark:placeholder:text-slate-500 min-h-[48px]"
           />
           {searchQuery && (
             <button
               onClick={() => onSearchChange('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full min-w-[36px] min-h-[36px] flex items-center justify-center"
             >
-              <X className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <X className="w-5 h-5 text-slate-400 dark:text-slate-500" />
             </button>
           )}
         </div>
         <button
           onClick={onToggleFilters}
-          className={`p-3 rounded-xl border transition-colors
+          className={`p-3 rounded-xl border transition-colors min-w-[48px] min-h-[48px] flex items-center justify-center
             ${showFilters 
               ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400' 
               : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -57,7 +57,7 @@ export default function SearchFilter({
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => onFilterChange({ ...filters, game: null })}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px]
                   ${!filters.game
                     ? 'bg-indigo-600 text-white'
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
@@ -69,7 +69,7 @@ export default function SearchFilter({
                 <button
                   key={g.id}
                   onClick={() => onFilterChange({ ...filters, game: g.id })}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px]
                     ${filters.game === g.id
                       ? 'bg-indigo-600 text-white'
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
@@ -89,7 +89,7 @@ export default function SearchFilter({
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => onFilterChange({ ...filters, cardType: null })}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px]
                   ${!filters.cardType
                     ? 'bg-indigo-600 text-white'
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
@@ -101,7 +101,7 @@ export default function SearchFilter({
                 <button
                   key={t.id}
                   onClick={() => onFilterChange({ ...filters, cardType: t.id })}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px]
                     ${filters.cardType === t.id
                       ? 'bg-indigo-600 text-white'
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
@@ -121,7 +121,7 @@ export default function SearchFilter({
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => onFilterChange({ ...filters, condition: null })}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px]
                   ${!filters.condition
                     ? 'bg-indigo-600 text-white'
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
@@ -133,7 +133,7 @@ export default function SearchFilter({
                 <button
                   key={cond}
                   onClick={() => onFilterChange({ ...filters, condition: cond })}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+                  className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-colors min-h-[44px]
                     ${filters.condition === cond
                       ? 'bg-indigo-600 text-white'
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'

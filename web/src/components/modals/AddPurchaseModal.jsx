@@ -532,8 +532,8 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
   const isGraded = formData.card_type !== 'raw';
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white dark:bg-slate-900 w-full sm:max-w-2xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -552,8 +552,8 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
           </div>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Scrollable Content - add bottom padding for bottom nav when no footer */}
+        <div className={`flex-1 overflow-y-auto ${pendingItems.length === 0 ? 'pb-[calc(1rem+env(safe-area-inset-bottom)+4rem)] sm:pb-4' : ''}`}>
           {/* Success Message */}
           {successMessage && (
             <div className="mx-4 mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700">
@@ -1056,9 +1056,9 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
           </div>
         </div>
 
-        {/* Footer with Submit */}
+        {/* Footer with Submit - safe area padding for bottom nav on mobile */}
         {pendingItems.length > 0 && (
-          <div className="p-4 border-t border-gray-200 bg-gray-50 space-y-2">
+          <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom)+4rem)] sm:pb-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 space-y-2">
             {/* Save Dialog */}
             {showSaveDialog ? (
               <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
