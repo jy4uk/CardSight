@@ -167,6 +167,7 @@ export function AuthProvider({ children }) {
   const value = {
     // User state
     user,
+    setUser,
     loading,
     isAuthenticated,
     

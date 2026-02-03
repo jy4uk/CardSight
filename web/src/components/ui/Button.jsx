@@ -26,23 +26,35 @@ export function Button({
   icon: Icon,
   iconPosition = 'left',
   className = '',
+  type = 'button',
+  'aria-label': ariaLabel,
   ...props
 }) {
-  const baseClasses = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed';
+  // Ensure minimum 44x44px touch target for mobile
+  const baseClasses = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target';
   
   const variantClasses = variants[variant] || variants.primary;
   const sizeClasses = sizes[size] || sizes.md;
 
   return (
     <button
+      type={type}
       className={`${baseClasses} ${variantClasses} ${sizeClasses} ${className}`}
       disabled={disabled || loading}
+      aria-label={ariaLabel}
+      aria-busy={loading}
+      aria-disabled={disabled || loading}
       {...props}
     >
-      {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-      {!loading && Icon && iconPosition === 'left' && <Icon className="w-4 h-4" />}
+      {loading && (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+          <span className="sr-only">Loading...</span>
+        </>
+      )}
+      {!loading && Icon && iconPosition === 'left' && <Icon className="w-4 h-4" aria-hidden="true" />}
       {children}
-      {!loading && Icon && iconPosition === 'right' && <Icon className="w-4 h-4" />}
+      {!loading && Icon && iconPosition === 'right' && <Icon className="w-4 h-4" aria-hidden="true" />}
     </button>
   );
 }
