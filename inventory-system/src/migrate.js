@@ -44,13 +44,23 @@ async function runMigration() {
     
     // Run username migration
     console.log('\nRunning username column migration...');
-    const usernameMigrationPath = path.join(__dirname, 'migrations', 'add_username_column.sql');
-    const usernameMigrationSQL = fs.readFileSync(usernameMigrationPath, 'utf8');
+    // const usernameMigrationPath = path.join(__dirname, 'migrations', 'add_username_column.sql');
+    // const usernameMigrationSQL = fs.readFileSync(usernameMigrationPath, 'utf8');
     
-    // Execute the username migration SQL
-    await query(usernameMigrationSQL);
+    // // Execute the username migration SQL
+    // await query(usernameMigrationSQL);
     
-    console.log('✅ Username migration completed!');
+    // console.log('✅ Username migration completed!');
+    
+    // Run beta codes migration
+    console.log('\nRunning beta codes migration...');
+    const betaCodesMigrationPath = path.join(__dirname, 'migrations', 'add_beta_codes.sql');
+    const betaCodesMigrationSQL = fs.readFileSync(betaCodesMigrationPath, 'utf8');
+    
+    // Execute the beta codes migration SQL
+    await query(betaCodesMigrationSQL);
+    
+    console.log('✅ Beta codes migration completed!');
     console.log('\n🎉 All migrations completed successfully!');
   } catch (err) {
     console.error('❌ Migration failed:', err);

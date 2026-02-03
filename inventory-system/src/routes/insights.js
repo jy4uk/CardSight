@@ -1,12 +1,14 @@
 import express from 'express';
 import { query } from '../services/db.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get business insights and metrics
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { timeRange = '30d' } = req.query;
+    const userId = req.user.userId;
     
     // Calculate date range filters (must be table-specific)
     let salesDateFilter = '';
@@ -46,8 +48,8 @@ router.get('/', async (req, res) => {
         COALESCE(SUM(front_label_price), 0) as total_value,
         AVG(front_label_price) as avg_price
       FROM inventory 
-      WHERE status = 'IN_STOCK'
-    `);
+      WHERE status = 'IN_STOCK' AND user_id = $1
+    `, [userId]);
 
     // Get sales metrics
     const salesStats = await query(`
@@ -58,8 +60,8 @@ router.get('/', async (req, res) => {
         AVG(transactions.sale_price) as avg_sale_price
       FROM transactions
       JOIN inventory ON transactions.inventory_id = inventory.id
-      WHERE 1=1 ${salesDateFilter}
-    `);
+      WHERE inventory.user_id = $1 ${salesDateFilter}
+    `, [userId]);
 
     // Get trade metrics
     const tradeStats = await query(`
@@ -72,8 +74,8 @@ router.get('/', async (req, res) => {
       FROM trades t
       JOIN trade_items ti ON t.id = ti.trade_id
       LEFT JOIN inventory i ON ti.inventory_id = i.id
-      WHERE 1=1 ${tradeDateFilter}
-    `);
+      WHERE t.user_id = $1 ${tradeDateFilter}
+    `, [userId]);
 
     // Get sales trend data (daily)
     const salesTrend = await query(`
@@ -84,11 +86,11 @@ router.get('/', async (req, res) => {
         SUM(transactions.sale_price - inventory.purchase_price) as profit
       FROM transactions
       JOIN inventory ON transactions.inventory_id = inventory.id
-      WHERE 1=1 ${salesDateFilter}
+      WHERE inventory.user_id = $1 ${salesDateFilter}
       GROUP BY DATE(transactions.sale_date)
       ORDER BY date DESC
       LIMIT 30
-    `);
+    `, [userId]);
 
     // Get inventory distribution by game
     const gameDistribution = await query(`
@@ -97,10 +99,10 @@ router.get('/', async (req, res) => {
         COUNT(*) as count,
         COALESCE(SUM(front_label_price), 0) as value
       FROM inventory 
-      WHERE status = 'IN_STOCK'
+      WHERE status = 'IN_STOCK' AND user_id = $1
       GROUP BY game
       ORDER BY count DESC
-    `);
+    `, [userId]);
 
     // Get inventory type breakdown
     const inventoryTypeBreakdown = await query(`
@@ -112,14 +114,14 @@ router.get('/', async (req, res) => {
         COUNT(*) as count,
         COALESCE(SUM(front_label_price), 0) as total_value
       FROM inventory 
-      WHERE status = 'IN_STOCK'
+      WHERE status = 'IN_STOCK' AND user_id = $1
       GROUP BY 
         CASE 
           WHEN card_type = 'raw' THEN 'Singles'
           ELSE card_type || ' Slabs'
         END
       ORDER BY count DESC
-    `);
+    `, [userId]);
 
     // Get card shows data
     const cardShows = await query(`
@@ -132,11 +134,12 @@ router.get('/', async (req, res) => {
         COALESCE(SUM(t.sale_price), 0) as total_revenue,
         COALESCE(SUM(t.sale_price - i.purchase_price), 0) as total_profit
       FROM card_shows cs
-      LEFT JOIN transactions t ON cs.id = t.show_id
-      LEFT JOIN inventory i ON t.inventory_id = i.id
+      LEFT JOIN transactions t ON cs.id = t.show_id AND t.user_id = $1
+      LEFT JOIN inventory i ON t.inventory_id = i.id AND i.user_id = $1
+      WHERE cs.user_id = $1
       GROUP BY cs.id, cs.show_date, cs.show_name, cs.location
       ORDER BY cs.show_date DESC
-    `);
+    `, [userId]);
 
     // Get recent transactions (sales + trade-outs)
     const recentTransactions = await query(`
@@ -163,7 +166,7 @@ router.get('/', async (req, res) => {
         JOIN inventory ON transactions.inventory_id = inventory.id
         LEFT JOIN card_shows ON transactions.show_id = card_shows.id
         LEFT JOIN card_shows AS purchase_shows ON inventory.purchase_show_id = purchase_shows.id
-        WHERE 1=1 ${salesDateFilter}
+        WHERE inventory.user_id = $1 ${salesDateFilter}
       )
       UNION ALL
       (
@@ -190,11 +193,11 @@ router.get('/', async (req, res) => {
         JOIN inventory i ON ti.inventory_id = i.id
         LEFT JOIN card_shows ON t.show_id = card_shows.id
         LEFT JOIN card_shows AS purchase_shows ON i.purchase_show_id = purchase_shows.id
-        WHERE ti.direction = 'out' ${tradeDateFilter}
+        WHERE ti.direction = 'out' AND t.user_id = $1 ${tradeDateFilter}
       )
       ORDER BY date DESC
       LIMIT 10
-    `);
+    `, [userId]);
 
     // Inventory value gained (for modal)
     const inventoryValueByDate = await query(`
@@ -203,11 +206,11 @@ router.get('/', async (req, res) => {
         COUNT(*) as cards_added,
         COALESCE(SUM(i.front_label_price), 0) as value_gained
       FROM inventory i
-      WHERE i.purchase_date IS NOT NULL ${inventoryDateFilter}
+      WHERE i.user_id = $1 AND i.purchase_date IS NOT NULL ${inventoryDateFilter}
       GROUP BY DATE(i.purchase_date)
       ORDER BY date DESC
       LIMIT 60
-    `);
+    `, [userId]);
 
     const inventoryValueByCard = await query(`
       SELECT
@@ -217,11 +220,11 @@ router.get('/', async (req, res) => {
         COALESCE(SUM(i.front_label_price), 0) as value_gained,
         MAX(i.purchase_date) as last_added
       FROM inventory i
-      WHERE i.purchase_date IS NOT NULL ${inventoryDateFilter}
+      WHERE i.user_id = $1 AND i.purchase_date IS NOT NULL ${inventoryDateFilter}
       GROUP BY i.card_name, i.set_name
       ORDER BY value_gained DESC
       LIMIT 100
-    `);
+    `, [userId]);
 
     // Calculate profit margin and time metrics (including trade-outs)
     const toNumber = (value) => {
@@ -321,7 +324,7 @@ router.get('/', async (req, res) => {
 });
 
 // Add new card show
-router.post('/card-shows', async (req, res) => {
+router.post('/card-shows', authenticateToken, async (req, res) => {
   try {
     const { showName, location, showDate } = req.body;
     
@@ -334,19 +337,19 @@ router.post('/card-shows', async (req, res) => {
     try {
       // Try to insert new show
       result = await query(`
-        INSERT INTO card_shows (show_name, location, show_date)
-        VALUES ($1, $2, $3)
+        INSERT INTO card_shows (user_id, show_name, location, show_date)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
-      `, [showName, location, showDate]);
+      `, [req.user.userId, showName, location, showDate]);
     } catch (insertError) {
       // If it's a duplicate key error (show_date already exists), update existing show
       if (insertError.code === '23505') {
         const updateResult = await query(`
           UPDATE card_shows 
           SET show_name = $1, location = $2
-          WHERE show_date = $3
+          WHERE show_date = $3 AND user_id = $4
           RETURNING *
-        `, [showName, location, showDate]);
+        `, [showName, location, showDate, req.user.userId]);
         
         result = updateResult;
       } else {
@@ -396,7 +399,7 @@ async function associateTransactionsWithShow(showId, showDate) {
 }
 
 // Delete card show
-router.delete('/card-shows/:id', async (req, res) => {
+router.delete('/card-shows/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -404,23 +407,23 @@ router.delete('/card-shows/:id', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Card show ID is required' });
     }
 
-    // Check if show exists
+    // Check if show exists and belongs to user
     const showCheck = await query(`
-      SELECT * FROM card_shows WHERE id = $1
-    `, [id]);
+      SELECT * FROM card_shows WHERE id = $1 AND user_id = $2
+    `, [id, req.user.userId]);
 
     if (showCheck.length === 0) {
       return res.status(404).json({ success: false, error: 'Card show not found' });
     }
 
     // Delete the card show
-    await query(`DELETE FROM card_shows WHERE id = $1`, [id]);
+    await query(`DELETE FROM card_shows WHERE id = $1 AND user_id = $2`, [id, req.user.userId]);
 
     // Remove associations from transactions
-    await query(`UPDATE transactions SET show_id = NULL WHERE show_id = $1`, [id]);
+    await query(`UPDATE transactions SET show_id = NULL WHERE show_id = $1 AND user_id = $2`, [id, req.user.userId]);
 
     // Remove associations from inventory
-    await query(`UPDATE inventory SET purchase_show_id = NULL WHERE purchase_show_id = $1`, [id]);
+    await query(`UPDATE inventory SET purchase_show_id = NULL WHERE purchase_show_id = $1 AND user_id = $2`, [id, req.user.userId]);
 
     res.json({
       success: true,

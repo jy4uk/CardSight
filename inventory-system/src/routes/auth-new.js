@@ -16,11 +16,15 @@ const userService = new UserService();
 // POST /auth/signup - Create new user account
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, firstName, lastName, username } = req.body;
+    const { email, password, firstName, lastName, username, betaCode } = req.body;
 
     // Validation
     if (!email || !password || !username) {
       return res.status(400).json({ error: 'Email, password, and username are required' });
+    }
+
+    if (!betaCode) {
+      return res.status(400).json({ error: 'Beta access code is required during beta phase' });
     }
 
     if (password.length < 8) {
@@ -44,6 +48,30 @@ router.post('/signup', async (req, res) => {
       return res.status(409).json({ error: 'Username already taken' });
     }
 
+    // BETA ACCESS: Check user count (50 user cap)
+    const { query } = await import('../services/db.js');
+    const userCountResult = await query('SELECT COUNT(*) as count FROM users WHERE is_active = true');
+    const userCount = parseInt(userCountResult[0].count);
+    
+    if (userCount >= 50) {
+      return res.status(403).json({ error: 'Beta is currently at capacity. Please check back later.' });
+    }
+
+    // BETA ACCESS: Validate beta code
+    const betaCodeResult = await query(
+      'SELECT * FROM beta_codes WHERE code = $1',
+      [betaCode]
+    );
+
+    if (betaCodeResult.length === 0) {
+      return res.status(400).json({ error: 'Invalid beta access code' });
+    }
+
+    const betaCodeRecord = betaCodeResult[0];
+    if (betaCodeRecord.is_used) {
+      return res.status(400).json({ error: 'This beta code has already been used' });
+    }
+
     // Create user
     const user = await userService.createUser({
       email,
@@ -52,6 +80,12 @@ router.post('/signup', async (req, res) => {
       lastName,
       username
     });
+
+    // Mark beta code as used
+    await query(
+      'UPDATE beta_codes SET is_used = true, used_by_user_id = $1, used_at = NOW() WHERE code = $2',
+      [user.id, betaCode]
+    );
 
     // Generate tokens
     const tokenVersion = await userService.getTokenVersion(user.id);
@@ -86,8 +120,11 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password, rememberMe } = req.body;
+    
+    console.log(`🔐 Login attempt: ${email} (rememberMe: ${rememberMe})`);
 
     if (!email || !password) {
+      console.log('❌ Login failed: Missing email or password');
       return res.status(400).json({ error: 'Email/username and password are required' });
     }
 
@@ -98,13 +135,17 @@ router.post('/login', async (req, res) => {
     }
 
     if (!user) {
+      console.log(`❌ Login failed: User not found for ${email}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    console.log(`✅ User found: ${user.email} (ID: ${user.id}, Username: ${user.username})`);
 
     // Validate password
     const bcrypt = await import('bcrypt');
     const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
+      console.log(`❌ Login failed: Invalid password for ${email}`);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -124,6 +165,8 @@ router.post('/login', async (req, res) => {
     }
     res.cookie('refreshToken', refreshToken, cookieOptions);
 
+    console.log(`🎉 Login successful: ${user.email} (rememberMe: ${rememberMe})`);
+
     // Return access token and user info
     res.json({
       success: true,
@@ -137,7 +180,7 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -148,6 +191,7 @@ router.post('/refresh', async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
 
     if (!refreshToken) {
+      console.log('❌ Refresh failed: No refresh token cookie found');
       return res.status(401).json({ error: 'Refresh token not found' });
     }
 
@@ -155,7 +199,9 @@ router.post('/refresh', async (req, res) => {
     let decoded;
     try {
       decoded = verifyRefreshToken(refreshToken);
+      console.log(`🔄 Refresh token verified for user ID: ${decoded.userId}`);
     } catch (error) {
+      console.log('❌ Refresh failed: Invalid refresh token');
       res.clearCookie('refreshToken');
       return res.status(401).json({ error: 'Invalid refresh token' });
     }
@@ -177,6 +223,8 @@ router.post('/refresh', async (req, res) => {
     // Generate new access token
     const accessToken = generateAccessToken(user.id, user.email);
 
+    console.log(`✅ Token refreshed successfully for user: ${user.email}`);
+
     res.json({
       success: true,
       accessToken,
@@ -189,7 +237,7 @@ router.post('/refresh', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Token refresh error:', error);
+    console.error('❌ Token refresh error:', error);
     res.status(500).json({ error: 'Failed to refresh token' });
   }
 });

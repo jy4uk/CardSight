@@ -14,6 +14,7 @@ import PendingBarcodes from './components/PendingBarcodes';
 import BarcodeGeneratorPage from './components/BarcodeGeneratorPage';
 import CartDrawer from './components/CartDrawer';
 import SignupModal from './components/SignupModal';
+import LandingPage from './components/LandingPage';
 import { useAuth, FEATURES } from './context/AuthContextNew';
 import MobileBottomNav from './components/MobileBottomNav';
 import { useCart } from './context/CartContext';
@@ -22,7 +23,7 @@ import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode } from './api';
 
 function App() {
-  const { user, loading: authLoading, logout, hasFeature, isAuthenticated, autoShowLogin } = useAuth();
+  const { user, loading: authLoading, logout, hasFeature, isAuthenticated, showLoginModal } = useAuth();
   
   // Read username from URL query parameter
   const urlParams = new URLSearchParams(window.location.search);
@@ -37,18 +38,18 @@ function App() {
     );
   }
 
-  // If username param exists, allow public access (don't force login)
-  // Otherwise, if auto-show login is enabled and user is not authenticated, show only login modal
-  if (autoShowLogin && !isAuthenticated && !usernameParam) {
+  // Show landing page if not authenticated and no username param
+  if (!isAuthenticated && !usernameParam) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <>
+        <LandingPage />
         <LoginModal />
         <SignupModal />
-      </div>
+      </>
     );
   }
 
-  // Render main app content (always show inventory, login is via modal)
+  // Render main app content (login modal is controlled by AuthContext)
   return (
     <>
       <AppContent 
@@ -124,7 +125,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   // Global barcode scanner listener
   useBarcodeScanner(handleBarcodeScan, { enabled: true });
 
-  const loadInventory = async () => {
+  const loadInventory = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -148,7 +149,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, isViewingProfile, usernameParam]);
 
   const loadTrades = async () => {
     try {
@@ -185,7 +186,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   useEffect(() => {
     loadInventory();
     loadTrades();
-  }, []);
+  }, [loadInventory, isAuthenticated, usernameParam]); // Reload when auth state or URL param changes
 
   useEffect(() => {
     if (!mobileMenuOpen) return;

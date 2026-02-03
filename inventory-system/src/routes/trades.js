@@ -1,10 +1,11 @@
 import express from 'express';
 import { query } from '../services/db.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all trades
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const trades = await query(`
       SELECT t.*, 
@@ -12,8 +13,9 @@ router.get('/', async (req, res) => {
              (SELECT json_agg(ti.*) FROM trade_items ti WHERE ti.trade_id = t.id) as items
       FROM trades t
       LEFT JOIN card_shows cs ON t.show_id = cs.id
+      WHERE t.user_id = $1
       ORDER BY t.trade_date DESC
-    `);
+    `, [req.user.userId]);
     res.json({ success: true, trades });
   } catch (err) {
     console.error('Trades API error:', err);
@@ -22,17 +24,18 @@ router.get('/', async (req, res) => {
 });
 
 // Get items pending barcode assignment (MUST be before /:id route)
-router.get('/pending-barcodes', async (req, res) => {
+router.get('/pending-barcodes', authenticateToken, async (req, res) => {
   try {
     const items = await query(`
       SELECT i.*, ti.trade_id, t.customer_name, t.trade_date
       FROM inventory i
       LEFT JOIN trade_items ti ON i.id = ti.inventory_id AND ti.direction = 'in'
       LEFT JOIN trades t ON ti.trade_id = t.id
-      WHERE i.status = 'PENDING_BARCODE'
-         OR (i.status = 'IN_STOCK' AND (i.barcode_id IS NULL OR i.barcode_id = ''))
+      WHERE i.user_id = $1
+        AND (i.status = 'PENDING_BARCODE'
+         OR (i.status = 'IN_STOCK' AND (i.barcode_id IS NULL OR i.barcode_id = '')))
       ORDER BY i.purchase_date DESC
-    `);
+    `, [req.user.userId]);
     
     res.json({ success: true, items });
   } catch (err) {
@@ -42,7 +45,7 @@ router.get('/pending-barcodes', async (req, res) => {
 });
 
 // Get trade summary/stats (MUST be before /:id route)
-router.get('/stats/summary', async (req, res) => {
+router.get('/stats/summary', authenticateToken, async (req, res) => {
   try {
     const [stats] = await query(`
       SELECT 
@@ -53,7 +56,8 @@ router.get('/stats/summary', async (req, res) => {
         COALESCE(SUM(cash_to_customer), 0) as total_cash_to_customer,
         COALESCE(SUM(cash_from_customer), 0) as total_cash_from_customer
       FROM trades
-    `);
+      WHERE user_id = $1
+    `, [req.user.userId]);
     
     res.json({ success: true, stats });
   } catch (err) {
@@ -63,14 +67,14 @@ router.get('/stats/summary', async (req, res) => {
 });
 
 // Get single trade by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const [trade] = await query(`
       SELECT t.*, cs.show_name
       FROM trades t
       LEFT JOIN card_shows cs ON t.show_id = cs.id
-      WHERE t.id = $1
-    `, [req.params.id]);
+      WHERE t.id = $1 AND t.user_id = $2
+    `, [req.params.id, req.user.userId]);
     
     if (!trade) {
       return res.status(404).json({ success: false, error: 'Trade not found' });
@@ -91,7 +95,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new trade
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       customer_name,
@@ -112,10 +116,11 @@ router.post('/', async (req, res) => {
 
     // Create the trade record
     const [trade] = await query(`
-      INSERT INTO trades (customer_name, trade_percentage, trade_in_total, trade_in_value, trade_out_total, cash_to_customer, cash_from_customer, notes, show_id, trade_date)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO trades (user_id, customer_name, trade_percentage, trade_in_total, trade_in_value, trade_out_total, cash_to_customer, cash_from_customer, notes, show_id, trade_date)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `, [
+      req.user.userId,
       customer_name,
       trade_percentage,
       trade_in_total,
@@ -143,10 +148,11 @@ router.post('/', async (req, res) => {
       const status = hasBarcode ? 'IN_STOCK' : 'PENDING_BARCODE';
       
       const [newItem] = await query(`
-        INSERT INTO inventory (barcode_id, card_name, set_name, game, card_type, condition, purchase_price, purchase_date, front_label_price, status, notes, cert_number, card_number, grade, grade_qualifier, image_url, tcg_product_id, user_id)
+        INSERT INTO inventory (user_id, barcode_id, card_name, set_name, game, card_type, condition, purchase_price, purchase_date, front_label_price, status, notes, cert_number, card_number, grade, grade_qualifier, image_url, tcg_product_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         RETURNING *
       `, [
+        req.user.userId,
         hasBarcode ? item.barcode_id.trim() : null,
         item.card_name,
         item.set_name,
@@ -163,8 +169,7 @@ router.post('/', async (req, res) => {
         item.grade || null,
         item.grade_qualifier || null,
         item.image_url || null,
-        item.tcg_product_id || null,
-        userId
+        item.tcg_product_id || null
       ]);
 
       // Record trade item with per-card trade value
@@ -180,8 +185,8 @@ router.post('/', async (req, res) => {
       if (item.inventory_id) {
         await query(`
           UPDATE inventory SET status = 'TRADED', sale_date = $1, sale_price = $2
-          WHERE id = $3
-        `, [trade_date || new Date(), item.card_value, item.inventory_id]);
+          WHERE id = $3 AND user_id = $4
+        `, [trade_date || new Date(), item.card_value, item.inventory_id, req.user.userId]);
       }
 
       // Record trade item
@@ -202,9 +207,15 @@ router.post('/', async (req, res) => {
 });
 
 // Delete a trade (and restore inventory items)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const tradeId = req.params.id;
+    
+    // Verify trade belongs to user
+    const [trade] = await query(`SELECT * FROM trades WHERE id = $1 AND user_id = $2`, [tradeId, req.user.userId]);
+    if (!trade) {
+      return res.status(404).json({ success: false, error: 'Trade not found' });
+    }
     
     // Get trade items before deletion
     const items = await query(`SELECT * FROM trade_items WHERE trade_id = $1`, [tradeId]);
@@ -212,7 +223,7 @@ router.delete('/:id', async (req, res) => {
     // First, restore trade-out items to IN_STOCK
     for (const item of items) {
       if (item.direction === 'out' && item.inventory_id) {
-        await query(`UPDATE inventory SET status = 'IN_STOCK', sale_date = NULL, sale_price = NULL WHERE id = $1`, [item.inventory_id]);
+        await query(`UPDATE inventory SET status = 'IN_STOCK', sale_date = NULL, sale_price = NULL WHERE id = $1 AND user_id = $2`, [item.inventory_id, req.user.userId]);
       }
     }
     
@@ -226,7 +237,7 @@ router.delete('/:id', async (req, res) => {
     
     // Now delete trade-in items from inventory (after trade_items are gone)
     for (const inventoryId of tradeInInventoryIds) {
-      await query(`DELETE FROM inventory WHERE id = $1`, [inventoryId]);
+      await query(`DELETE FROM inventory WHERE id = $1 AND user_id = $2`, [inventoryId, req.user.userId]);
     }
     
     res.json({ success: true, message: 'Trade deleted and inventory restored' });
@@ -237,7 +248,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Assign barcode to a pending item
-router.post('/assign-barcode', async (req, res) => {
+router.post('/assign-barcode', authenticateToken, async (req, res) => {
   try {
     const { inventory_id, barcode_id } = req.body;
     
@@ -245,8 +256,8 @@ router.post('/assign-barcode', async (req, res) => {
       return res.status(400).json({ success: false, error: 'inventory_id and barcode_id are required' });
     }
     
-    // Check if barcode already exists
-    const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1`, [barcode_id]);
+    // Check if barcode already exists for this user
+    const existing = await query(`SELECT id FROM inventory WHERE barcode_id = $1 AND user_id = $2`, [barcode_id, req.user.userId]);
     if (existing.length > 0) {
       return res.status(400).json({ success: false, error: 'Barcode already in use' });
     }
@@ -256,9 +267,9 @@ router.post('/assign-barcode', async (req, res) => {
     const [updated] = await query(`
       UPDATE inventory 
       SET barcode_id = $1, status = 'IN_STOCK'
-      WHERE id = $2 AND (status = 'PENDING_BARCODE' OR (status = 'IN_STOCK' AND (barcode_id IS NULL OR barcode_id = '')))
+      WHERE id = $2 AND user_id = $3 AND (status = 'PENDING_BARCODE' OR (status = 'IN_STOCK' AND (barcode_id IS NULL OR barcode_id = '')))
       RETURNING *
-    `, [barcode_id, inventory_id]);
+    `, [barcode_id, inventory_id, req.user.userId]);
     
     if (!updated) {
       return res.status(404).json({ success: false, error: 'Item not found or already has barcode' });

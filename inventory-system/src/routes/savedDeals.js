@@ -1,10 +1,11 @@
 import express from 'express';
 import { query } from '../services/db.js';
+import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Get all saved deals
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { type } = req.query; // Optional filter by type
     
@@ -12,11 +13,12 @@ router.get('/', async (req, res) => {
       SELECT sd.*, cs.show_name
       FROM saved_deals sd
       LEFT JOIN card_shows cs ON sd.show_id = cs.id
+      WHERE sd.user_id = $1
     `;
     
-    const params = [];
+    const params = [req.user.userId];
     if (type) {
-      sql += ` WHERE sd.deal_type = $1`;
+      sql += ` AND sd.deal_type = $2`;
       params.push(type);
     }
     
@@ -30,8 +32,8 @@ router.get('/', async (req, res) => {
         // Check which items are still available
         const availableItems = await query(`
           SELECT id FROM inventory 
-          WHERE id = ANY($1) AND status = 'IN_STOCK'
-        `, [deal.trade_out_inventory_ids]);
+          WHERE id = ANY($1) AND status = 'IN_STOCK' AND user_id = $2
+        `, [deal.trade_out_inventory_ids, req.user.userId]);
         
         const availableIds = availableItems.map(i => i.id);
         const unavailableIds = deal.trade_out_inventory_ids.filter(id => !availableIds.includes(id));
@@ -53,14 +55,14 @@ router.get('/', async (req, res) => {
 });
 
 // Get single saved deal by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const [deal] = await query(`
       SELECT sd.*, cs.show_name
       FROM saved_deals sd
       LEFT JOIN card_shows cs ON sd.show_id = cs.id
-      WHERE sd.id = $1
-    `, [req.params.id]);
+      WHERE sd.id = $1 AND sd.user_id = $2
+    `, [req.params.id, req.user.userId]);
     
     if (!deal) {
       return res.status(404).json({ success: false, error: 'Saved deal not found' });
@@ -70,8 +72,8 @@ router.get('/:id', async (req, res) => {
     if (deal.deal_type === 'trade' && deal.trade_out_inventory_ids?.length > 0) {
       const availableItems = await query(`
         SELECT id, card_name, status FROM inventory 
-        WHERE id = ANY($1)
-      `, [deal.trade_out_inventory_ids]);
+        WHERE id = ANY($1) AND user_id = $2
+      `, [deal.trade_out_inventory_ids, req.user.userId]);
       
       const availableIds = availableItems.filter(i => i.status === 'IN_STOCK').map(i => i.id);
       const unavailableItems = availableItems.filter(i => i.status !== 'IN_STOCK');
@@ -92,7 +94,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create a new saved deal
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const {
       deal_type,
@@ -111,10 +113,11 @@ router.post('/', async (req, res) => {
     }
     
     const [deal] = await query(`
-      INSERT INTO saved_deals (deal_type, customer_name, customer_note, deal_data, total_items, total_value, trade_out_inventory_ids, show_id, expires_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO saved_deals (user_id, deal_type, customer_name, customer_note, deal_data, total_items, total_value, trade_out_inventory_ids, show_id, expires_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `, [
+      req.user.userId,
       deal_type,
       customer_name || null,
       customer_note || null,
@@ -134,7 +137,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update a saved deal
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const {
       customer_name,
@@ -156,7 +159,7 @@ router.put('/:id', async (req, res) => {
           trade_out_inventory_ids = COALESCE($6, trade_out_inventory_ids),
           expires_at = $7,
           updated_at = NOW()
-      WHERE id = $8
+      WHERE id = $8 AND user_id = $9
       RETURNING *
     `, [
       customer_name,
@@ -166,7 +169,8 @@ router.put('/:id', async (req, res) => {
       total_value,
       trade_out_inventory_ids,
       expires_at,
-      req.params.id
+      req.params.id,
+      req.user.userId
     ]);
     
     if (!deal) {
@@ -181,9 +185,9 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete a saved deal
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    const result = await query(`DELETE FROM saved_deals WHERE id = $1 RETURNING id`, [req.params.id]);
+    const result = await query(`DELETE FROM saved_deals WHERE id = $1 AND user_id = $2 RETURNING id`, [req.params.id, req.user.userId]);
     
     if (result.length === 0) {
       return res.status(404).json({ success: false, error: 'Saved deal not found' });
@@ -197,9 +201,9 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Validate deal availability (check if trade-out items are still available)
-router.get('/:id/validate', async (req, res) => {
+router.get('/:id/validate', authenticateToken, async (req, res) => {
   try {
-    const [deal] = await query(`SELECT * FROM saved_deals WHERE id = $1`, [req.params.id]);
+    const [deal] = await query(`SELECT * FROM saved_deals WHERE id = $1 AND user_id = $2`, [req.params.id, req.user.userId]);
     
     if (!deal) {
       return res.status(404).json({ success: false, error: 'Saved deal not found' });
@@ -213,8 +217,8 @@ router.get('/:id/validate', async (req, res) => {
     const items = await query(`
       SELECT id, card_name, set_name, status, front_label_price
       FROM inventory 
-      WHERE id = ANY($1)
-    `, [deal.trade_out_inventory_ids]);
+      WHERE id = ANY($1) AND user_id = $2
+    `, [deal.trade_out_inventory_ids, req.user.userId]);
     
     const unavailableItems = items.filter(i => i.status !== 'IN_STOCK');
     const missingIds = deal.trade_out_inventory_ids.filter(id => !items.find(i => i.id === id));

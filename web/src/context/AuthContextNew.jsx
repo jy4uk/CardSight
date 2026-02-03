@@ -22,39 +22,28 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showSignupModal, setShowSignupModal] = useState(false);
-  const [autoShowLogin, setAutoShowLogin] = useState(true);
 
   // Silent refresh on app load
   const silentRefresh = useCallback(async () => {
-    // Check if viewing a public profile (username param in URL)
-    const urlParams = new URLSearchParams(window.location.search);
-    const usernameParam = urlParams.get('username');
-    
     try {
       const response = await apiClient.post('/auth/refresh');
       const { accessToken, user: userData } = response.data;
       
       setAccessToken(accessToken);
       setUser(userData);
+      setShowLoginModal(false); // Ensure modal is closed on successful refresh
       return true;
     } catch (error) {
       // No valid session - this is fine, user can view public profiles or will see login modal
       console.log('No valid session found');
       clearAccessToken();
       setUser(null);
-      // Show login modal automatically if enabled
-      if (usernameParam) {
-        setShowLoginModal(false);
-        return false;
-      }
-      if (autoShowLogin) {
-        setShowLoginModal(true);
-      }
+      setShowLoginModal(false);
       return false;
     } finally {
       setLoading(false);
     }
-  }, [autoShowLogin]);
+  }, []);
 
   // Initialize auth state on mount
   useEffect(() => {
@@ -80,7 +69,12 @@ export function AuthProvider({ children }) {
       setAccessToken(accessToken);
       setUser(userData);
       setShowLoginModal(false);
-      setAutoShowLogin(false); // Disable auto-show after successful login
+      
+      // If logging in from a public profile page, redirect to clean URL
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('username')) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
       
       return { success: true };
     } catch (error) {
@@ -90,7 +84,7 @@ export function AuthProvider({ children }) {
   };
 
   // Signup function
-  const signup = async (email, password, firstName, lastName, username) => {
+  const signup = async (email, password, firstName, lastName, username, betaCode) => {
     try {
       const response = await apiClient.post('/auth/signup', {
         email,
@@ -98,13 +92,19 @@ export function AuthProvider({ children }) {
         firstName,
         lastName,
         username,
+        betaCode,
       });
       const { accessToken, user: userData } = response.data;
       
       setAccessToken(accessToken);
       setUser(userData);
       setShowSignupModal(false);
-      setAutoShowLogin(false); // Disable auto-show after successful signup
+      
+      // If signing up from a public profile page, redirect to clean URL
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('username')) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
       
       return { success: true };
     } catch (error) {
@@ -122,8 +122,7 @@ export function AuthProvider({ children }) {
     } finally {
       setUser(null);
       clearAccessToken();
-      setAutoShowLogin(true); // Re-enable auto-show after logout
-      setShowLoginModal(true); // Immediately show login modal
+      setShowLoginModal(true);
     }
   };
 
@@ -147,24 +146,6 @@ export function AuthProvider({ children }) {
       const message = error.response?.data?.error || 'Failed to reset password';
       return { success: false, error: message };
     }
-  };
-
-  // Legacy admin mode toggle (preserved)
-  const toggleAdminMode = async (password) => {
-    try {
-      const response = await apiClient.post('/auth/admin/login', { password });
-      if (response.data.success) {
-        setIsAdminMode(true);
-        return { success: true };
-      }
-      return { success: false, error: 'Invalid admin password' };
-    } catch (error) {
-      return { success: false, error: 'Admin authentication failed' };
-    }
-  };
-
-  const disableAdminMode = () => {
-    setIsAdminMode(false);
   };
 
   const isAuthenticated = !!user;
@@ -199,7 +180,6 @@ export function AuthProvider({ children }) {
     // Modal state
     showLoginModal,
     showSignupModal,
-    autoShowLogin,
     openLoginModal: () => setShowLoginModal(true),
     closeLoginModal: () => setShowLoginModal(false),
     openSignupModal: () => setShowSignupModal(true),

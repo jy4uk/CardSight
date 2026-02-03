@@ -58,7 +58,8 @@ export function hashResetToken(token) {
 export const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
+  // Use 'none' for cross-origin in production, 'lax' for development
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
   path: '/'
 };
