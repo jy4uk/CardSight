@@ -1,4 +1,16 @@
 /**
+ * PROPRIETARY AND CONFIDENTIAL
+ * 
+ * This file contains trade secrets and proprietary information of Card Sight.
+ * Unauthorized copying, modification, distribution, or use of this file,
+ * via any medium, is strictly prohibited.
+ * 
+ * Copyright (c) 2024-2026 Card Sight. All Rights Reserved.
+ * 
+ * For licensing inquiries: legal@cardsight.com
+ */
+
+/**
  * PSA Service - Fetches certification data from PSA's public API
  */
 

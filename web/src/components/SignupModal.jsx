@@ -12,6 +12,7 @@ export default function SignupModal() {
     lastName: '',
     username: '',
     betaCode: '',
+    acceptedTerms: false,
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -35,6 +36,10 @@ export default function SignupModal() {
 
     if (!formData.betaCode) {
       newErrors.betaCode = 'Beta access code is required';
+    }
+
+    if (!formData.acceptedTerms) {
+      newErrors.acceptedTerms = 'You must accept the Terms of Service';
     }
 
     if (!formData.password) {
@@ -88,6 +93,7 @@ export default function SignupModal() {
       firstName: '',
       lastName: '',
       username: '',
+      acceptedTerms: false,
     });
     setErrors({});
     closeSignupModal();
@@ -315,6 +321,43 @@ export default function SignupModal() {
               <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
             )}
           </div>
+
+          <div className="flex items-start gap-2">
+            <input
+              id="accept-terms"
+              type="checkbox"
+              checked={formData.acceptedTerms}
+              onChange={(e) => handleChange('acceptedTerms', e.target.checked)}
+              className={`mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 ${errors.acceptedTerms ? 'border-red-300' : ''}`}
+              aria-required="true"
+              aria-invalid={!!errors.acceptedTerms}
+              aria-describedby={errors.acceptedTerms ? 'terms-error' : undefined}
+            />
+            <label htmlFor="accept-terms" className="text-sm text-gray-600">
+              I agree to the{' '}
+              <a
+                href="/legal/terms-of-service.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 underline"
+              >
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a
+                href="/legal/privacy-policy.md"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 underline"
+              >
+                Privacy Policy
+              </a>
+              <span className="text-red-500" aria-label="required"> *</span>
+            </label>
+          </div>
+          {errors.acceptedTerms && (
+            <p id="terms-error" className="text-sm text-red-600" role="alert">{errors.acceptedTerms}</p>
+          )}
 
           <button
             type="submit"

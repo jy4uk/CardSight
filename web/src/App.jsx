@@ -16,6 +16,7 @@ import CartDrawer from './components/CartDrawer';
 import SignupModal from './components/SignupModal';
 import LandingPage from './components/LandingPage';
 import AccountSettings from './components/AccountSettings';
+import Footer from './components/Footer';
 import { useAuth, FEATURES } from './context/AuthContextNew';
 import MobileBottomNav from './components/MobileBottomNav';
 import { useCart } from './context/CartContext';
@@ -939,6 +940,9 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
         hasInsightsFeature={hasFeature(FEATURES.VIEW_INSIGHTS)}
         hasBarcodeFeature={hasFeature(FEATURES.BARCODE_GENERATOR)}
       />
+
+      {/* Footer */}
+      <Footer />
     </div>
   );
 }
