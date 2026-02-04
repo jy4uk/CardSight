@@ -25,12 +25,13 @@ describe('Cookie Security Configuration Tests', () => {
       expect(jwtUtils.COOKIE_OPTIONS.secure).toBe(true);
     });
 
-    it('should set SameSite to none in production', async () => {
+    it('should set SameSite to lax for same-origin via Vercel proxy', async () => {
       process.env.NODE_ENV = 'production';
       
       const jwtUtils = await import(`../../src/auth/jwt-utils.js?t=${Date.now()}`);
       
-      expect(jwtUtils.COOKIE_OPTIONS.sameSite).toBe('none');
+      // With Vercel rewrites, requests are same-origin, so lax is perfect
+      expect(jwtUtils.COOKIE_OPTIONS.sameSite).toBe('lax');
     });
 
     it('should always set HttpOnly flag', async () => {

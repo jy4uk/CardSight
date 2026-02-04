@@ -11,20 +11,26 @@ const app = express();
 app.set('trust proxy', 1);
 
 // CORS configuration - must allow credentials for cookies
+// UPDATED: With Vercel rewrites, requests come from Vercel's servers (server-to-server)
+// The Origin header will be the Vercel frontend domain
 const allowedOrigins = [
   'http://localhost:5173',
   'https://card-pilot.vercel.app',
+  'https://cardpilot-production.up.railway.app', // Backend itself (for health checks)
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (server-to-server, mobile apps, curl)
+    // This is important for Vercel rewrites which may not send Origin header
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      // Log rejected origins for debugging
+      console.log('CORS rejected origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },

@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// In production, use relative path to trigger Vercel rewrites (same-origin)
+// In development, point directly to backend server
+const API_BASE = import.meta.env.VITE_API_URL || 
+  (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:3000/api');
 
 // Create axios instance
 const apiClient = axios.create({
