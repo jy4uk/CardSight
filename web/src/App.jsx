@@ -606,7 +606,8 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
                   )}
                 </>
               )}
-              {/* Cart Button */}
+              {/* Cart Button - Only show for authenticated users */}
+              {isAuthenticated && (
               <button
                 data-tutorial="cart-button"
                 onClick={() => setIsCartOpen(true)}
@@ -620,6 +621,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
                   </span>
                 )}
               </button>
+              )}
               {/* Settings & Logout Buttons */}
               {isAuthenticated ? (
                 <>
@@ -909,6 +911,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
                     isMultiSelectMode={isMultiSelectMode}
                     isSelected={selectedItems.has(item.id)}
                     onToggleSelect={toggleItemSelection}
+                    isAuthenticated={isAuthenticated}
                   />
                 ))}
               </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { X, Plus, Trash2, ArrowRight, ArrowLeft, DollarSign, Percent, User, Calendar, Search, Loader2, Scan, Bookmark, AlertTriangle, Pencil, Check } from 'lucide-react';
+import { X, Plus, Trash2, ArrowRight, ArrowLeft, DollarSign, Percent, User, Calendar, Search, Loader2, Scan, Bookmark, AlertTriangle, Pencil, Check, HelpCircle } from 'lucide-react';
 import { fetchPSAData, isPSACertNumber, searchTCGProducts } from '../../api';
 import { useSavedDeals } from '../../context/SavedDealsContext';
+import { useTradeTutorial } from '../../hooks/useTutorial';
 import PSAMarketData from '../PSAMarketData';
 import { CONDITIONS, GRADES, GAMES, CARD_TYPES } from '../../constants';
 
@@ -52,6 +53,7 @@ const detectGameFromProduct = (product) => {
 
 export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems = [], resumedDeal = null }) {
   const { saveDeal, deleteDeal } = useSavedDeals();
+  const { startTutorial: startTradeTutorial } = useTradeTutorial();
   
   const [customerName, setCustomerName] = useState('');
   const [tradeDate, setTradeDate] = useState(new Date().toISOString().split('T')[0]);
@@ -195,6 +197,13 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Start tutorial for first-time users
+  useEffect(() => {
+    if (isOpen) {
+      startTradeTutorial();
+    }
+  }, [isOpen, startTradeTutorial]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -774,11 +783,20 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       <div className="bg-white dark:bg-slate-800 w-full sm:max-w-6xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-indigo-600">
-          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-            <ArrowRight className="w-5 h-5" />
-            Record Trade
-            <ArrowLeft className="w-5 h-5" />
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+              <ArrowRight className="w-5 h-5" />
+              Record Trade
+              <ArrowLeft className="w-5 h-5" />
+            </h2>
+            <button 
+              onClick={() => startTradeTutorial(true)} 
+              className="p-1 hover:bg-white/20 rounded-full transition-colors"
+              title="Show tutorial"
+            >
+              <HelpCircle className="w-4 h-4 text-white/80" />
+            </button>
+          </div>
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-colors">
             <X className="w-5 h-5 text-white" />
           </button>
@@ -860,7 +878,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
               {showAddTradeInForm && (
                 <div className="bg-white dark:bg-slate-800 border border-green-300 dark:border-green-700 rounded-lg p-3 mb-3 space-y-3">
                   {/* Barcode Input for PSA lookup */}
-                  <div className="relative">
+                  <div data-tutorial="trade-barcode-field" className="relative">
                     <input
                       ref={barcodeInputRef}
                       type="text"
@@ -875,15 +893,17 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
 
                   {/* PSA Market Data Panel */}
                   {(psaData || psaLoading || psaError) && (
+                    <div data-tutorial="trade-psa-panel">
                     <PSAMarketData
                       data={psaData}
                       loading={psaLoading}
                       error={psaError}
                       onRetry={() => tradeInForm.barcode_id && handlePSALookup(tradeInForm.barcode_id)}
                     />
+                    </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div data-tutorial="trade-card-name-field" className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       type="text"
                       value={tradeInForm.card_name}
@@ -910,7 +930,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
 
                   {/* TCG Product Grid - shows 3 by default, carousel if more */}
                   {tcgProducts.length > 0 && !selectedTcgProduct && (
-                    <div>
+                    <div data-tutorial="trade-tcg-match">
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-medium text-gray-600">
                           Match Card {tcgLoading && <Loader2 className="inline w-3 h-3 ml-1 animate-spin" />}
@@ -989,7 +1009,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     <p className="text-xs text-gray-500">No matching cards found. Try adjusting the card name.</p>
                   )}
 
-                  <div className="grid grid-cols-4 gap-2">
+                  <div data-tutorial="trade-value-fields" className="grid grid-cols-4 gap-2">
                     <input
                       type="text"
                       value={tradeInForm.card_number}
@@ -1057,6 +1077,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                   {/* TCGPlayer Link - only for raw cards */}
                   {selectedTcgProduct?.url && tradeInForm.card_type === 'raw' && (
                     <a
+                      data-tutorial="trade-tcgplayer-link"
                       href={(() => {
                         const conditionMap = {
                           'NM': 'Near+Mint',
@@ -1081,6 +1102,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                   {/* Card Ladder Link - for graded cards */}
                   {tradeInForm.card_type !== 'raw' && tradeInForm.barcode_id && (
                     <a
+                      data-tutorial="trade-cardladder-link"
                       href="https://app.cardladder.com/sales-history"
                       target="_blank"
                       rel="noopener noreferrer"

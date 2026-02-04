@@ -24,7 +24,7 @@ const gameLabels = {
   'yugioh': 'YGO',
 };
 
-export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchImage, onDelete, isMultiSelectMode, isSelected, onToggleSelect }) {
+export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchImage, onDelete, isMultiSelectMode, isSelected, onToggleSelect, isAuthenticated = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [fetchingImage, setFetchingImage] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -157,7 +157,8 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
           </div>
         )}
 
-        {/* Ellipse Menu */}
+        {/* Ellipse Menu - Only show for authenticated users */}
+        {isAuthenticated && (
         <div ref={menuRef} className="absolute top-1 right-1">
           <button
             onClick={handleMenuClick}
@@ -207,6 +208,7 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Card Info */}

@@ -32,6 +32,7 @@ export default function MobileBottomNav({
           return (
             <button
               key={item.id}
+              data-tutorial={`mobile-nav-${item.id}`}
               onClick={() => onViewChange(item.id)}
               className={`flex flex-col items-center justify-center min-w-[56px] min-h-[56px] py-2 px-3 rounded-2xl transition-all duration-200
                 ${isActive 

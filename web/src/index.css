@@ -441,6 +441,23 @@ html {
   transform: translateY(-1px) !important;
 }
 
+.driver-popover-next-btn.tutorial-btn-disabled {
+  background: #cbd5e1 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.driver-popover-next-btn.tutorial-btn-disabled:hover {
+  background: #cbd5e1 !important;
+  transform: none !important;
+}
+
+.dark .driver-popover-next-btn.tutorial-btn-disabled {
+  background: #475569 !important;
+  color: #64748b !important;
+}
+
 .driver-popover-close-btn {
   color: var(--color-text-muted) !important;
 }

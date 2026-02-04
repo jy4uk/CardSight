@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Plus, Trash2, DollarSign, Loader2, Scan, X, ShoppingBag, CheckCircle, Pencil, Bookmark } from 'lucide-react';
+import { Plus, Trash2, DollarSign, Loader2, Scan, X, ShoppingBag, CheckCircle, Pencil, Bookmark, HelpCircle } from 'lucide-react';
 import { fetchPSAData, isPSACertNumber, searchTCGProducts, addInventoryItem } from '../../api';
 import { usePendingPurchase } from '../../context/PendingPurchaseContext.jsx';
 import { useSavedDeals } from '../../context/SavedDealsContext';
+import { usePurchaseTutorial } from '../../hooks/useTutorial';
 import PSAMarketData from '../PSAMarketData';
 import { CONDITIONS, GRADES, GAMES, CARD_TYPES } from '../../constants';
 import { getInitialFormData, cleanCardName, cleanSetName, toTitleCase } from '../../utils';
@@ -10,6 +11,7 @@ import { getInitialFormData, cleanCardName, cleanSetName, toTitleCase } from '..
 export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [], onPurchaseComplete, resumedDeal = null }) {
   const { pendingItems, addPendingItem, updatePendingItem, removePendingItem, clearPending, totalQuantity, totalCost } = usePendingPurchase();
   const { saveDeal, deleteDeal } = useSavedDeals();
+  const { startTutorial: startPurchaseTutorial } = usePurchaseTutorial();
   
   const [formData, setFormData] = useState(getInitialFormData);
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +57,13 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
       setTimeout(() => barcodeInputRef.current?.focus(), 100);
     }
   }, [isOpen]);
+
+  // Start tutorial for first-time users
+  useEffect(() => {
+    if (isOpen) {
+      startPurchaseTutorial();
+    }
+  }, [isOpen, startPurchaseTutorial]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -544,6 +553,13 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5 text-green-600" />
             <h2 className="text-lg font-semibold text-gray-900">Record Purchase</h2>
+            <button 
+              onClick={() => startPurchaseTutorial(true)} 
+              className="p-1 hover:bg-green-100 rounded-full transition-colors"
+              title="Show tutorial"
+            >
+              <HelpCircle className="w-4 h-4 text-green-600" />
+            </button>
           </div>
           <div className="flex items-center gap-3">
             {pendingItems.length > 0 && (
@@ -570,7 +586,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
           {/* Add Card Form */}
           <div className="p-4 border-b border-gray-100 space-y-3">
             {/* Barcode Input */}
-            <div>
+            <div data-tutorial="purchase-barcode-field">
               <label className="block text-xs font-medium text-gray-600 mb-1">Barcode / Cert #</label>
               <div className="relative">
                 <Scan className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -595,16 +611,18 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
 
             {/* PSA Market Data Panel */}
             {(psaData || psaLoading || psaError) && (
+              <div data-tutorial="purchase-psa-panel">
               <PSAMarketData
                 data={psaData}
                 loading={psaLoading}
                 error={psaError}
                 onRetry={() => formData.barcode_id && handlePSALookup(formData.barcode_id)}
               />
+              </div>
             )}
 
             {/* Card Name & Card Number Row */}
-            <div className="grid grid-cols-2 gap-2">
+            <div data-tutorial="purchase-card-name-field" className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Card Name *</label>
                 <input
@@ -628,7 +646,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
             </div>
 
             {/* Set Name */}
-            <div>
+            <div data-tutorial="purchase-set-field">
               <label className="block text-xs font-medium text-gray-600 mb-1">Set Name</label>
               <input
                 type="text"
@@ -640,7 +658,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
             </div>
 
             {/* Game, Card Type, and Condition/Grade Row */}
-            <div className="grid grid-cols-3 gap-2">
+            <div data-tutorial="purchase-type-fields" className="grid grid-cols-3 gap-2">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Game</label>
                 <select
@@ -711,7 +729,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
 
             {/* TCG Product Grid */}
             {tcgProducts.length > 0 && !selectedTcgProduct && (
-              <div>
+              <div data-tutorial="purchase-tcg-match">
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-xs font-medium text-gray-600">
                     Match Card {tcgLoading && <Loader2 className="inline w-3 h-3 ml-1 animate-spin" />}
@@ -794,7 +812,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
 
             {/* Selected card preview */}
             {selectedTcgProduct && tcgProducts.length === 0 && (
-              <div className="flex items-center gap-3 p-2 bg-green-50 rounded-lg border border-green-200">
+              <div data-tutorial="purchase-selected-card" className="flex items-center gap-3 p-2 bg-green-50 rounded-lg border border-green-200">
                 {selectedTcgProduct.imageUrl && (
                   <img src={selectedTcgProduct.imageUrl} alt={selectedTcgProduct.name} className="w-12 h-auto rounded" />
                 )}
@@ -837,6 +855,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
             {/* Card Ladder Link - for graded cards */}
             {formData.card_type !== 'raw' && formData.barcode_id && (
               <a
+                data-tutorial="purchase-cardladder-link"
                 href="https://app.cardladder.com/sales-history"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -850,7 +869,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
             )}
 
             {/* Price Row */}
-            <div className="grid grid-cols-2 gap-2">
+            <div data-tutorial="purchase-price-fields" className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Purchase Price</label>
                 <div className="relative">
@@ -885,6 +904,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
 
             {/* Add to Staged Button */}
             <button
+              data-tutorial="purchase-add-button"
               onClick={handleAddToStaged}
               disabled={!formData.card_name?.trim() || (formData.barcode_id?.trim() && isDuplicateBarcode)}
               className="w-full py-2.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 
