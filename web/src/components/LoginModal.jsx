@@ -50,8 +50,9 @@ export default function LoginModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="login-title"
+      onClick={!autoShowLogin ? handleClose : undefined}
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative" onClick={(e) => e.stopPropagation()}>
         {!autoShowLogin && (
           <button
             type="button"

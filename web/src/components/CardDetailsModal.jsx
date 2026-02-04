@@ -138,8 +138,8 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
 
   
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white dark:bg-slate-800 w-full sm:max-w-xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 w-full sm:max-w-xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-slate-100">Card Details</h2>

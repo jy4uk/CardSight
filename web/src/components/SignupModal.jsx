@@ -124,8 +124,9 @@ export default function SignupModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="signup-title"
+      onClick={handleClose}
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto relative p-6">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto relative p-6" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
           onClick={handleClose}

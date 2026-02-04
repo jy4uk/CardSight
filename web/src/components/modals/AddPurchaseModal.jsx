@@ -415,6 +415,11 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
         }
       }
       
+      // If this was a resumed deal, delete the saved deal
+      if (resumedDealId) {
+        await deleteDeal(resumedDealId);
+      }
+      
       clearPending();
       setSuccessMessage(`Successfully added ${totalQuantity} card${totalQuantity > 1 ? 's' : ''} to inventory!`);
       
@@ -532,8 +537,8 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
   const isGraded = formData.card_type !== 'raw';
 
   return (
-    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white dark:bg-slate-900 w-full sm:max-w-2xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-900 w-full sm:max-w-2xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 flex items-center justify-between">
           <div className="flex items-center gap-2">

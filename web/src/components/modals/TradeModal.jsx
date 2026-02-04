@@ -490,7 +490,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
           ...prev,
           image_url: product.imageUrl || prev.image_url,
           tcg_product_id: product.productId,
-          game: prev.game || detectedGame,
+          game: detectedGame, // Always auto-select the detected game
         };
       }
       // For raw cards, populate all fields including game
@@ -501,7 +501,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         card_name: formattedCardName,
         set_name: formattedSetName,
         card_number: product.cardNumber || prev.card_number,
-        game: prev.game || detectedGame,
+        game: detectedGame, // Always auto-select the detected game
         condition: prev.condition || 'NM',
       };
     });
@@ -770,8 +770,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white dark:bg-slate-800 w-full sm:max-w-6xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 w-full sm:max-w-6xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-indigo-600">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
