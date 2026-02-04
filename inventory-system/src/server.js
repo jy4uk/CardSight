@@ -15,7 +15,6 @@ app.set('trust proxy', 1);
 // The Origin header will be the Vercel frontend domain
 const allowedOrigins = [
   'http://localhost:5173',
-  'https://card-pilot.vercel.app',
   'https://cardsight.vercel.app',
   'https://cardsight-production.up.railway.app', // Backend itself (for health checks)
   process.env.FRONTEND_URL
@@ -35,7 +34,13 @@ const corsOptions = {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400, // 24 hours - cache preflight response
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 app.use(cors(corsOptions));
 app.use(express.json());
