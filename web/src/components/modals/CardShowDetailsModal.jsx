@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { X, Package, DollarSign, Calendar, Trash2 } from 'lucide-react';
+import AlertModal from '../AlertModal';
 
 export default function CardShowDetailsModal({ isOpen, onClose, cardShows, recentSales, onDeleteShow }) {
   const [expandedShows, setExpandedShows] = useState(new Set());
+  const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, showId: null, showName: '' });
+  const [alertModal, setAlertModal] = useState({ isOpen: false, type: 'error', message: '' });
 
   if (!isOpen) return null;
 
@@ -16,14 +19,18 @@ export default function CardShowDetailsModal({ isOpen, onClose, cardShows, recen
     setExpandedShows(newExpanded);
   };
 
-  const handleDeleteShow = async (showId, showName) => {
-    if (confirm(`Are you sure you want to delete "${showName}"? This will remove the show and unlink any associated transactions.`)) {
-      try {
-        await onDeleteShow(showId);
-      } catch (error) {
-        console.error('Error deleting show:', error);
-        alert('Failed to delete show: ' + error.message);
-      }
+  const handleDeleteClick = (showId, showName) => {
+    setDeleteConfirm({ isOpen: true, showId, showName });
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await onDeleteShow(deleteConfirm.showId);
+      setDeleteConfirm({ isOpen: false, showId: null, showName: '' });
+    } catch (error) {
+      console.error('Error deleting show:', error);
+      setDeleteConfirm({ isOpen: false, showId: null, showName: '' });
+      setAlertModal({ isOpen: true, type: 'error', message: 'Failed to delete show: ' + error.message });
     }
   };
 
@@ -85,7 +92,7 @@ export default function CardShowDetailsModal({ isOpen, onClose, cardShows, recen
                             <div className="flex items-center gap-2 mb-2">
                               <p className="font-semibold text-green-600">${show.totalRevenue?.toFixed(2)}</p>
                               <button
-                                onClick={() => handleDeleteShow(show.id, show.showName)}
+                                onClick={(e) => { e.stopPropagation(); handleDeleteClick(show.id, show.showName); }}
                                 className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                                 title="Delete Show"
                               >
@@ -148,6 +155,26 @@ export default function CardShowDetailsModal({ isOpen, onClose, cardShows, recen
           </div>
         </div>
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      <AlertModal
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, showId: null, showName: '' })}
+        onConfirm={handleConfirmDelete}
+        type="delete"
+        title="Delete Card Show"
+        message={`Are you sure you want to delete "${deleteConfirm.showName}"? This will remove the show and unlink any associated transactions.`}
+        showCancel={true}
+      />
+      
+      {/* Error Alert Modal */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, type: 'error', message: '' })}
+        type={alertModal.type}
+        message={alertModal.message}
+        showCancel={false}
+      />
     </div>
   );
 }

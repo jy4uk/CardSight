@@ -1,6 +1,13 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization to prevent crash when API key is not set
+let resend = null;
+const getResendClient = () => {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+};
 
 export class EmailService {
   /**
@@ -17,7 +24,7 @@ export class EmailService {
         return { success: false, error: 'Email service not configured' };
       }
 
-      const { data, error } = await resend.emails.send({
+      const { data, error } = await getResendClient().emails.send({
         from: process.env.EMAIL_FROM || 'CardSight <noreply@cardsight.app>',
         to: [to],
         subject: 'Reset Your CardSight Password',
@@ -169,7 +176,7 @@ export class EmailService {
         return { success: false, error: 'Email service not configured' };
       }
 
-      const { data, error } = await resend.emails.send({
+      const { data, error } = await getResendClient().emails.send({
         from: process.env.EMAIL_FROM || 'CardSight <noreply@cardsight.app>',
         to: [to],
         subject: 'CardSight Email Service Test',

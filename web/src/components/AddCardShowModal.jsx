@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Calendar, MapPin, Plus } from 'lucide-react';
+import AlertModal from './AlertModal';
 
 export default function AddCardShowModal({ isOpen, onClose, onAdd }) {
   const [formData, setFormData] = useState({
@@ -8,12 +9,13 @@ export default function AddCardShowModal({ isOpen, onClose, onAdd }) {
     showDate: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [alertModal, setAlertModal] = useState({ isOpen: false, type: 'error', message: '' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.showName || !formData.location || !formData.showDate) {
-      alert('Please fill in all fields');
+      setAlertModal({ isOpen: true, type: 'error', message: 'Please fill in all fields' });
       return;
     }
 
@@ -30,7 +32,7 @@ export default function AddCardShowModal({ isOpen, onClose, onAdd }) {
       onClose();
     } catch (error) {
       console.error('Error adding card show:', error);
-      alert('Failed to add card show: ' + error.message);
+      setAlertModal({ isOpen: true, type: 'error', message: 'Failed to add card show: ' + error.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -122,6 +124,14 @@ export default function AddCardShowModal({ isOpen, onClose, onAdd }) {
           </div>
         </form>
       </div>
+      
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal({ isOpen: false, type: 'error', message: '' })}
+        type={alertModal.type}
+        message={alertModal.message}
+        showCancel={false}
+      />
     </div>
   );
 }

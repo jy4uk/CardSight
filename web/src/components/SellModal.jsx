@@ -69,7 +69,7 @@ export default function SellModal({ isOpen, item, onClose, onSell }) {
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-5">
+        <div className="p-4 pb-24 sm:pb-4 space-y-5">
           {/* Card Info */}
           <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-3">
             <h3 className="font-semibold text-slate-900 dark:text-slate-100">{item.card_name || 'Unnamed Card'}</h3>

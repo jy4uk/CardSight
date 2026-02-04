@@ -71,6 +71,16 @@ async function runMigration() {
     await query(savedDealsMigrationSQL);
     
     console.log('✅ Saved deals migration completed!');
+
+    // Run card shows user_id migration
+    console.log('\nRunning card shows user_id migration...');
+    const cardShowsUserIdMigrationPath = path.join(__dirname, 'migrations', 'add_user_id_to_card_shows.sql');
+    const cardShowsUserIdMigrationSQL = fs.readFileSync(cardShowsUserIdMigrationPath, 'utf8');
+    
+    // Execute the card shows user_id migration SQL
+    await query(cardShowsUserIdMigrationSQL);
+    
+    console.log('✅ Card shows user_id migration completed!');
     console.log('\n🎉 All migrations completed successfully!');
   } catch (err) {
     console.error('❌ Migration failed:', err);

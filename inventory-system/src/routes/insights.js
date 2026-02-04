@@ -358,11 +358,11 @@ router.post('/card-shows', authenticateToken, async (req, res) => {
       }
     }
 
-    if (!result || !result.rows || result.rows.length === 0) {
+    if (!result || result.length === 0) {
       throw new Error('Failed to create or update card show');
     }
     
-    const newShow = result.rows[0];
+    const newShow = result[0];
     res.json({
       success: true,
       data: newShow

@@ -570,15 +570,15 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-900 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
-          <h2 className="text-lg font-semibold text-gray-900">{isEditMode ? 'Edit Item' : 'Add New Item'}</h2>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-900 z-10">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{isEditMode ? 'Edit Item' : 'Add New Item'}</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-full transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 dark:text-slate-400" />
           </button>
         </div>
 
@@ -586,7 +586,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Barcode Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Barcode or Cert #
             </label>
             <div className="relative">
@@ -603,12 +603,13 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                     ? `Barcode already exists in inventory${duplicateBarcodeItem?.card_name ? `: ${duplicateBarcodeItem.card_name}` : ''}`
                     : undefined
                 }
-                className={`w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 
+                className={`w-full px-4 py-3 pr-12 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 
                            focus:ring-blue-500 focus:border-blue-500 text-lg font-mono
+                           bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100
                            ${isDuplicateBarcode ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : ''}`}
                 autoComplete="off"
               />
-              <Scan className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Scan className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-slate-500" />
             </div>
             {isDuplicateBarcode && (
               <div className="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -616,7 +617,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               </div>
             )}
             {!isEditMode && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
                 Optional - scan barcode or leave blank to assign later
               </p>
             )}
@@ -634,7 +635,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
 
           {/* Card Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Card Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -644,14 +645,14 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               value={formData.card_name}
               onChange={handleChange}
               placeholder="e.g., Charizard VMAX"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
-                         focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 
+                         focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
             />
           </div>
 
           {/* Set Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Set Name
             </label>
             <input
@@ -660,14 +661,14 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               value={formData.set_name}
               onChange={handleChange}
               placeholder="e.g., Brilliant Stars"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
-                         focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 
+                         focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
             />
           </div>
 
           {/* Card Number */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Card Number
             </label>
             <input
@@ -676,8 +677,8 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               value={formData.card_number}
               onChange={handleChange}
               placeholder="e.g., 136/172"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
-                         focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 
+                         focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
             />
           </div>
 
@@ -686,7 +687,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
             <div>
               {/* TCG Product Grid - shows up to 3 matches */}
               {tcgProducts.length > 0 && !selectedTcgProduct && (
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Match Card {tcgLoading && <Loader2 className="inline w-3 h-3 ml-1 animate-spin" />}
                 </label>
               )}
@@ -699,8 +700,8 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                       onClick={() => selectTCGProduct(product)}
                       className={`rounded-lg overflow-hidden border-2 transition-all text-left
                         ${selectedTcgProduct?.productId === product.productId 
-                          ? 'border-blue-500 ring-2 ring-blue-200' 
-                          : 'border-gray-200 hover:border-blue-300'}`}
+                          ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800' 
+                          : 'border-gray-200 dark:border-slate-600 hover:border-blue-300 dark:hover:border-blue-500'}`}
                     >
                       <div className="relative">
                         {product.imageUrl ? (
@@ -720,12 +721,12 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                           </div>
                         )}
                       </div>
-                      <div className="px-2 py-1.5 bg-gray-50 text-[11px] leading-tight">
-                        <p className="font-medium text-gray-900 truncate">
+                      <div className="px-2 py-1.5 bg-gray-50 dark:bg-slate-800 text-[11px] leading-tight">
+                        <p className="font-medium text-gray-900 dark:text-slate-100 truncate">
                           {/* Strip trailing numbers from cleanName (e.g., "Mew ex 216 091" -> "Mew ex") */}
                           {(product.cleanName || product.name || '').replace(/\s+\d+\s+\d+$/, '').replace(/\s+-\s+\d+\/\d+$/, '')}
                         </p>
-                        <p className="text-gray-500 truncate">{product.setName} • #{product.cardNumber || '—'}</p>
+                        <p className="text-gray-500 dark:text-slate-400 truncate">{product.setName} • #{product.cardNumber || '—'}</p>
                         {product.rarity && (
                           <p className="text-purple-600 truncate text-[10px]">{product.rarity}</p>
                         )}
@@ -737,12 +738,12 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               
               {/* No matches message */}
               {formData.card_name && formData.card_name.length >= 2 && !tcgLoading && tcgProducts.length === 0 && !selectedTcgProduct && (
-                <p className="text-xs text-gray-500 mt-1">No matching cards found. Try adjusting the card name.</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">No matching cards found. Try adjusting the card name.</p>
               )}
               
               {/* Selected card preview */}
               {selectedTcgProduct && tcgProducts.length === 0 && (
-                <div className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-3 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
                   {selectedTcgProduct.imageUrl && (
                     <img 
                       src={selectedTcgProduct.imageUrl} 
@@ -751,9 +752,9 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                     />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{selectedTcgProduct.cleanName || selectedTcgProduct.name}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">{selectedTcgProduct.cleanName || selectedTcgProduct.name}</p>
                     {selectedTcgProduct.setName && (
-                      <p className="text-xs text-gray-500 truncate">{selectedTcgProduct.setName}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{selectedTcgProduct.setName}</p>
                     )}
                   </div>
                   <button
@@ -766,7 +767,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                     }}
                     className="p-1 hover:bg-blue-100 rounded"
                   >
-                    <X className="w-4 h-4 text-gray-500" />
+                    <X className="w-4 h-4 text-gray-500 dark:text-slate-400" />
                   </button>
                 </div>
               )}
@@ -811,7 +812,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
           {/* Grade (only for slabs) */}
           {formData.card_type !== 'raw' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Grade
               </label>
               <div className="space-y-3">
@@ -819,7 +820,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                   <select
                     value={formData.grade}
                     onChange={(e) => setFormData((prev) => ({ ...prev, grade: e.target.value }))}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                   >
                     <option value="">Select grade</option>
                     {GRADES.map((grade) => (
@@ -836,7 +837,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                       className={`px-3 py-2 border rounded-lg font-medium text-sm transition-colors
                         ${formData.grade_qualifier === '.5'
                           ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                          : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600'
                         }`}
                     >
                       {formData.grade_qualifier === '.5' ? '.5' : formData.grade_qualifier === '10' ? '10' : 'Add .5'}
@@ -844,8 +845,8 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                   )}
                 </div>
                 {formData.grade && formData.grade_qualifier && (
-                  <div className="text-sm text-gray-600">
-                    Selected Grade: <span className="font-semibold text-gray-900">{formData.grade}{formData.grade_qualifier}</span>
+                  <div className="text-sm text-gray-600 dark:text-slate-400">
+                    Selected Grade: <span className="font-semibold text-gray-900 dark:text-slate-100">{formData.grade}{formData.grade_qualifier}</span>
                   </div>
                 )}
               </div>
@@ -863,10 +864,10 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
 
           {/* Expandable More Details Section */}
           {showMoreDetails && (
-            <div className="space-y-4 p-3 bg-gray-50 rounded-xl">
+            <div className="space-y-4 p-3 bg-gray-50 dark:bg-slate-800 rounded-xl">
               {/* Game */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Game
                 </label>
                 <div className="flex gap-2 flex-wrap">
@@ -878,7 +879,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                       className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors
                         ${formData.game === g.id
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                          : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
                         }`}
                     >
                       {g.label}
@@ -889,7 +890,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
 
               {/* Card Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Card Type
                 </label>
                 <div className="flex gap-2 flex-wrap">
@@ -901,7 +902,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                       className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors
                         ${formData.card_type === t.id
                           ? 'bg-blue-600 text-white'
-                          : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                          : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
                         }`}
                     >
                       {t.label}
@@ -913,7 +914,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               {/* Condition (only for raw cards) */}
               {formData.card_type === 'raw' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                     Condition
                   </label>
                   <div className="flex gap-2 flex-wrap">
@@ -925,7 +926,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                         className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors
                           ${formData.condition === cond
                             ? 'bg-blue-600 text-white'
-                            : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                            : 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-600 border border-gray-200 dark:border-slate-600'
                           }`}
                       >
                         {cond}
@@ -940,11 +941,11 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
           {/* Price Row */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Purchase Price
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400">$</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -952,17 +953,17 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                   value={formData.purchase_price}
                   onChange={handleChange}
                   placeholder="0.00"
-                  className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
-                             focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-7 pr-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 
+                             focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Market Price
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400">$</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -971,13 +972,13 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                   onChange={handleChange}
                   placeholder="0.00"
                   min="0"
-                  className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
-                             focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-7 pr-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 
+                             focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Purchase %
               </label>
               <div className="relative">
@@ -987,10 +988,10 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                   value={formData.purchase_percentage}
                   onChange={handlePercentageChange}
                   placeholder="%"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
-                             focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 
+                             focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-slate-400">%</span>
               </div>
             </div>
           </div>
@@ -1007,7 +1008,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
           ) : (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">
                   Notes
                 </label>
                 <button
@@ -1016,7 +1017,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                     setShowNotes(false);
                     setFormData(prev => ({ ...prev, notes: '' }));
                   }}
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  className="text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"
                 >
                   Remove
                 </button>
@@ -1027,24 +1028,24 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
                 onChange={handleChange}
                 placeholder="Optional notes..."
                 rows={2}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 
-                           focus:ring-blue-500 focus:border-blue-500 resize-none"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 
+                           focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 resize-none"
               />
             </div>
           )}
 
           {/* Hide from Public Inventory Toggle */}
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 transition-colors">
             <input
               type="checkbox"
               name="hidden"
               checked={formData.hidden}
               onChange={(e) => setFormData(prev => ({ ...prev, hidden: e.target.checked }))}
-              className="w-5 h-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+              className="w-5 h-5 rounded border-gray-300 dark:border-slate-600 text-amber-600 focus:ring-amber-500"
             />
             <div className="flex-1">
-              <span className="text-sm font-medium text-gray-700">Hide from public inventory</span>
-              <p className="text-xs text-gray-500">For grading candidates or personal collection</p>
+              <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Hide from public inventory</span>
+              <p className="text-xs text-gray-500 dark:text-slate-400">For grading candidates or personal collection</p>
             </div>
           </label>
 
@@ -1056,7 +1057,7 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
               (formData.barcode_id?.trim() && isDuplicateBarcode)
             }
             className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl
-                       hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed
+                       hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed
                        transition-colors flex items-center justify-center gap-2"
           >
             {isEditMode ? <Save className="w-5 h-5" /> : <Plus className="w-5 h-5" />}

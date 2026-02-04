@@ -10,7 +10,7 @@ export default function MobileBottomNav({
     { id: 'inventory', label: 'Inventory', icon: Package },
     { id: 'intake', label: 'Intake', icon: ArrowLeftRight, requiresFeature: 'insights' },
     { id: 'insights', label: 'Insights', icon: BarChart3, requiresFeature: 'insights' },
-    { id: 'barcodes', label: 'Barcodes', icon: FileText, requiresFeature: 'barcodes' },
+    // Barcodes hidden on mobile - only accessible from desktop
   ].filter(item => {
     if (!item.requiresFeature) return true;
     if (item.requiresFeature === 'insights') return hasInsightsFeature;
