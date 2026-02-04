@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart, Sun, Moon, Settings } from 'lucide-react';
+import { Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart, Sun, Moon, Settings, MessageSquare } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
@@ -17,6 +18,8 @@ import SignupModal from './components/SignupModal';
 import LandingPage from './components/LandingPage';
 import AccountSettings from './components/AccountSettings';
 import Footer from './components/Footer';
+import FeedbackModal from './components/FeedbackModal';
+import ResetPassword from './components/ResetPassword';
 import { useAuth, FEATURES } from './context/AuthContextNew';
 import MobileBottomNav from './components/MobileBottomNav';
 import { useCart } from './context/CartContext';
@@ -25,12 +28,27 @@ import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode } from './api';
 import { Toaster } from 'react-hot-toast';
 
-function App() {
-  const { user, loading: authLoading, logout, hasFeature, isAuthenticated, showLoginModal } = useAuth();
+// Redirect component for backward compatibility with query params
+function QueryParamRedirect() {
+  const navigate = useNavigate();
+  const location = useLocation();
   
-  // Read username from URL query parameter
-  const urlParams = new URLSearchParams(window.location.search);
-  const usernameParam = urlParams.get('username');
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const username = urlParams.get('username');
+    
+    if (username) {
+      // Redirect from /?username=X to /u/X
+      navigate(`/u/${username}`, { replace: true });
+    }
+  }, [navigate, location.search]);
+  
+  // Don't show loading spinner, just let the redirect happen
+  return null;
+}
+
+function App() {
+  const { user, loading: authLoading, logout, hasFeature, isAuthenticated } = useAuth();
 
   // Show loading spinner while checking auth
   if (authLoading) {
@@ -41,42 +59,77 @@ function App() {
     );
   }
 
-  // Show landing page if not authenticated and no username param
-  if (!isAuthenticated && !usernameParam) {
-    return (
-      <>
-        <LandingPage />
-        <LoginModal />
-        <SignupModal />
-      </>
-    );
-  }
-
-  // Render main app content (login modal is controlled by AuthContext)
   return (
     <>
-      <AppContent 
-        logout={logout} 
-        hasFeature={hasFeature}
-        isAuthenticated={isAuthenticated}
-        user={user}
-        usernameParam={usernameParam}
-      />
+      <QueryParamRedirect />
+      <Routes>
+        {/* Landing page - only for unauthenticated users */}
+        <Route 
+          path="/" 
+          element={
+            !isAuthenticated ? (
+              <LandingPage />
+            ) : (
+              <AppContent 
+                logout={logout} 
+                hasFeature={hasFeature} 
+                isAuthenticated={isAuthenticated}
+                user={user}
+              />
+            )
+          } 
+        />
+        
+        {/* User profile route - /u/:username */}
+        <Route 
+          path="/u/:username" 
+          element={
+            <AppContent 
+              logout={logout} 
+              hasFeature={hasFeature} 
+              isAuthenticated={isAuthenticated}
+              user={user}
+            />
+          } 
+        />
+        
+        {/* Password reset page */}
+        <Route path="/reset-password" element={<ResetPassword />} />
+      </Routes>
+      
       <LoginModal />
       <SignupModal />
     </>
   );
 }
 
-function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }) {
+function AppContent({ logout, hasFeature, isAuthenticated, user }) {
   // Get auth functions from context
   const { openLoginModal, canEdit } = useAuth();
+  
+  // Extract username from URL params
+  const { username: urlUsername } = useParams();
   
   // Determine viewing mode: 
   // If user is logged in, always show their own inventory (ignore URL param)
   // If user is NOT logged in and URL param exists, show public profile
-  const isViewingProfile = !isAuthenticated && !!usernameParam;
+  const isViewingProfile = !isAuthenticated && !!urlUsername;
   const hasEditPermission = isAuthenticated; // Logged in users always have edit permission on their own data
+  const viewingUsername = isViewingProfile ? urlUsername : user?.username;
+  
+  // Dynamic page title management
+  useEffect(() => {
+    if (viewingUsername) {
+      document.title = `${viewingUsername}'s Collection | CardSight`;
+    } else {
+      document.title = 'CardSight | Collectible Card Management';
+    }
+    
+    // Cleanup: reset title when component unmounts
+    return () => {
+      document.title = 'CardSight | Collectible Card Management';
+    };
+  }, [viewingUsername]);
   
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +152,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   const [inventorySubView, setInventorySubView] = useState('grid'); // 'grid' or 'pending'
   const [inventorySort, setInventorySort] = useState('price_high'); // 'newest', 'oldest', 'price_high', 'price_low'
   const [showSettings, setShowSettings] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
   // Cart system
   const { addToCart, setError: setCartError, cartCount, setIsCartOpen } = useCart();
@@ -141,7 +195,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
       } 
       // If not authenticated but viewing a public profile, fetch that user's inventory
       else if (isViewingProfile) {
-        const data = await fetchPublicInventory(usernameParam);
+        const data = await fetchPublicInventory(urlUsername);
         setInventory(data.items || []);
       }
       // Otherwise, no inventory to show
@@ -153,7 +207,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isViewingProfile, usernameParam]);
+  }, [isAuthenticated, isViewingProfile, urlUsername]);
 
   const loadTrades = async () => {
     try {
@@ -190,7 +244,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
   useEffect(() => {
     loadInventory();
     loadTrades();
-  }, [loadInventory, isAuthenticated, usernameParam]); // Reload when auth state or URL param changes
+  }, [loadInventory, isAuthenticated, urlUsername]); // Reload when auth state or URL param changes
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -943,6 +997,26 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
 
       {/* Footer */}
       <Footer />
+
+      {/* Feedback Modal - Authenticated users only */}
+      {isAuthenticated && (
+        <>
+          <FeedbackModal 
+            isOpen={showFeedbackModal} 
+            onClose={() => setShowFeedbackModal(false)} 
+          />
+
+          {/* Floating Action Button - Feedback */}
+          <button
+            onClick={() => setShowFeedbackModal(true)}
+            className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center z-40 group"
+            title="Send Feedback"
+            aria-label="Send feedback"
+          >
+            <MessageSquare className="w-6 h-6 group-hover:scale-110 transition-transform" aria-hidden="true" />
+          </button>
+        </>
+      )}
     </div>
   );
 }

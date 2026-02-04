@@ -35,7 +35,6 @@ export function AuthProvider({ children }) {
       return true;
     } catch (error) {
       // No valid session - this is fine, user can view public profiles or will see login modal
-      console.log('No valid session found');
       clearAccessToken();
       setUser(null);
       setShowLoginModal(false);
@@ -53,7 +52,6 @@ export function AuthProvider({ children }) {
     const handleLogout = () => {
       setUser(null);
       clearAccessToken();
-      setShowLoginModal(true);
     };
 
     window.addEventListener('auth:logout', handleLogout);
@@ -70,10 +68,9 @@ export function AuthProvider({ children }) {
       setUser(userData);
       setShowLoginModal(false);
       
-      // If logging in from a public profile page, redirect to clean URL
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('username')) {
-        window.history.replaceState({}, '', window.location.pathname);
+      // If logging in from a public profile page (/u/:username), redirect to home
+      if (window.location.pathname.startsWith('/u/')) {
+        window.location.href = '/';
       }
       
       return { success: true };
@@ -100,10 +97,9 @@ export function AuthProvider({ children }) {
       setUser(userData);
       setShowSignupModal(false);
       
-      // If signing up from a public profile page, redirect to clean URL
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('username')) {
-        window.history.replaceState({}, '', window.location.pathname);
+      // If signing up from a public profile page (/u/:username), redirect to home
+      if (window.location.pathname.startsWith('/u/')) {
+        window.location.href = '/';
       }
       
       return { success: true };

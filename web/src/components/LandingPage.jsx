@@ -13,7 +13,7 @@ export default function LandingPage() {
       const data = await response.json();
       
       if (data.username) {
-        window.location.href = `/?username=${data.username}`;
+        window.location.href = `/u/${data.username}`;
       }
     } catch (error) {
       console.error('Failed to fetch random vendor:', error);

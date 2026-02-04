@@ -7,17 +7,17 @@ const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your-refresh-t
 const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY = '30d';
 
-export function generateAccessToken(userId, email) {
+export function generateAccessToken(userId, email, username) {
   return jwt.sign(
-    { userId, email, type: 'access' },
+    { userId, email, username, type: 'access' },
     ACCESS_TOKEN_SECRET,
     { expiresIn: ACCESS_TOKEN_EXPIRY }
   );
 }
 
-export function generateRefreshToken(userId, email, tokenVersion) {
+export function generateRefreshToken(userId, email, username, tokenVersion) {
   return jwt.sign(
-    { userId, email, tokenVersion, type: 'refresh' },
+    { userId, email, username, tokenVersion, type: 'refresh' },
     REFRESH_TOKEN_SECRET,
     { expiresIn: REFRESH_TOKEN_EXPIRY }
   );

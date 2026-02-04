@@ -9,6 +9,7 @@ import {
   COOKIE_OPTIONS 
 } from '../auth/jwt-utils.js';
 import { authenticateToken } from '../middleware/auth.js';
+import emailService from '../services/email-service.js';
 
 const router = express.Router();
 const userService = new UserService();
@@ -89,8 +90,8 @@ router.post('/signup', async (req, res) => {
 
     // Generate tokens
     const tokenVersion = await userService.getTokenVersion(user.id);
-    const accessToken = generateAccessToken(user.id, user.email);
-    const refreshToken = generateRefreshToken(user.id, user.email, tokenVersion);
+    const accessToken = generateAccessToken(user.id, user.email, user.username);
+    const refreshToken = generateRefreshToken(user.id, user.email, user.username, tokenVersion);
 
     // Set refresh token in httpOnly cookie
     res.cookie('refreshToken', refreshToken, COOKIE_OPTIONS);
@@ -154,8 +155,8 @@ router.post('/login', async (req, res) => {
 
     // Generate tokens
     const tokenVersion = await userService.getTokenVersion(user.id);
-    const accessToken = generateAccessToken(user.id, user.email);
-    const refreshToken = generateRefreshToken(user.id, user.email, tokenVersion);
+    const accessToken = generateAccessToken(user.id, user.email, user.username);
+    const refreshToken = generateRefreshToken(user.id, user.email, user.username, tokenVersion);
 
     // Set refresh token in httpOnly cookie with extended expiry if rememberMe is true
     const cookieOptions = { ...COOKIE_OPTIONS };
@@ -221,7 +222,7 @@ router.post('/refresh', async (req, res) => {
     }
 
     // Generate new access token
-    const accessToken = generateAccessToken(user.id, user.email);
+    const accessToken = generateAccessToken(user.id, user.email, user.username);
 
     console.log(`✅ Token refreshed successfully for user: ${user.email}`);
 
@@ -259,86 +260,86 @@ router.post('/logout', authenticateToken, async (req, res) => {
 });
 
 // POST /auth/forgot-password - Request password reset
-router.post('/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
+// router.post('/forgot-password', async (req, res) => {
+//   try {
+//     const { email } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
+//     if (!email) {
+//       return res.status(400).json({ error: 'Email is required' });
+//     }
 
-    const user = await userService.getUserByEmail(email);
+//     const user = await userService.getUserByEmail(email);
     
-    // Always return success to prevent email enumeration
-    if (!user) {
-      return res.json({ 
-        success: true, 
-        message: 'If an account exists, a reset link has been sent' 
-      });
-    }
+//     // Always return success to prevent email enumeration
+//     if (!user) {
+//       return res.json({ 
+//         success: true, 
+//         message: 'If an account exists, a reset link has been sent' 
+//       });
+//     }
 
-    // Generate reset token
-    const resetToken = generatePasswordResetToken();
-    const resetTokenHash = hashResetToken(resetToken);
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+//     // Generate reset token
+//     const resetToken = generatePasswordResetToken();
+//     const resetTokenHash = hashResetToken(resetToken);
+//     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    await userService.setPasswordResetToken(user.id, resetTokenHash, expiresAt);
+//     await userService.setPasswordResetToken(user.id, resetTokenHash, expiresAt);
 
-    // TODO: Send email with reset link
-    // For now, we'll log it (in production, use a real email service)
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
-    console.log('Password reset link:', resetLink);
-    console.log('Reset token (for testing):', resetToken);
+//     // TODO: Send email with reset link
+//     // For now, we'll log it (in production, use a real email service)
+//     const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+//     console.log('Password reset link:', resetLink);
+//     console.log('Reset token (for testing):', resetToken);
 
-    res.json({ 
-      success: true, 
-      message: 'If an account exists, a reset link has been sent',
-      // REMOVE IN PRODUCTION - only for testing
-      ...(process.env.NODE_ENV !== 'production' && { resetToken, resetLink })
-    });
-  } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({ error: 'Failed to process request' });
-  }
-});
+//     res.json({ 
+//       success: true, 
+//       message: 'If an account exists, a reset link has been sent',
+//       // REMOVE IN PRODUCTION - only for testing
+//       ...(process.env.NODE_ENV !== 'production' && { resetToken, resetLink })
+//     });
+//   } catch (error) {
+//     console.error('Forgot password error:', error);
+//     res.status(500).json({ error: 'Failed to process request' });
+//   }
+// });
 
 // POST /auth/reset-password - Reset password with token
-router.post('/reset-password', async (req, res) => {
-  try {
-    const { token, newPassword } = req.body;
+// router.post('/reset-password', async (req, res) => {
+//   try {
+//     const { token, newPassword } = req.body;
 
-    if (!token || !newPassword) {
-      return res.status(400).json({ error: 'Token and new password are required' });
-    }
+//     if (!token || !newPassword) {
+//       return res.status(400).json({ error: 'Token and new password are required' });
+//     }
 
-    if (newPassword.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
+//     if (newPassword.length < 8) {
+//       return res.status(400).json({ error: 'Password must be at least 8 characters' });
+//     }
 
-    // Hash the token and find user
-    const tokenHash = hashResetToken(token);
-    const user = await userService.getUserByResetToken(tokenHash);
+//     // Hash the token and find user
+//     const tokenHash = hashResetToken(token);
+//     const user = await userService.getUserByResetToken(tokenHash);
 
-    if (!user) {
-      return res.status(400).json({ error: 'Invalid or expired reset token' });
-    }
+//     if (!user) {
+//       return res.status(400).json({ error: 'Invalid or expired reset token' });
+//     }
 
-    // Update password
-    await userService.updatePassword(user.id, newPassword);
-    await userService.clearPasswordResetToken(user.id);
+//     // Update password
+//     await userService.updatePassword(user.id, newPassword);
+//     await userService.clearPasswordResetToken(user.id);
     
-    // Invalidate all refresh tokens
-    await userService.incrementTokenVersion(user.id);
+//     // Invalidate all refresh tokens
+//     await userService.incrementTokenVersion(user.id);
 
-    res.json({ 
-      success: true, 
-      message: 'Password reset successfully' 
-    });
-  } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).json({ error: 'Failed to reset password' });
-  }
-});
+//     res.json({ 
+//       success: true, 
+//       message: 'Password reset successfully' 
+//     });
+//   } catch (error) {
+//     console.error('Reset password error:', error);
+//     res.status(500).json({ error: 'Failed to reset password' });
+//   }
+// });
 
 // GET /auth/me - Get current user info (protected route)
 router.get('/me', authenticateToken, async (req, res) => {
@@ -362,6 +363,123 @@ router.get('/me', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ error: 'Failed to get user info' });
+  }
+});
+
+// POST /auth/forgot-password - Request password reset
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Find user by email
+    const user = await userService.getUserByEmail(email);
+
+    // SECURITY: Always return success to prevent email enumeration
+    // Even if user doesn't exist, return 200 OK
+    if (!user) {
+      console.log(`Password reset requested for non-existent email: ${email}`);
+      return res.json({ success: true, message: 'If an account exists with that email, a reset link has been sent.' });
+    }
+
+    // Generate secure reset token (32 random bytes)
+    const resetToken = generatePasswordResetToken();
+    const resetTokenHash = hashResetToken(resetToken);
+    
+    // Token expires in 1 hour
+    const expiryDate = new Date(Date.now() + 60 * 60 * 1000);
+
+    // Store hashed token and expiry in database
+    await userService.setPasswordResetToken(user.id, resetTokenHash, expiryDate);
+
+    // Send email with reset link
+    const resetUrl = `${process.env.FRONTEND_URL || 'https://cardsight.vercel.app'}/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`;
+    
+    console.log(`🔐 Password reset requested for ${email}`);
+    console.log(`Token expires at: ${expiryDate.toISOString()}`);
+
+    // Send password reset email via Resend
+    const emailResult = await emailService.sendPasswordResetEmail(email, resetUrl);
+    
+    if (!emailResult.success) {
+      console.error(`❌ Failed to send reset email to ${email}:`, emailResult.error);
+      // Still log URL in development for testing even if email fails
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`\n📧 DEV MODE: Email failed, but here's the reset link:`);
+        console.log(`Click here to reset: ${resetUrl}\n`);
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'If an account exists with that email, a reset link has been sent.',
+      // Only include resetUrl in development for testing
+      ...(process.env.NODE_ENV !== 'production' && { resetUrl })
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    // SECURITY: Don't reveal internal errors, always return success message
+    res.json({ success: true, message: 'If an account exists with that email, a reset link has been sent.' });
+  }
+});
+
+// POST /auth/reset-password - Reset password with token
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { email, token, newPassword } = req.body;
+
+    console.log('🔐 Password reset attempt:');
+    console.log('  - Email:', email);
+    console.log('  - Token (first 10 chars):', token?.substring(0, 10) + '...');
+    console.log('  - Password length:', newPassword?.length);
+
+    if (!email || !token || !newPassword) {
+      console.log('❌ Missing required fields');
+      return res.status(400).json({ error: 'Email, token, and new password are required' });
+    }
+
+    if (newPassword.length < 8) {
+      console.log('❌ Password too short');
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Find user by email
+    const user = await userService.getUserByEmail(email);
+    
+    if (!user) {
+      console.log('❌ User not found:', email);
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    console.log('✅ User found:', user.id);
+
+    // Hash the provided token to compare with stored hash
+    const tokenHash = hashResetToken(token);
+    console.log('  - Token hash (first 10 chars):', tokenHash.substring(0, 10) + '...');
+
+    // Verify token matches and hasn't expired
+    const isValidToken = await userService.verifyPasswordResetToken(user.id, tokenHash);
+    
+    if (!isValidToken) {
+      console.log('❌ Token verification failed');
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    // Update password and clear reset token
+    await userService.resetPassword(user.id, newPassword);
+
+    console.log(`✅ Password reset successful for user: ${email}`);
+
+    res.json({ 
+      success: true, 
+      message: 'Password has been reset successfully. You can now log in with your new password.' 
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Failed to reset password. Please try again.' });
   }
 });
 

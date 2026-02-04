@@ -275,7 +275,7 @@ Pikachu,Base Set,58,pokemon,psa,25.00,75.00,PSA 10,1,,12345678,10,"2024-01-01"`;
                       required
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Used in your public profile URL: /?username={profileForm.username || 'your-username'}
+                      Used in your public profile URL: /u/{profileForm.username || 'your-username'}
                     </p>
                   </div>
 

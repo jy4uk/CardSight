@@ -12,6 +12,7 @@ import tcgRoutes from './tcg.js';
 import savedDealsRoutes from './savedDeals.js';
 import usersRoutes from './users.js';
 import settingsRoutes from './settings.js';
+import feedbackRoutes from './feedback.js';
 
 const router = express.Router();
 // Legacy admin mode auth (preserved for backward compatibility)
@@ -29,5 +30,6 @@ router.use('/trades', tradesRoutes);
 router.use('/psa-lookup', psaLookupRoutes);
 router.use('/tcg', tcgRoutes);
 router.use('/saved-deals', savedDealsRoutes);
+router.use('/feedback', feedbackRoutes);
 
 export default router;

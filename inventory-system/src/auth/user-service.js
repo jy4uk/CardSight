@@ -105,9 +105,46 @@ export class UserService {
 
   async setPasswordResetToken(userId, tokenHash, expiresAt) {
     await query(
-      'UPDATE users SET reset_token_hash = $1, reset_token_expires = $2 WHERE id = $1',
+      'UPDATE users SET reset_token_hash = $1, reset_token_expires = $2 WHERE id = $3',
       [tokenHash, expiresAt, userId]
     );
+  }
+
+  async verifyPasswordResetToken(userId, tokenHash) {
+    const result = await query(
+      'SELECT reset_token_hash, reset_token_expires FROM users WHERE id = $1',
+      [userId]
+    );
+
+    if (result.length === 0) {
+      console.log('❌ User not found for password reset verification');
+      return false;
+    }
+
+    const user = result[0];
+
+    console.log('🔍 Password reset token verification:');
+    console.log('  - User ID:', userId);
+    console.log('  - Stored token hash:', user.reset_token_hash);
+    console.log('  - Provided token hash:', tokenHash);
+    console.log('  - Token expires:', user.reset_token_expires);
+    console.log('  - Current time:', new Date().toISOString());
+    console.log('  - Tokens match:', user.reset_token_hash === tokenHash);
+
+    // Check if token matches
+    if (user.reset_token_hash !== tokenHash) {
+      console.log('❌ Token hash mismatch');
+      return false;
+    }
+
+    // Check if token has expired
+    if (!user.reset_token_expires || new Date() > new Date(user.reset_token_expires)) {
+      console.log('❌ Token expired or not set');
+      return false;
+    }
+
+    console.log('✅ Token verification successful');
+    return true;
   }
 
   async getUserByResetToken(tokenHash) {
@@ -125,6 +162,14 @@ export class UserService {
     );
   }
 
+  async resetPassword(userId, newPassword) {
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await query(
+      'UPDATE users SET password_hash = $1, reset_token_hash = NULL, reset_token_expires = NULL WHERE id = $2',
+      [passwordHash, userId]
+    );
+  }
+
   async updatePassword(userId, newPassword) {
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await query(
@@ -137,14 +182,15 @@ export class UserService {
     return {
       id: row.id,
       email: row.email,
-      username: row.username,
       passwordHash: row.password_hash,
       firstName: row.first_name,
       lastName: row.last_name,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-      lastLogin: row.last_login ? new Date(row.last_login) : undefined,
-      isActive: row.is_active
+      username: row.username,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      lastLogin: row.last_login,
+      isActive: row.is_active,
+      tokenVersion: row.token_version || 0
     };
   }
 }

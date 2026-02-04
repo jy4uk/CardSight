@@ -12,7 +12,8 @@ export function authenticateToken(req, res, next) {
     const decoded = verifyAccessToken(token);
     req.user = {
       userId: decoded.userId,
-      email: decoded.email
+      email: decoded.email,
+      username: decoded.username
     };
     next();
   } catch (error) {
@@ -29,7 +30,8 @@ export function optionalAuth(req, res, next) {
       const decoded = verifyAccessToken(token);
       req.user = {
         userId: decoded.userId,
-        email: decoded.email
+        email: decoded.email,
+        username: decoded.username
       };
     } catch (error) {
       // Token invalid but continue anyway
