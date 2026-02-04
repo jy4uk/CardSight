@@ -16,6 +16,7 @@ app.set('trust proxy', 1);
 const allowedOrigins = [
   'http://localhost:5173',
   'https://card-pilot.vercel.app',
+  'https://cardsight.vercel.app',
   'https://cardsight-production.up.railway.app', // Backend itself (for health checks)
   process.env.FRONTEND_URL
 ].filter(Boolean);
