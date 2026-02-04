@@ -202,21 +202,21 @@ router.post('/refresh', async (req, res) => {
       console.log(`🔄 Refresh token verified for user ID: ${decoded.userId}`);
     } catch (error) {
       console.log('❌ Refresh failed: Invalid refresh token');
-      res.clearCookie('refreshToken');
+      res.clearCookie('refreshToken', { path: '/api/auth' });
       return res.status(401).json({ error: 'Invalid refresh token' });
     }
 
     // Check token version (for logout from all devices)
     const currentVersion = await userService.getTokenVersion(decoded.userId);
     if (decoded.tokenVersion !== currentVersion) {
-      res.clearCookie('refreshToken');
+      res.clearCookie('refreshToken', { path: '/api/auth' });
       return res.status(401).json({ error: 'Token has been revoked' });
     }
 
     // Get user info
     const user = await userService.getUserById(decoded.userId);
     if (!user) {
-      res.clearCookie('refreshToken');
+      res.clearCookie('refreshToken', { path: '/api/auth' });
       return res.status(401).json({ error: 'User not found' });
     }
 
@@ -248,8 +248,8 @@ router.post('/logout', authenticateToken, async (req, res) => {
     // Increment token version to invalidate all existing refresh tokens
     await userService.incrementTokenVersion(req.user.userId);
     
-    // Clear cookie
-    res.clearCookie('refreshToken');
+    // Clear cookie with same path as it was set
+    res.clearCookie('refreshToken', { path: '/api/auth' });
     
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {

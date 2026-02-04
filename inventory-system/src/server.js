@@ -6,6 +6,10 @@ import { config } from './config/index.js';
 
 const app = express();
 
+// Trust proxy - CRITICAL for production (Vercel/Railway/etc behind reverse proxy)
+// This allows Express to correctly detect HTTPS and set Secure cookies
+app.set('trust proxy', 1);
+
 // CORS configuration - must allow credentials for cookies
 const allowedOrigins = [
   'http://localhost:5173',

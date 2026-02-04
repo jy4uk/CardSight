@@ -55,11 +55,18 @@ export function hashResetToken(token) {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+// Cookie configuration for refresh token
+// CRITICAL: For cross-origin cookies (frontend on Vercel, backend on separate domain):
+// - secure: MUST be true in production (requires HTTPS)
+// - sameSite: MUST be 'none' in production for cross-origin
+// - httpOnly: MUST be true to prevent XSS attacks
+// - path: Restrict to auth routes for better security
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  // Use 'none' for cross-origin in production, 'lax' for development
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  secure: isProduction, // MUST be true in production for SameSite=None
+  sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin
   maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-  path: '/'
+  path: '/api/auth' // Restrict cookie to auth routes only
 };
