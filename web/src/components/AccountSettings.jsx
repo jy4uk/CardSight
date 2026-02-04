@@ -18,10 +18,10 @@ export default function AccountSettings({ onClose }) {
   });
   const [profileLoading, setProfileLoading] = useState(false);
 
-  // Bulk upload state
-  const [bulkFile, setBulkFile] = useState(null);
-  const [bulkLoading, setBulkLoading] = useState(false);
-  const [bulkResults, setBulkResults] = useState(null);
+  // Bulk upload state - COMMENTED OUT FOR FUTURE RELEASE
+  // const [bulkFile, setBulkFile] = useState(null);
+  // const [bulkLoading, setBulkLoading] = useState(false);
+  // const [bulkResults, setBulkResults] = useState(null);
 
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -55,68 +55,69 @@ export default function AccountSettings({ onClose }) {
     }
   };
 
-  const handleBulkUpload = async () => {
-    if (!bulkFile) {
-      toast.error('Please select a CSV file');
-      return;
-    }
-
-    setBulkLoading(true);
-    setBulkResults(null);
-
-    try {
-      // Parse CSV file
-      Papa.parse(bulkFile, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          try {
-            // Map CSV columns to inventory fields
-            const items = results.data.map(row => ({
-              card_name: row.card_name || row['Card Name'] || row.name,
-              set_name: row.set_name || row['Set Name'] || row.set,
-              card_number: row.card_number || row['Card Number'] || row.number,
-              game: row.game || 'pokemon',
-              card_type: row.card_type || row['Card Type'] || 'raw',
-              purchase_price: parseFloat(row.purchase_price || row['Purchase Price'] || 0),
-              front_label_price: parseFloat(row.front_label_price || row['Front Label Price'] || row.price || 0),
-              condition: row.condition || 'NM',
-              quantity: parseInt(row.quantity || 1),
-              barcode_id: row.barcode_id || row['Barcode ID'] || row.barcode || '',
-              cert_number: row.cert_number || row['Cert Number'] || '',
-              grade: row.grade || '',
-              purchase_date: row.purchase_date || row['Purchase Date'] || new Date().toISOString().split('T')[0]
-            }));
-
-            // Send to backend
-            const response = await apiClient.post('/inventory/bulk', { items });
-            
-            if (response.data.success) {
-              setBulkResults(response.data.results);
-              toast.success(response.data.message);
-              
-              // Clear file input
-              setBulkFile(null);
-              const fileInput = document.getElementById('bulk-file-input');
-              if (fileInput) fileInput.value = '';
-            }
-          } catch (error) {
-            const message = error.response?.data?.error || 'Failed to upload inventory';
-            toast.error(message);
-          } finally {
-            setBulkLoading(false);
-          }
-        },
-        error: (error) => {
-          toast.error('Failed to parse CSV file: ' + error.message);
-          setBulkLoading(false);
-        }
-      });
-    } catch (error) {
-      toast.error('Failed to process file');
-      setBulkLoading(false);
-    }
-  };
+  // BULK UPLOAD - COMMENTED OUT FOR FUTURE RELEASE
+  // const handleBulkUpload = async () => {
+  //   if (!bulkFile) {
+  //     toast.error('Please select a CSV file');
+  //     return;
+  //   }
+  //
+  //   setBulkLoading(true);
+  //   setBulkResults(null);
+  //
+  //   try {
+  //     // Parse CSV file
+  //     Papa.parse(bulkFile, {
+  //       header: true,
+  //       skipEmptyLines: true,
+  //       complete: async (results) => {
+  //         try {
+  //           // Map CSV columns to inventory fields
+  //           const items = results.data.map(row => ({
+  //             card_name: row.card_name || row['Card Name'] || row.name,
+  //             set_name: row.set_name || row['Set Name'] || row.set,
+  //             card_number: row.card_number || row['Card Number'] || row.number,
+  //             game: row.game || 'pokemon',
+  //             card_type: row.card_type || row['Card Type'] || 'raw',
+  //             purchase_price: parseFloat(row.purchase_price || row['Purchase Price'] || 0),
+  //             front_label_price: parseFloat(row.front_label_price || row['Front Label Price'] || row.price || 0),
+  //             condition: row.condition || 'NM',
+  //             quantity: parseInt(row.quantity || 1),
+  //             barcode_id: row.barcode_id || row['Barcode ID'] || row.barcode || '',
+  //             cert_number: row.cert_number || row['Cert Number'] || '',
+  //             grade: row.grade || '',
+  //             purchase_date: row.purchase_date || row['Purchase Date'] || new Date().toISOString().split('T')[0]
+  //           }));
+  //
+  //           // Send to backend
+  //           const response = await apiClient.post('/inventory/bulk', { items });
+  //           
+  //           if (response.data.success) {
+  //             setBulkResults(response.data.results);
+  //             toast.success(response.data.message);
+  //             
+  //             // Clear file input
+  //             setBulkFile(null);
+  //             const fileInput = document.getElementById('bulk-file-input');
+  //             if (fileInput) fileInput.value = '';
+  //           }
+  //         } catch (error) {
+  //           const message = error.response?.data?.error || 'Failed to upload inventory';
+  //           toast.error(message);
+  //         } finally {
+  //           setBulkLoading(false);
+  //         }
+  //       },
+  //       error: (error) => {
+  //         toast.error('Failed to parse CSV file: ' + error.message);
+  //         setBulkLoading(false);
+  //       }
+  //     });
+  //   } catch (error) {
+  //     toast.error('Failed to process file');
+  //     setBulkLoading(false);
+  //   }
+  // };
 
   const handleDeleteAccount = async () => {
     if (!deletePassword) {
@@ -197,6 +198,7 @@ Pikachu,Base Set,58,pokemon,psa,25.00,75.00,PSA 10,1,,12345678,10,"2024-01-01"`;
             <User className="w-4 h-4 inline mr-2" aria-hidden="true" />
             Profile
           </button>
+          {/* BULK UPLOAD TAB - COMMENTED OUT FOR FUTURE RELEASE
           <button
             type="button"
             role="tab"
@@ -212,6 +214,7 @@ Pikachu,Base Set,58,pokemon,psa,25.00,75.00,PSA 10,1,,12345678,10,"2024-01-01"`;
             <Upload className="w-4 h-4 inline mr-2" aria-hidden="true" />
             Bulk Upload
           </button>
+          */}
           <button
             type="button"
             role="tab"
@@ -318,7 +321,7 @@ Pikachu,Base Set,58,pokemon,psa,25.00,75.00,PSA 10,1,,12345678,10,"2024-01-01"`;
             </div>
           )}
 
-          {/* Bulk Upload Tab */}
+          {/* BULK UPLOAD TAB CONTENT - COMMENTED OUT FOR FUTURE RELEASE
           {activeTab === 'bulk' && (
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -373,7 +376,6 @@ Pikachu,Base Set,58,pokemon,psa,25.00,75.00,PSA 10,1,,12345678,10,"2024-01-01"`;
                 </button>
               </div>
 
-              {/* Results */}
               {bulkResults && (
                 <div className="mt-6 space-y-4">
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -400,6 +402,7 @@ Pikachu,Base Set,58,pokemon,psa,25.00,75.00,PSA 10,1,,12345678,10,"2024-01-01"`;
               )}
             </div>
           )}
+          */}
 
           {/* Danger Zone Tab */}
           {activeTab === 'danger' && (
