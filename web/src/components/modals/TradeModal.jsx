@@ -1051,6 +1051,12 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                           <p className="text-xs text-gray-500 truncate">{selectedTcgProduct.setName}</p>
                         )}
                       </div>
+                      {selectedTcgProduct.marketPrice && (
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500">Market Price</p>
+                          <p className="text-sm font-semibold text-green-700">${selectedTcgProduct.marketPrice.toFixed(2)}</p>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => {

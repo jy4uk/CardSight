@@ -211,7 +211,7 @@ async function main() {
     console.log('\nSaving data to database...');
     await fetcher.saveGroupsToDatabase(data.groups);
     await fetcher.saveProductsToDatabase(data.products);
-    // await fetcher.savePricesToDatabase(data.prices);
+    await fetcher.savePricesToDatabase(data.prices);
     
     // Get final stats
     const stats = await fetcher.getDatabaseStats();

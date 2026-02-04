@@ -830,6 +830,12 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
                     View on TCGPlayer
                   </a>
                 </div>
+                {selectedTcgProduct.marketPrice && (
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Market Price</p>
+                    <p className="text-sm font-semibold text-green-700">${selectedTcgProduct.marketPrice.toFixed(2)}</p>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={() => {

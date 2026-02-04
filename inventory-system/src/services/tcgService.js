@@ -32,7 +32,7 @@ export async function searchTCGProducts(searchTerm, setName = null, cardNumber =
 
   const cleanSearch = searchTerm.trim().toLowerCase();
   
-  // Build query with JOIN to groups table for set name matching
+  // Build query with JOIN to groups table for set name matching and prices table for pricing
   // Use ILIKE for case-insensitive matching
   // Prioritize exact matches, then clean_name matches, then partial matches
   let sql = `
@@ -46,9 +46,15 @@ export async function searchTCGProducts(searchTerm, setName = null, cardNumber =
       p.category_id,
       p.extended_data,
       g.name as set_name,
-      g.abbreviation as set_abbreviation
+      g.abbreviation as set_abbreviation,
+      pr.market_price,
+      pr.low_price,
+      pr.mid_price,
+      pr.high_price,
+      pr.updated_at as price_updated_at
     FROM "card-data-products-tcgcsv" p
     LEFT JOIN "card-data-groups-tcgcsv" g ON p.group_id = g.group_id
+    LEFT JOIN "card-data-prices-tcgcsv" pr ON p.product_id = pr.product_id AND pr.sub_type_name = 'Normal'
     WHERE (
       LOWER(p.clean_name) LIKE $1
       OR LOWER(p.name) LIKE $1
@@ -112,6 +118,11 @@ export async function searchTCGProducts(searchTerm, setName = null, cardNumber =
         cardNumber: getExtValue('Number'),
         rarity: getExtValue('Rarity'),
         extendedData: extData,
+        marketPrice: row.market_price ? parseFloat(row.market_price) : null,
+        lowPrice: row.low_price ? parseFloat(row.low_price) : null,
+        midPrice: row.mid_price ? parseFloat(row.mid_price) : null,
+        highPrice: row.high_price ? parseFloat(row.high_price) : null,
+        priceUpdatedAt: row.price_updated_at,
       };
     });
   } catch (err) {
