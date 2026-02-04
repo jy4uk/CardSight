@@ -357,7 +357,7 @@ export default function BarcodeGeneratorPage() {
 
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-8">
+    <div data-tutorial="barcodes-page" className="min-h-screen bg-slate-50 dark:bg-slate-900 flex items-center justify-center p-8">
       <div className="max-w-2xl w-full">
         {/* Header */}
         <div className="text-center mb-8">

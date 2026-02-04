@@ -25,6 +25,7 @@ import MobileBottomNav from './components/MobileBottomNav';
 import { useCart } from './context/CartContext';
 import { useTheme } from './context/ThemeContext';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
+import { useTutorial } from './hooks/useTutorial';
 import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode } from './api';
 import { Toaster } from 'react-hot-toast';
 
@@ -153,6 +154,18 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
   const [inventorySort, setInventorySort] = useState('price_high'); // 'newest', 'oldest', 'price_high', 'price_low'
   const [showSettings, setShowSettings] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+
+  // Tutorial system
+  const { startTutorial, resetTutorial } = useTutorial(isAuthenticated, setCurrentView);
+
+  // Start tutorial for first-time users after initial load
+  useEffect(() => {
+    if (!loading && inventory !== null) {
+      // Small delay to ensure UI is fully rendered
+      const timer = setTimeout(() => startTutorial(), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, startTutorial]);
 
   // Cart system
   const { addToCart, setError: setCartError, cartCount, setIsCartOpen } = useCart();
@@ -496,7 +509,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
               </div>
               
               {/* Navigation Tabs - Pill Style */}
-              <div className="hidden sm:flex gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
+              <div data-tutorial="nav-tabs" className="hidden sm:flex gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700/50">
                 <button
                   onClick={() => setCurrentView('inventory')}
                   className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
@@ -595,6 +608,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
               )}
               {/* Cart Button */}
               <button
+                data-tutorial="cart-button"
                 onClick={() => setIsCartOpen(true)}
                 className="relative p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 title="Shopping Cart"
@@ -610,6 +624,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
               {isAuthenticated ? (
                 <>
                   <button
+                    data-tutorial="settings-button"
                     onClick={() => setShowSettings(true)}
                     className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-600 dark:text-slate-400 hover:text-blue-600"
                     title="Settings"
@@ -782,7 +797,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
       {currentView === 'inventory' ? (
         <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
               {/* Search & Filters */}
-              <div className="mb-4">
+              <div data-tutorial="search-filter" className="mb-4">
                 <SearchFilter
                   searchQuery={searchQuery}
                   onSearchChange={setSearchQuery}
@@ -960,7 +975,14 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
 
       {/* Account Settings Modal */}
       {showSettings && (
-        <AccountSettings onClose={() => setShowSettings(false)} />
+        <AccountSettings 
+          onClose={() => setShowSettings(false)} 
+          onRestartTutorial={() => {
+            setShowSettings(false);
+            resetTutorial();
+            setTimeout(() => startTutorial(true), 300);
+          }}
+        />
       )}
 
       {/* Toast Notifications */}

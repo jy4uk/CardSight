@@ -64,13 +64,14 @@ export default function IntakePage({
         Skip to main content
       </a>
 
-      <main id="main-content" className="max-w-7xl mx-auto px-3 sm:px-4 py-4 pb-24 sm:pb-4">
+      <main id="main-content" data-tutorial="intake-page" className="max-w-7xl mx-auto px-3 sm:px-4 py-4 pb-24 sm:pb-4">
         <h1 className="sr-only">Intake Dashboard</h1>
         
         {/* Mobile: Stacked full-height sections with scroll | Desktop: 2x2 Grid */}
         <div className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:h-[calc(100vh-8rem)]">
           {/* Purchases */}
           <section 
+            data-tutorial="purchase-panel"
             className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col ${expandedSections.purchases ? 'min-h-[70vh] sm:min-h-[50vh] lg:min-h-0' : ''}`}
             aria-labelledby="purchases-heading"
           >
@@ -91,6 +92,7 @@ export default function IntakePage({
                 </button>
                 <button
                   type="button"
+                  data-tutorial="record-purchase-btn"
                   onClick={() => setShowPurchaseModal(true)}
                   className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl hover:bg-emerald-700 transition-colors min-h-[44px]"
                   aria-label="Record new purchase"
@@ -112,6 +114,7 @@ export default function IntakePage({
 
           {/* Trades */}
           <section 
+            data-tutorial="trade-panel"
             className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col ${expandedSections.trades ? 'min-h-[70vh] sm:min-h-[50vh] lg:min-h-0' : ''}`}
             aria-labelledby="trades-heading"
           >
@@ -132,6 +135,7 @@ export default function IntakePage({
                 </button>
                 <button
                   type="button"
+                  data-tutorial="record-trade-btn"
                   onClick={() => onOpenTradeModal?.()}
                   className="flex items-center gap-1.5 px-4 py-2.5 bg-violet-600 text-white text-sm font-semibold rounded-xl hover:bg-violet-700 transition-colors min-h-[44px]"
                   aria-label="Record new trade"
@@ -159,6 +163,7 @@ export default function IntakePage({
 
           {/* Saved Deals */}
           <section 
+            data-tutorial="saved-deals-section"
             className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col ${expandedSections.savedDeals ? 'min-h-[70vh] sm:min-h-[50vh] lg:min-h-0' : ''}`}
             aria-labelledby="saved-deals-heading"
           >
@@ -191,6 +196,7 @@ export default function IntakePage({
 
           {/* Pending Barcodes */}
           <section 
+            data-tutorial="pending-barcodes-section"
             className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col ${expandedSections.pendingBarcodes ? 'min-h-[70vh] sm:min-h-[50vh] lg:min-h-0' : ''}`}
             aria-labelledby="pending-barcodes-heading"
           >

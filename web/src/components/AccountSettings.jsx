@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { X, User, Upload, Trash2, AlertTriangle, Save, Loader2 } from 'lucide-react';
+import { X, User, Upload, Trash2, AlertTriangle, Save, Loader2, HelpCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContextNew';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
 import apiClient from '../utils/apiClient';
 
-export default function AccountSettings({ onClose }) {
+export default function AccountSettings({ onClose, onRestartTutorial }) {
   const { user, setUser, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   
@@ -318,6 +318,23 @@ Pikachu,Base Set,58,pokemon,psa,25.00,75.00,PSA 10,1,,12345678,10,"2024-01-01"`;
                   </button>
                 </div>
               </form>
+
+              {/* Tutorial Section */}
+              {onRestartTutorial && (
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Help & Tutorial</h3>
+                  <button
+                    onClick={onRestartTutorial}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors font-medium"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    Show Tutorial Again
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Take a guided tour of CardSight's features
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
