@@ -5,7 +5,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "https://cardpilot-production.up.railway.app/api/:match*"
+      "destination": "https://cardsight-production.up.railway.app/api/:match*"
     }
   ]
 }
