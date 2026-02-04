@@ -1,4 +1,4 @@
-# CardPilot Frontend - WCAG 2.0 AA Accessibility Refactoring
+# CardSight Frontend - WCAG 2.0 AA Accessibility Refactoring
 
 **Status:** In Progress  
 **Compliance Target:** WCAG 2.0 AA  
@@ -8,7 +8,7 @@
 
 ## Overview
 
-Comprehensive accessibility refactoring to ensure CardPilot meets WCAG 2.0 AA standards with full keyboard navigability and optimized mobile touch controls.
+Comprehensive accessibility refactoring to ensure CardSight meets WCAG 2.0 AA standards with full keyboard navigability and optimized mobile touch controls.
 
 ---
 

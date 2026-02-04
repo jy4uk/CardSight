@@ -1,4 +1,4 @@
-# CardPilot Accessibility Implementation - Progress Summary
+# CardSight Accessibility Implementation - Progress Summary
 
 **Date:** February 3, 2026  
 **Target:** WCAG 2.0 AA Compliance  

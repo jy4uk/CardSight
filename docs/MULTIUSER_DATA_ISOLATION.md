@@ -2,7 +2,7 @@
 
 ## Overview
 
-All Intake tab data (trades, pending barcodes, saved deals) and Insights page data are now properly scoped to the logged-in user. This ensures complete data isolation between users in the multi-tenant CardPilot application.
+All Intake tab data (trades, pending barcodes, saved deals) and Insights page data are now properly scoped to the logged-in user. This ensures complete data isolation between users in the multi-tenant CardSight application.
 
 ---
 

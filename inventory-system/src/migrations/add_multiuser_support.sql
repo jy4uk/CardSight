@@ -53,7 +53,7 @@ $$ language 'plpgsql';
 --     FOR EACH ROW EXECUTE FUNCTION update_users_updated_at();
 
 -- Add comments for documentation
-COMMENT ON TABLE users IS 'User accounts for multi-tenant CardPilot application';
+COMMENT ON TABLE users IS 'User accounts for multi-tenant CardSight application';
 COMMENT ON COLUMN inventory.user_id IS 'Foreign key to users table for multi-tenant data isolation';
 COMMENT ON COLUMN transactions.user_id IS 'Foreign key to users table for multi-tenant data isolation';
 COMMENT ON COLUMN trades.user_id IS 'Foreign key to users table for multi-tenant data isolation';

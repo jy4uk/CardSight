@@ -771,7 +771,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-6xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-slate-800 w-full sm:max-w-6xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-indigo-600">
           <h2 className="text-xl font-semibold text-white flex items-center gap-2">
@@ -789,7 +789,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
           {/* Trade Info Row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 <User className="w-4 h-4 inline mr-1" />
                 Customer Name
               </label>
@@ -798,11 +798,11 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Optional"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 <Percent className="w-4 h-4 inline mr-1" />
                 Avg Trade %
               </label>
@@ -810,12 +810,12 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                 type="text"
                 value={`${avgTradePercentage}%`}
                 disabled
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-slate-400"
                 title="Calculated from individual card percentages"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 <Calendar className="w-4 h-4 inline mr-1" />
                 Trade Date
               </label>
@@ -823,17 +823,17 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                 type="date"
                 value={tradeDate}
                 onChange={(e) => setTradeDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Notes</label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Optional notes"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500"
               />
             </div>
           </div>
@@ -841,9 +841,9 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
           {/* Two Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             {/* Trade-In Section (Customer's cards coming IN) */}
-            <div className="border border-green-200 rounded-lg p-4 bg-green-50">
+            <div className="border border-green-200 dark:border-green-800 rounded-lg p-4 bg-green-50 dark:bg-green-900/20">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-green-800 flex items-center gap-2">
+                <h3 className="font-semibold text-green-800 dark:text-green-400 flex items-center gap-2">
                   <ArrowRight className="w-4 h-4" />
                   Cards Coming IN (from customer)
                 </h3>
@@ -858,7 +858,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
 
               {/* Inline Add Card Form */}
               {showAddTradeInForm && (
-                <div className="bg-white border border-green-300 rounded-lg p-3 mb-3 space-y-3">
+                <div className="bg-white dark:bg-slate-800 border border-green-300 dark:border-green-700 rounded-lg p-3 mb-3 space-y-3">
                   {/* Barcode Input for PSA lookup */}
                   <div className="relative">
                     <input
@@ -867,7 +867,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                       value={tradeInForm.barcode_id}
                       onChange={(e) => handleBarcodeChange(e.target.value)}
                       placeholder="Scan barcode or enter PSA cert #..."
-                      className="w-full px-2 py-2 pr-8 border border-gray-300 rounded text-sm font-mono focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                      className="w-full px-2 py-2 pr-8 border border-gray-300 dark:border-slate-600 rounded text-sm font-mono bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-green-500 focus:border-green-500"
                       autoComplete="off"
                     />
                     <Scan className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -889,14 +889,14 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                       value={tradeInForm.card_name}
                       onChange={(e) => handleTradeInFieldChange('card_name', e.target.value)}
                       placeholder="Card name *"
-                      className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                      className="px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                     />
                     <input
                       type="text"
                       value={tradeInForm.set_name}
                       onChange={(e) => handleTradeInFieldChange('set_name', e.target.value)}
                       placeholder="Set name"
-                      className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                      className="px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                     />
                   </div>
 
@@ -995,15 +995,15 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                       value={tradeInForm.card_number}
                       onChange={(e) => handleTradeInFieldChange('card_number', e.target.value)}
                       placeholder="Card #"
-                      className="px-2 py-1.5 border border-gray-300 rounded text-sm"
+                      className="px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                     />
                     <div className="col-span-2 flex items-center gap-1">
-                      <span className="text-gray-500 text-sm">$</span>
+                      <span className="text-gray-500 dark:text-slate-400 text-sm">$</span>
                       <input
                         value={tradeInForm.card_value}
                         onChange={(e) => setTradeInForm(prev => ({ ...prev, card_value: e.target.value }))}
                         placeholder="Market Value *"
-                        className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-sm min-w-0"
+                        className="flex-1 px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm min-w-0 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                       />
                     </div>
                     <div className="flex items-center gap-1">
@@ -1013,9 +1013,9 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                         placeholder="%"
                         min="0"
                         max="100"
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                        className="w-full px-2 py-1.5 border border-gray-300 dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                       />
-                      <span className="text-gray-500 text-sm shrink-0">%</span>
+                      <span className="text-gray-500 dark:text-slate-400 text-sm shrink-0">%</span>
                     </div>
                   </div>
 
@@ -1126,7 +1126,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                         className={`px-2 py-1 rounded text-xs font-medium transition-colors
                           ${tradeInForm.game === g.id
                             ? 'bg-green-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                           }`}
                       >
                         {g.label}
@@ -1144,7 +1144,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                         className={`px-2 py-1 rounded text-xs font-medium transition-colors
                           ${tradeInForm.card_type === t.id
                             ? 'bg-green-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                           }`}
                       >
                         {t.label}
@@ -1163,7 +1163,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                           className={`px-2 py-1 rounded text-xs font-medium transition-colors
                             ${tradeInForm.condition === cond
                               ? 'bg-green-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
                             }`}
                         >
                           {cond}
@@ -1175,7 +1175,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                       <select
                         value={tradeInForm.grade}
                         onChange={(e) => setTradeInForm(prev => ({ ...prev, grade: e.target.value }))}
-                        className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        className="px-2 py-1 border border-gray-300 dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                       >
                         <option value="">Grade</option>
                         {GRADES.map((grade) => (
@@ -1191,7 +1191,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                         className={`px-2 py-1 border rounded text-xs font-medium transition-colors
                           ${tradeInForm.grade_qualifier === '.5'
                             ? 'bg-green-600 text-white border-green-600'
-                            : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                            : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:bg-gray-200 dark:hover:bg-slate-600'
                           }`}
                       >
                         .5
@@ -1210,7 +1210,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     <button
                       type="button"
                       onClick={() => setShowAddTradeInForm(false)}
-                      className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-sm font-medium hover:bg-gray-300"
+                      className="px-3 py-1.5 bg-gray-200 dark:bg-slate-600 text-gray-700 dark:text-slate-200 rounded text-sm font-medium hover:bg-gray-300 dark:hover:bg-slate-500"
                     >
                       Cancel
                     </button>
@@ -1223,7 +1223,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                 {tradeInItems.map((item, index) => (
                   <div 
                     key={item.id} 
-                    className={`rounded-lg p-2 ${editingTradeInIndex === index ? 'bg-blue-50 border border-blue-200' : 'bg-white border border-green-200'}`}
+                    className={`rounded-lg p-2 ${editingTradeInIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700' : 'bg-white dark:bg-slate-700 border border-green-200 dark:border-green-700'}`}
                   >
                     {editingTradeInIndex === index ? (
                       /* Editing Mode */
@@ -1292,8 +1292,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                             <img src={item.image_url} alt="" className="w-10 h-14 object-cover rounded" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm truncate">{item.card_name}</div>
-                            <div className="text-xs text-gray-500 truncate">
+                            <div className="font-medium text-sm text-gray-900 dark:text-slate-100 truncate">{item.card_name}</div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400 truncate">
                               {item.set_name} • {getConditionOrGrade(item)}
                             </div>
                           </div>
@@ -1329,26 +1329,26 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                   </div>
                 ))}
                 {tradeInItems.length === 0 && !showAddTradeInForm && (
-                  <p className="text-gray-500 text-sm text-center py-4">No cards added yet</p>
+                  <p className="text-gray-500 dark:text-slate-400 text-sm text-center py-4">No cards added yet</p>
                 )}
               </div>
 
-              <div className="mt-3 pt-3 border-t border-green-200">
+              <div className="mt-3 pt-3 border-t border-green-200 dark:border-green-700">
                 <div className="flex justify-between text-sm">
-                  <span className="text-green-700">Total Value:</span>
-                  <span className="font-semibold">${tradeInTotal.toFixed(2)}</span>
+                  <span className="text-green-700 dark:text-green-400">Total Value:</span>
+                  <span className="font-semibold text-gray-900 dark:text-slate-100">${tradeInTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-green-700">Trade Value (avg {avgTradePercentage}%):</span>
-                  <span className="font-bold text-green-800">${tradeInValue.toFixed(2)}</span>
+                  <span className="text-green-700 dark:text-green-400">Trade Value (avg {avgTradePercentage}%):</span>
+                  <span className="font-bold text-green-800 dark:text-green-300">${tradeInValue.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
             {/* Trade-Out Section (Your cards going OUT) */}
-            <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+            <div className="border border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                <h3 className="font-semibold text-blue-800 dark:text-blue-400 flex items-center gap-2">
                   <ArrowLeft className="w-4 h-4" />
                   Cards Going OUT (to customer)
                 </h3>
@@ -1367,18 +1367,18 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     }}
                     onFocus={() => setShowTradeOutDropdown(true)}
                     placeholder="Search by name, set, or barcode..."
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 
                 {/* Dropdown */}
                 {showTradeOutDropdown && filteredTradeOutItems.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg max-h-64 overflow-y-auto">
                     {filteredTradeOutItems.map(item => (
                       <button
                         key={item.id}
                         onClick={() => addTradeOutItem(item)}
-                        className="w-full flex items-center gap-3 p-2 hover:bg-blue-50 text-left border-b border-gray-100 last:border-0"
+                        className="w-full flex items-center gap-3 p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-left border-b border-gray-100 dark:border-slate-700 last:border-0"
                       >
                         {item.image_url ? (
                           <img src={item.image_url} alt="" className="w-10 h-14 object-cover rounded" />
@@ -1388,12 +1388,12 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">{item.card_name}</div>
-                          <div className="text-xs text-gray-500 truncate">
+                          <div className="font-medium text-sm text-gray-900 dark:text-slate-100 truncate">{item.card_name}</div>
+                          <div className="text-xs text-gray-500 dark:text-slate-400 truncate">
                             {item.set_name} • {getConditionOrGrade(item)}
                           </div>
                         </div>
-                        <div className="font-semibold text-sm text-blue-600">
+                        <div className="font-semibold text-sm text-blue-600 dark:text-blue-400">
                           ${parseFloat(item.front_label_price || 0).toFixed(2)}
                         </div>
                       </button>
@@ -1405,7 +1405,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
               {/* Trade-Out Items List */}
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {tradeOutItems.map((item, index) => (
-                  <div key={item.inventory_id} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-blue-200">
+                  <div key={item.inventory_id} className="flex gap-2 items-center bg-white dark:bg-slate-700 p-2 rounded-lg border border-blue-200 dark:border-blue-700">
                     {item.image_url ? (
                       <img src={item.image_url} alt="" className="w-10 h-14 object-cover rounded" />
                     ) : (
@@ -1414,85 +1414,85 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{item.card_name}</div>
-                      <div className="text-xs text-gray-500 truncate">
+                      <div className="font-medium text-sm text-gray-900 dark:text-slate-100 truncate">{item.card_name}</div>
+                      <div className="text-xs text-gray-500 dark:text-slate-400 truncate">
                         {item.set_name} • {getConditionOrGrade(item)}
                       </div>
                     </div>
-                    <span className="font-semibold text-sm">${parseFloat(item.card_value).toFixed(2)}</span>
+                    <span className="font-semibold text-sm text-gray-900 dark:text-slate-100">${parseFloat(item.card_value).toFixed(2)}</span>
                     <button onClick={() => removeTradeOutItem(index)} className="p-1 text-red-500 hover:bg-red-50 rounded">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
                 {tradeOutItems.length === 0 && (
-                  <p className="text-gray-500 text-sm text-center py-4">Search and select cards from your inventory</p>
+                  <p className="text-gray-500 dark:text-slate-400 text-sm text-center py-4">Search and select cards from your inventory</p>
                 )}
               </div>
 
-              <div className="mt-3 pt-3 border-t border-blue-200">
+              <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
                 <div className="flex justify-between text-sm">
-                  <span className="text-blue-700">Total Value:</span>
-                  <span className="font-bold text-blue-800">${tradeOutTotal.toFixed(2)}</span>
+                  <span className="text-blue-700 dark:text-blue-400">Total Value:</span>
+                  <span className="font-bold text-blue-800 dark:text-blue-300">${tradeOutTotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Summary Section */}
-          <div className="bg-gray-100 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <div className="bg-gray-100 dark:bg-slate-700 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-800 dark:text-slate-100 mb-3 flex items-center gap-2">
               <DollarSign className="w-4 h-4" />
               Trade Summary
             </h3>
             <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
               <div>
-                <span className="text-gray-600">Customer Trade Value:</span>
-                <div className="font-bold text-green-600">${tradeInValue.toFixed(2)}</div>
+                <span className="text-gray-600 dark:text-slate-400">Customer Trade Value:</span>
+                <div className="font-bold text-green-600 dark:text-green-400">${tradeInValue.toFixed(2)}</div>
               </div>
               <div>
-                <span className="text-gray-600">Your Cards Value:</span>
-                <div className="font-bold text-blue-600">${tradeOutTotal.toFixed(2)}</div>
+                <span className="text-gray-600 dark:text-slate-400">Your Cards Value:</span>
+                <div className="font-bold text-blue-600 dark:text-blue-400">${tradeOutTotal.toFixed(2)}</div>
               </div>
               <div>
-                <span className="text-gray-600">Difference:</span>
+                <span className="text-gray-600 dark:text-slate-400">Difference:</span>
                 <div className={`font-bold ${difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {difference >= 0 ? '+' : ''}{difference.toFixed(2)}
                 </div>
               </div>
               <div>
-                <span className="text-gray-600">Cash Settlement:</span>
+                <span className="text-gray-600 dark:text-slate-400">Cash Settlement:</span>
                 <div className="font-bold">
                   {difference > 0 ? (
-                    <span className="text-orange-600">Pay customer ${cashToCustomer.toFixed(2)}</span>
+                    <span className="text-orange-600 dark:text-orange-400">Pay customer ${cashToCustomer.toFixed(2)}</span>
                   ) : difference < 0 ? (
-                    <span className="text-green-600">Receive ${cashFromCustomer.toFixed(2)}</span>
+                    <span className="text-green-600 dark:text-green-400">Receive ${cashFromCustomer.toFixed(2)}</span>
                   ) : (
-                    <span className="text-gray-600">Even trade</span>
+                    <span className="text-gray-600 dark:text-slate-400">Even trade</span>
                   )}
                 </div>
               </div>
             </div>
 
             {/* Manual Cash Override */}
-            <div className="mt-3 pt-3 border-t border-gray-300 grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="mt-3 pt-3 border-t border-gray-300 dark:border-slate-600 grid grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="text-xs text-gray-600">Cash to Customer (override)</label>
+                <label className="text-xs text-gray-600 dark:text-slate-400">Cash to Customer (override)</label>
                 <input
                   inputMode="decimal"
                   value={cashToCustomer}
                   onChange={(e) => setCashToCustomer(parseFloat(e.target.value) || 0)}
-                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                  className="w-full px-2 py-1 border border-gray-300 dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100"
                   step="0.01"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-600">Cash from Customer (override)</label>
+                <label className="text-xs text-gray-600 dark:text-slate-400">Cash from Customer (override)</label>
                 <input
                   inputMode="decimal"
                   value={cashFromCustomer}
                   onChange={(e) => setCashFromCustomer(parseFloat(e.target.value) || 0)}
-                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                  className="w-full px-2 py-1 border border-gray-300 dark:border-slate-600 rounded text-sm bg-white dark:bg-slate-600 text-gray-900 dark:text-slate-100"
                   step="0.01"
                 />
               </div>
@@ -1553,14 +1553,14 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                className="px-4 py-2 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => setShowSaveDialog(true)}
                 disabled={tradeInItems.length === 0 && tradeOutItems.length === 0}
-                className="px-4 py-2 border border-amber-400 text-amber-600 font-medium rounded-lg hover:bg-amber-50 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                className="px-4 py-2 border border-amber-400 dark:border-amber-500 text-amber-600 dark:text-amber-400 font-medium rounded-lg hover:bg-amber-50 dark:hover:bg-amber-900/30 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
               >
                 <Bookmark className="w-4 h-4" />
                 Save for Later

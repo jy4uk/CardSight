@@ -83,7 +83,7 @@ If you have existing users, you need to assign them usernames:
 
 ```sql
 -- Connect to your PostgreSQL database
-psql -d cardpilot
+psql -d cardsight
 
 -- Assign usernames to existing users
 UPDATE users SET username = 'user1' WHERE id = 1;

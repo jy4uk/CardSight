@@ -112,7 +112,7 @@ CREATE TABLE beta_codes (
 **File:** `/web/src/components/LandingPage.jsx`
 
 **Features:**
-- ✅ Branded hero section with Card Pilot logo
+- ✅ Branded hero section with Card Sight logo
 - ✅ Welcome message and value proposition
 - ✅ "Get Started" button (opens signup modal)
 - ✅ "Log In" button (opens login modal)

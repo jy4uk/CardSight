@@ -1,6 +1,6 @@
-# Card Pilot Deployment Guide
+# Card Sight Deployment Guide
 
-Deploy your Card Pilot inventory system using **Vercel** (frontend) + **Railway** (backend + PostgreSQL).
+Deploy your Card Sight inventory system using **Vercel** (frontend) + **Railway** (backend + PostgreSQL).
 
 ## Prerequisites
 

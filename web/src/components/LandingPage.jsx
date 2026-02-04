@@ -36,7 +36,7 @@ export default function LandingPage() {
 
           {/* Heading */}
           <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6">
-            Welcome to <span className="text-blue-600">Card Pilot</span>
+            Welcome to <span className="text-blue-600">Card Sight</span>
           </h1>
           
           <p className="text-xl text-gray-600 mb-4 max-w-2xl mx-auto">
@@ -44,7 +44,7 @@ export default function LandingPage() {
           </p>
           
           <p className="text-lg text-gray-500 mb-12 max-w-xl mx-auto">
-            Join vendors across the country who trust Card Pilot to streamline their business.
+            Join vendors across the country who trust Card Sight to streamline their business.
           </p>
 
           {/* CTA Buttons */}
@@ -69,7 +69,7 @@ export default function LandingPage() {
           {/* Random Vendor Button */}
           <div className="border-t border-gray-200 pt-12">
             <p className="text-sm text-gray-500 mb-4">
-              Want to see Card Pilot in action?
+              Want to see Card Sight in action?
             </p>
             <button
               onClick={handleRandomVendor}
@@ -129,7 +129,7 @@ export default function LandingPage() {
         <div className="mt-16 text-center">
           <div className="inline-block bg-yellow-50 border border-yellow-200 rounded-lg px-6 py-3">
             <p className="text-sm text-yellow-800">
-              <span className="font-semibold">Beta Access:</span> Card Pilot is currently in beta. 
+              <span className="font-semibold">Beta Access:</span> Card Sight is currently in beta. 
               A beta access code is required to sign up.
             </p>
           </div>

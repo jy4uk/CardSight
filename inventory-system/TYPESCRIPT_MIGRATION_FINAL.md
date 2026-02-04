@@ -283,7 +283,7 @@ class InventoryService {
 
 ## 🎉 Migration Complete!
 
-The CardPilot inventory-system backend is now **fully TypeScript** with:
+The CardSight inventory-system backend is now **fully TypeScript** with:
 
 - **Clean architecture** (Service Layer pattern)
 - **Type-safe** database queries

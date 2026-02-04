@@ -28,12 +28,12 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Check for existing session
-    const savedUser = localStorage.getItem('cardpilot_user');
+    const savedUser = localStorage.getItem('cardsight_user');
     if (savedUser) {
       try {
         setUser(JSON.parse(savedUser));
       } catch (e) {
-        localStorage.removeItem('cardpilot_user');
+        localStorage.removeItem('cardsight_user');
       }
     } else {
       // Auto-login as guest by default (public inventory view)
@@ -75,7 +75,7 @@ export function AuthProvider({ children }) {
       const data = await response.json();
       const userData = { role: data.role, loginTime: Date.now() };
       setUser(userData);
-      localStorage.setItem('cardpilot_user', JSON.stringify(userData));
+      localStorage.setItem('cardsight_user', JSON.stringify(userData));
       setShowLoginModal(false); // Close modal on successful login
       return { success: true };
     } catch (error) {
@@ -91,13 +91,13 @@ export function AuthProvider({ children }) {
     // Revert to guest mode instead of null (keeps public inventory visible)
     const guestUser = { role: 'public', loginTime: Date.now() };
     setUser(guestUser);
-    localStorage.removeItem('cardpilot_user');
+    localStorage.removeItem('cardsight_user');
   };
 
   const continueAsGuest = () => {
     const guestUser = { role: 'public', loginTime: Date.now() };
     setUser(guestUser);
-    localStorage.setItem('cardpilot_user', JSON.stringify(guestUser));
+    localStorage.setItem('cardsight_user', JSON.stringify(guestUser));
   };
 
   const hasFeature = (feature) => {

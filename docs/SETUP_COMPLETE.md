@@ -115,7 +115,7 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 # Add to .env:
 ACCESS_TOKEN_SECRET=<generated-secret-1>
 REFRESH_TOKEN_SECRET=<generated-secret-2>
-ADMIN_PASSWORD=cardpilot2024
+ADMIN_PASSWORD=cardsight2024
 FRONTEND_URL=http://localhost:5173
 ```
 

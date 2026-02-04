@@ -3,7 +3,7 @@ import express from 'express';
 const router = express.Router();
 
 // Simple password-based auth - set your admin password in environment variables
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'cardpilot2024';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'cardsight2024';
 
 router.post('/login', (req, res) => {
   try {

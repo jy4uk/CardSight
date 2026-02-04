@@ -2,7 +2,7 @@
 
 ## Overview
 
-CardPilot uses a secure Access Token + Refresh Token authentication pattern with dual authentication modes:
+CardSight uses a secure Access Token + Refresh Token authentication pattern with dual authentication modes:
 testpassword
 1. **User Authentication** - Full user account system with signup, login, password reset
 2. **Admin Mode** - Legacy password-based admin toggle (preserved for backward compatibility)

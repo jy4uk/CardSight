@@ -1,4 +1,4 @@
-# CardPilot Accessibility Refactoring - Completion Summary
+# CardSight Accessibility Refactoring - Completion Summary
 
 **Date:** February 3, 2026  
 **Target:** WCAG 2.0 AA Compliance  
@@ -544,7 +544,7 @@ previousFocusRef.current.focus();
 
 ## 🎉 Conclusion
 
-The CardPilot accessibility refactoring is **50% complete** with a **solid foundation** established. Core UI components (Button, Modal, Input) are fully WCAG 2.0 AA compliant, and main pages (IntakePage, AccountSettings) have proper semantic structure and keyboard navigation.
+The CardSight accessibility refactoring is **50% complete** with a **solid foundation** established. Core UI components (Button, Modal, Input) are fully WCAG 2.0 AA compliant, and main pages (IntakePage, AccountSettings) have proper semantic structure and keyboard navigation.
 
 **Key accomplishments:**
 - ✅ Comprehensive accessibility utilities and CSS

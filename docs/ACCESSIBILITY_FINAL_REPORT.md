@@ -1,4 +1,4 @@
-# CardPilot Accessibility Refactoring - Final Report
+# CardSight Accessibility Refactoring - Final Report
 
 **Date:** February 3, 2026  
 **Target:** WCAG 2.0 AA Compliance  
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Successfully implemented comprehensive WCAG 2.0 AA accessibility improvements across the CardPilot frontend, establishing a solid foundation with reusable patterns and components. Core UI components are fully compliant, main pages have proper semantic structure, and critical user flows (authentication, settings, intake) are keyboard accessible with proper ARIA attributes.
+Successfully implemented comprehensive WCAG 2.0 AA accessibility improvements across the CardSight frontend, establishing a solid foundation with reusable patterns and components. Core UI components are fully compliant, main pages have proper semantic structure, and critical user flows (authentication, settings, intake) are keyboard accessible with proper ARIA attributes.
 
 ---
 
@@ -400,7 +400,7 @@ Chrome Extension → Scan page
 
 ## 🎉 Conclusion
 
-The CardPilot accessibility refactoring has achieved **60% completion** with a **solid, production-ready foundation**. Core UI components (Button, Modal, Input) are fully WCAG 2.0 AA compliant and provide automatic accessibility features. Main user flows (authentication, settings, intake) are keyboard accessible with proper ARIA attributes and screen reader support.
+The CardSight accessibility refactoring has achieved **60% completion** with a **solid, production-ready foundation**. Core UI components (Button, Modal, Input) are fully WCAG 2.0 AA compliant and provide automatic accessibility features. Main user flows (authentication, settings, intake) are keyboard accessible with proper ARIA attributes and screen reader support.
 
 ### Key Accomplishments
 - ✅ Comprehensive accessibility infrastructure

@@ -829,6 +829,21 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
               </div>
             )}
 
+            {/* Card Ladder Link - for graded cards */}
+            {formData.card_type !== 'raw' && formData.barcode_id && (
+              <a
+                href="https://app.cardladder.com/sales-history"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => {
+                  navigator.clipboard.writeText(formData.barcode_id);
+                }}
+                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                Search on Card Ladder (cert # copied) →
+              </a>
+            )}
+
             {/* Price Row */}
             <div className="grid grid-cols-2 gap-2">
               <div>

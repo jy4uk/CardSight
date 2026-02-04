@@ -1,4 +1,4 @@
-# CardPilot Architecture Documentation
+# CardSight Architecture Documentation
 
 **Last Updated:** February 3, 2026  
 **Version:** 1.0
@@ -7,7 +7,7 @@
 
 ## System Overview
 
-CardPilot is a full-stack trading card inventory management system with multi-user support, real-time inventory tracking, sales processing, trade management, and business analytics.
+CardSight is a full-stack trading card inventory management system with multi-user support, real-time inventory tracking, sales processing, trade management, and business analytics.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -619,7 +619,7 @@ PORT=3000
 
 **Frontend:**
 ```bash
-VITE_API_URL=https://api.cardpilot.com
+VITE_API_URL=https://api.cardsight.com
 ```
 
 ---

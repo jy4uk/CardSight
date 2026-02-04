@@ -68,7 +68,7 @@ export default function LoginModal() {
         </h2>
         {autoShowLogin && (
           <p className="text-sm text-gray-600 mb-4">
-            Please log in to access the CardPilot application.
+            Please log in to access the CardSight application.
           </p>
         )}
 

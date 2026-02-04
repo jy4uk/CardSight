@@ -1,5 +1,5 @@
 /**
- * Accessibility Utilities for CardPilot
+ * Accessibility Utilities for CardSight
  * WCAG 2.0 AA Compliance Helpers
  */
 

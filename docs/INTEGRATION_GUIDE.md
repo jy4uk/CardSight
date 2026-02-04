@@ -2,7 +2,7 @@
 
 ## Quick Start
 
-This guide shows how to integrate the new authentication system into your existing CardPilot application.
+This guide shows how to integrate the new authentication system into your existing CardSight application.
 
 ## Step 1: Update Main App Entry Point
 
@@ -95,7 +95,7 @@ function Header() {
   return (
     <header className="bg-white shadow">
       <div className="flex items-center justify-between p-4">
-        <h1>CardPilot</h1>
+        <h1>CardSight</h1>
         
         <div className="flex items-center gap-4">
           {/* Admin Mode Toggle (Legacy Feature) */}

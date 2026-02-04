@@ -28,7 +28,7 @@
         "react",
         "node"
     ],
-    "author": "Card Pilot",
+    "author": "Card Sight",
     "license": "MIT",
     "dependencies": {
         "@types/bcrypt": "^6.0.0",

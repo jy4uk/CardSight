@@ -1,4 +1,4 @@
-# CardPilot Accessibility Testing Guide
+# CardSight Accessibility Testing Guide
 
 **WCAG 2.0 AA Compliance Testing**  
 **Date:** February 3, 2026
@@ -7,7 +7,7 @@
 
 ## Testing Overview
 
-This guide provides comprehensive testing procedures to verify WCAG 2.0 AA compliance for the CardPilot frontend.
+This guide provides comprehensive testing procedures to verify WCAG 2.0 AA compliance for the CardSight frontend.
 
 ---
 

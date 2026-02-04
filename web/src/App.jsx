@@ -427,7 +427,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user, usernameParam }
                 <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/20">
                   <Package className="w-4 h-4 text-white" />
                 </div>
-                <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Card Pilot</h1>
+                <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Card Sight</h1>
                 {isAuthenticated && (
                   <span className="badge-premium bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-700/50">
                     Admin
