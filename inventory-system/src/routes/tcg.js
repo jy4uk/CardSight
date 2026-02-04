@@ -62,7 +62,7 @@ router.post('/update-prices', async (req, res) => {
     }
 
     // Dynamically import the TCGDataFetcher
-    const { TCGDataFetcher } = await import('../card-data/fetch-tcg-data.ts');
+    const { TCGDataFetcher } = await import('../card-data/fetch-tcg-data.js');
     const fetcher = new TCGDataFetcher();
     
     const startTime = Date.now();
