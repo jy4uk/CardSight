@@ -812,6 +812,7 @@ export default function AddPurchaseModal({ isOpen, onClose, inventoryItems = [],
 
             {/* Selected card preview */}
             {selectedTcgProduct && tcgProducts.length === 0 && (
+              console.log(selectedTcgProduct),
               <div data-tutorial="purchase-selected-card" className="flex items-center gap-3 p-2 bg-green-50 rounded-lg border border-green-200">
                 {selectedTcgProduct.imageUrl && (
                   <img src={selectedTcgProduct.imageUrl} alt={selectedTcgProduct.name} className="w-12 h-auto rounded" />

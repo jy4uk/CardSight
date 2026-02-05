@@ -52,6 +52,11 @@ router.get('/product/:productId', async (req, res) => {
  * POST /api/tcg/update-prices
  * Trigger price update from TCGCSV - should be called daily via cron job
  * Protected endpoint - requires API key or admin auth
+ * 
+ * Query params:
+ * - mode: 'prices' (default, fast - only updates prices for existing groups)
+ *         'full' (slow - updates groups, products, AND prices)
+ * - category: specific category ID to update (default: all configured categories)
  */
 router.post('/update-prices', async (req, res) => {
   try {
@@ -63,7 +68,14 @@ router.post('/update-prices', async (req, res) => {
 
     const startTime = Date.now();
     const BASE_URL = 'https://tcgcsv.com/tcgplayer';
-    const CATEGORY_IDS = [3, 68, 85]; // Pokemon, One Piece, Pokemon Japan
+    const ALL_CATEGORY_IDS = [3, 68, 85]; // Pokemon, One Piece, Pokemon Japan
+    
+    // Parse options
+    const mode = req.query.mode || 'prices'; // 'prices' (fast) or 'full' (slow)
+    const categoryParam = req.query.category;
+    const CATEGORY_IDS = categoryParam ? [parseInt(categoryParam)] : ALL_CATEGORY_IDS;
+    
+    console.log(`[Price Update] Starting in '${mode}' mode for categories: ${CATEGORY_IDS.join(', ')}`);
     
     // Helper to fetch with retry
     async function fetchWithRetry(url, maxRetries = 3) {
@@ -86,38 +98,18 @@ router.post('/update-prices', async (req, res) => {
     
     let totalGroups = 0, totalProducts = 0, totalPrices = 0;
 
-    // Process each category
-    for (const categoryId of CATEGORY_IDS) {
-      console.log(`[Price Update] Processing category ${categoryId}...`);
+    if (mode === 'prices') {
+      // FAST MODE: Only update prices for groups we already have in DB
+      const existingGroups = await query(`
+        SELECT DISTINCT group_id, category_id FROM "card-data-groups-tcgcsv" 
+        WHERE category_id = ANY($1)
+      `, [CATEGORY_IDS]);
       
-      // Fetch groups for this category
-      const groupsData = await fetchWithRetry(`${BASE_URL}/${categoryId}/groups`);
-      const groups = groupsData.results || [];
+      console.log(`[Price Update] Found ${existingGroups.rows.length} existing groups to update prices for`);
       
-      for (const group of groups) {
+      for (const group of existingGroups.rows) {
         try {
-          // Upsert group
-          await query(`
-            INSERT INTO "card-data-groups-tcgcsv" (group_id, name, abbreviation, category_id)
-            VALUES ($1, $2, $3, $4)
-            ON CONFLICT (group_id) DO UPDATE SET name = $2, abbreviation = $3, category_id = $4
-          `, [group.groupId, group.name, group.abbreviation, group.categoryId]);
-          totalGroups++;
-
-          // Fetch and upsert products
-          const productsData = await fetchWithRetry(`${BASE_URL}/${categoryId}/${group.groupId}/products`);
-          for (const product of productsData.results || []) {
-            await query(`
-              INSERT INTO "card-data-products-tcgcsv" (product_id, name, clean_name, image_url, url, group_id, category_id, extended_data)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-              ON CONFLICT (product_id) DO UPDATE SET 
-                name = $2, clean_name = $3, image_url = $4, url = $5, extended_data = $8, updated_at = NOW()
-            `, [product.productId, product.name, product.cleanName, product.imageUrl, product.url, product.groupId, product.categoryId, JSON.stringify(product.extendedData || [])]);
-            totalProducts++;
-          }
-
-          // Fetch and upsert prices
-          const pricesData = await fetchWithRetry(`${BASE_URL}/${categoryId}/${group.groupId}/prices`);
+          const pricesData = await fetchWithRetry(`${BASE_URL}/${group.category_id}/${group.group_id}/prices`);
           for (const price of pricesData.results || []) {
             await query(`
               INSERT INTO "card-data-prices-tcgcsv" (product_id, sub_type_name, low_price, mid_price, high_price, market_price, direct_low_price)
@@ -127,10 +119,60 @@ router.post('/update-prices', async (req, res) => {
             `, [price.productId, price.subTypeName || 'Normal', price.lowPrice, price.midPrice, price.highPrice, price.marketPrice, price.directLowPrice]);
             totalPrices++;
           }
-          
-          console.log(`[Price Update] Group ${group.name}: ${productsData.results?.length || 0} products, ${pricesData.results?.length || 0} prices`);
+          totalGroups++;
+          if (totalGroups % 10 === 0) {
+            console.log(`[Price Update] Processed ${totalGroups}/${existingGroups.rows.length} groups, ${totalPrices} prices so far...`);
+          }
         } catch (groupErr) {
-          console.error(`[Price Update] Error processing group ${group.groupId}:`, groupErr.message);
+          console.error(`[Price Update] Error processing group ${group.group_id}:`, groupErr.message);
+        }
+      }
+    } else {
+      // FULL MODE: Update everything (groups, products, prices)
+      for (const categoryId of CATEGORY_IDS) {
+        console.log(`[Price Update] Processing category ${categoryId}...`);
+        
+        const groupsData = await fetchWithRetry(`${BASE_URL}/${categoryId}/groups`);
+        const groups = groupsData.results || [];
+        
+        for (const group of groups) {
+          try {
+            // Upsert group
+            await query(`
+              INSERT INTO "card-data-groups-tcgcsv" (group_id, name, abbreviation, category_id)
+              VALUES ($1, $2, $3, $4)
+              ON CONFLICT (group_id) DO UPDATE SET name = $2, abbreviation = $3, category_id = $4
+            `, [group.groupId, group.name, group.abbreviation, group.categoryId]);
+            totalGroups++;
+
+            // Fetch and upsert products
+            const productsData = await fetchWithRetry(`${BASE_URL}/${categoryId}/${group.groupId}/products`);
+            for (const product of productsData.results || []) {
+              await query(`
+                INSERT INTO "card-data-products-tcgcsv" (product_id, name, clean_name, image_url, url, group_id, category_id, extended_data)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (product_id) DO UPDATE SET 
+                  name = $2, clean_name = $3, image_url = $4, url = $5, extended_data = $8, updated_at = NOW()
+              `, [product.productId, product.name, product.cleanName, product.imageUrl, product.url, product.groupId, product.categoryId, JSON.stringify(product.extendedData || [])]);
+              totalProducts++;
+            }
+
+            // Fetch and upsert prices
+            const pricesData = await fetchWithRetry(`${BASE_URL}/${categoryId}/${group.groupId}/prices`);
+            for (const price of pricesData.results || []) {
+              await query(`
+                INSERT INTO "card-data-prices-tcgcsv" (product_id, sub_type_name, low_price, mid_price, high_price, market_price, direct_low_price)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                ON CONFLICT (product_id, sub_type_name) DO UPDATE SET 
+                  low_price = $3, mid_price = $4, high_price = $5, market_price = $6, direct_low_price = $7, updated_at = NOW()
+              `, [price.productId, price.subTypeName || 'Normal', price.lowPrice, price.midPrice, price.highPrice, price.marketPrice, price.directLowPrice]);
+              totalPrices++;
+            }
+            
+            console.log(`[Price Update] Group ${group.name}: ${productsData.results?.length || 0} products, ${pricesData.results?.length || 0} prices`);
+          } catch (groupErr) {
+            console.error(`[Price Update] Error processing group ${group.groupId}:`, groupErr.message);
+          }
         }
       }
     }
@@ -141,6 +183,7 @@ router.post('/update-prices', async (req, res) => {
     res.json({
       success: true,
       message: 'Price update complete',
+      mode,
       stats: {
         groups: totalGroups,
         products: totalProducts,
