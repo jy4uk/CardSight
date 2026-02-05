@@ -18,7 +18,8 @@
     "start:ts": "node dist/server.js",
     "build": "tsc",
     "type-check": "tsc --noEmit",
-    "migrate": "node src/migrate.js"
+    "migrate": "node src/migrate.js",
+    "fetch:tcg": "tsx src/card-data/fetch-tcg-data.ts"
   },
   "keywords": [],
   "author": "",
