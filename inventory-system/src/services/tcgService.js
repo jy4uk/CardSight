@@ -54,7 +54,12 @@ export async function searchTCGProducts(searchTerm, setName = null, cardNumber =
       pr.updated_at as price_updated_at
     FROM "card-data-products-tcgcsv" p
     LEFT JOIN "card-data-groups-tcgcsv" g ON p.group_id = g.group_id
-    LEFT JOIN "card-data-prices-tcgcsv" pr ON p.product_id = pr.product_id AND pr.sub_type_name = 'Normal'
+    LEFT JOIN LATERAL (
+      SELECT * FROM "card-data-prices-tcgcsv" pr2 
+      WHERE pr2.product_id = p.product_id 
+      ORDER BY CASE WHEN pr2.sub_type_name = 'Normal' THEN 0 ELSE 1 END, pr2.market_price DESC NULLS LAST
+      LIMIT 1
+    ) pr ON true
     WHERE (
       LOWER(p.clean_name) LIKE $1
       OR LOWER(p.name) LIKE $1
