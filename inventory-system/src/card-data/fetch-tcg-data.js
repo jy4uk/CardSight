@@ -1,11 +1,4 @@
-import {
-  GroupsResponse,
-  ProductsResponse,
-  PricesResponse,
-  Group,
-  Product,
-  Price
-} from './api-models.js';
+// Note: Type imports removed - they're TypeScript-only
 import { ParallelDatabaseService } from './parallel-database-service.js';
 import { CATEGORY_CONFIG } from './category-config.js';
 
