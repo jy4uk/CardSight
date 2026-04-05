@@ -119,6 +119,11 @@ async function runMigration() {
     
     console.log('✅ Card shows user_id migration completed!');
 
+    // ── Step 7b: Allow NULL barcode_id for trade-in items ──
+    console.log('\nAllowing NULL barcode_id on inventory...');
+    await query(`ALTER TABLE inventory ALTER COLUMN barcode_id DROP NOT NULL`);
+    console.log('✅ barcode_id NULL constraint dropped!');
+
     // ── Step 8: Trades ──
     console.log('\nRunning trades schema migration...');
     const tradesSqlPath = path.join(__dirname, 'schema-trades.sql');
