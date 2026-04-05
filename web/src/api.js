@@ -97,6 +97,22 @@ export async function deleteInventoryItem(id) {
   return res.data;
 }
 
+export async function fetchRepricePreview() {
+  const res = await apiClient.get('/inventory/reprice-preview');
+  if (!res.data.success) {
+    throw new Error(res.data.error || 'Failed to fetch reprice preview');
+  }
+  return res.data;
+}
+
+export async function bulkReprice(updates) {
+  const res = await apiClient.put('/inventory/bulk-reprice', { updates });
+  if (!res.data.success) {
+    throw new Error(res.data.error || 'Failed to bulk reprice');
+  }
+  return res.data;
+}
+
 export async function removeSale(itemId, restoreToInventory = true) {
   const res = await apiClient.post(`/inventory/${itemId}/remove-sale`, { restore_to_inventory: restoreToInventory });
   return res.data;

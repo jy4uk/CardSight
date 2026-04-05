@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart, Sun, Moon, Settings, MessageSquare } from 'lucide-react';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart, Sun, Moon, Settings, MessageSquare, DollarSign } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
@@ -11,6 +11,7 @@ import LoginModal from './components/LoginModal';
 import TradeModal from './components/modals/TradeModal';
 import TradeHistory from './components/TradeHistory';
 import IntakePage from './components/IntakePage';
+import RepricePage from './components/RepricePage';
 import PendingBarcodes from './components/PendingBarcodes';
 import BarcodeGeneratorPage from './components/BarcodeGeneratorPage';
 import CartDrawer from './components/CartDrawer';
@@ -144,7 +145,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
   const [editItem, setEditItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [alertModal, setAlertModal] = useState({ isOpen: false, type: 'error', message: '' });
-  const [currentView, setCurrentView] = useState('inventory'); // 'inventory', 'insights', 'intake', or 'barcodes'
+  const [currentView, setCurrentView] = useState('inventory'); // 'inventory', 'insights', 'intake', 'reprice', or 'barcodes'
   const [filters, setFilters] = useState({ condition: null, minPrice: '', maxPrice: '', game: null, cardType: null });
   const [showFilters, setShowFilters] = useState(false);
   const [trades, setTrades] = useState([]);
@@ -546,6 +547,17 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
                       <BarChart3 className="w-4 h-4" />
                       <span className="hidden sm:inline">Insights</span>
                     </button>
+                    <button
+                      onClick={() => setCurrentView('reprice')}
+                      className={`px-2 sm:px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-1 ${
+                        currentView === 'reprice'
+                          ? 'bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                      }`}
+                    >
+                      <DollarSign className="w-4 h-4" />
+                      <span className="hidden sm:inline">Reprice</span>
+                    </button>
                   </>
                 )}
                 {/* Admin-only barcode generator */}
@@ -930,6 +942,8 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
         />
       ) : currentView === 'insights' ? (
         <Insights />
+      ) : currentView === 'reprice' ? (
+        <RepricePage onComplete={loadInventory} />
       ) : currentView === 'barcodes' && hasFeature(FEATURES.BARCODE_GENERATOR) ? (
         <BarcodeGeneratorPage />
       ) : null}

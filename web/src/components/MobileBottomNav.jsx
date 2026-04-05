@@ -1,4 +1,4 @@
-import { Package, ArrowLeftRight, BarChart3, FileText } from 'lucide-react';
+import { Package, ArrowLeftRight, BarChart3, FileText, DollarSign } from 'lucide-react';
 
 export default function MobileBottomNav({ 
   currentView, 
@@ -10,6 +10,7 @@ export default function MobileBottomNav({
     { id: 'inventory', label: 'Inventory', icon: Package },
     { id: 'intake', label: 'Intake', icon: ArrowLeftRight, requiresFeature: 'insights' },
     { id: 'insights', label: 'Insights', icon: BarChart3, requiresFeature: 'insights' },
+    { id: 'reprice', label: 'Reprice', icon: DollarSign, requiresFeature: 'insights' },
     // Barcodes hidden on mobile - only accessible from desktop
   ].filter(item => {
     if (!item.requiresFeature) return true;

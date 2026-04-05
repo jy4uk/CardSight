@@ -226,6 +226,82 @@ router.get('/search-images', async (req, res) => {
   }
 });
 
+// GET /inventory/reprice-preview - Get all IN_STOCK items with TCG market prices for repricing
+router.get('/reprice-preview', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const items = await query(
+      `SELECT 
+        i.id, i.card_name, i.set_name, i.card_number, i.game, i.card_type,
+        i.condition, i.front_label_price, i.purchase_price, i.image_url,
+        i.tcg_product_id, i.grade, i.grade_qualifier, i.barcode_id, i.cert_number,
+        p.url as tcg_product_url,
+        pr.market_price as tcg_market_price,
+        pr.low_price as tcg_low_price,
+        pr.mid_price as tcg_mid_price,
+        pr.updated_at as tcg_price_updated_at
+      FROM inventory i
+      LEFT JOIN "card-data-products-tcgcsv" p ON p.product_id = i.tcg_product_id
+      LEFT JOIN LATERAL (
+        SELECT * FROM "card-data-prices-tcgcsv" pr2
+        WHERE pr2.product_id = i.tcg_product_id
+        ORDER BY CASE WHEN pr2.sub_type_name = 'Normal' THEN 0 ELSE 1 END, pr2.market_price DESC NULLS LAST
+        LIMIT 1
+      ) pr ON i.tcg_product_id IS NOT NULL
+      WHERE i.user_id = $1 AND i.status = 'IN_STOCK'
+      ORDER BY i.front_label_price DESC NULLS LAST`,
+      [userId]
+    );
+    res.json({ success: true, items });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /inventory/bulk-reprice - Bulk update front_label_price for multiple items
+router.put('/bulk-reprice', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { updates } = req.body; // Array of { id, front_label_price }
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ success: false, error: 'Updates array is required' });
+    }
+
+    if (updates.length > 2000) {
+      return res.status(400).json({ success: false, error: 'Maximum 2000 items can be repriced at once' });
+    }
+
+    let updated = 0;
+    const errors = [];
+
+    for (const { id, front_label_price } of updates) {
+      try {
+        const rows = await query(
+          `UPDATE inventory SET front_label_price = $1
+           WHERE id = $2 AND user_id = $3
+           RETURNING id`,
+          [front_label_price, id, userId]
+        );
+        if (rows.length > 0) updated++;
+        else errors.push({ id, error: 'Item not found' });
+      } catch (err) {
+        errors.push({ id, error: err.message });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Updated ${updated} of ${updates.length} items`,
+      updated,
+      total: updates.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Delete inventory item
 router.delete('/:id', async (req, res) => {
   try {
