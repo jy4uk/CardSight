@@ -339,6 +339,18 @@ export const isPSACertNumber = (value) => {
   return /^\d{7,9}$/.test(cleaned);
 };
 
+// Card Lineage API
+export const fetchCardLineage = async (inventoryId) => {
+  try {
+    const response = await apiClient.get(`/inventory/${inventoryId}/lineage`);
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to fetch card lineage');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching card lineage:', error);
+    throw error;
+  }
+};
+
 // TCG Product Search API
 export const searchTCGProducts = async (searchTerm, setName = null, cardNumber = null, limit = 3) => {
   try {

@@ -1,9 +1,32 @@
-import { X, Package, Trash2, Image as ImageIcon, Calendar, DollarSign, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { X, Package, Trash2, Image as ImageIcon, Calendar, DollarSign, ExternalLink, GitBranch, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContextNew';
+import CardLineageTree from './CardLineageTree';
+
+function getTimeInInventory(purchaseDate) {
+  if (!purchaseDate) return null;
+  const start = new Date(purchaseDate);
+  const now = new Date();
+  const diffMs = now - start;
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (days < 1) return 'Today';
+  if (days === 1) return '1 day';
+  if (days < 30) return `${days} days`;
+  const months = Math.floor(days / 30);
+  const remainDays = days % 30;
+  if (months < 12) {
+    return remainDays > 0 ? `${months}mo ${remainDays}d` : `${months}mo`;
+  }
+  const years = Math.floor(months / 12);
+  const remainMonths = months % 12;
+  return remainMonths > 0 ? `${years}y ${remainMonths}mo` : `${years}y`;
+}
 
 export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDelete, onFetchImage, onSell }) {
+  const [activeTab, setActiveTab] = useState('details');
   if (!isOpen || !item) return null;
   const { isAdminMode } = useAuth();
+  const timeInInventory = getTimeInInventory(item.purchase_date || item.created_at);
   const renderDetails = () => {
     return (
       <div className="space-y-4">
@@ -83,6 +106,15 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
                 </div>
               </>
             )}
+            {timeInInventory && item.status === 'IN_STOCK' && (
+              <div>
+                <p className="text-gray-500 dark:text-slate-400">Time in Inventory</p>
+                <p className="font-medium text-gray-900 dark:text-slate-100 flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                  {timeInInventory}
+                </p>
+              </div>
+            )}
           </div>
 
           {isAdminMode && item.notes && (
@@ -136,13 +168,45 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
     );
   };
 
-  
+  const renderHistory = () => {
+    return (
+      <div className="space-y-4">
+        <CardLineageTree itemId={item.id} />
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-800 w-full sm:max-w-xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-800 w-full sm:max-w-3xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800">
+        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-slate-100">Card Details</h2>
+          {isAdminMode && (
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-0.5">
+              <button
+                onClick={() => setActiveTab('details')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                  activeTab === 'details'
+                    ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-slate-100 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+              >
+                Details
+              </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-1 ${
+                  activeTab === 'history'
+                    ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-slate-100 shadow-sm'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                }`}
+              >
+                <GitBranch className="w-3.5 h-3.5" />
+                History
+              </button>
+            </div>
+          )}
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors"
@@ -153,7 +217,7 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
 
         {/* Content */}
         <div className="p-4 sm:p-6 overflow-y-auto max-h-[75vh]">
-          {renderDetails()}
+          {activeTab === 'details' ? renderDetails() : renderHistory()}
         </div>
       </div>
     </div>

@@ -302,6 +302,195 @@ router.put('/bulk-reprice', async (req, res) => {
   }
 });
 
+// GET /inventory/:id/lineage - Get the full provenance/lineage tree for a card
+router.get('/:id/lineage', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const itemId = parseInt(req.params.id, 10);
+    if (isNaN(itemId)) {
+      return res.status(400).json({ success: false, error: 'Invalid item ID' });
+    }
+
+    // Verify the card belongs to this user
+    const [rootCard] = await query(
+      `SELECT id, card_name, set_name, card_number, game, card_type, condition, grade, grade_qualifier,
+              purchase_price, front_label_price, purchase_date, sale_price, sale_date, status, image_url, barcode_id, notes, created_at
+       FROM inventory WHERE id = $1 AND user_id = $2`,
+      [itemId, userId]
+    );
+    if (!rootCard) {
+      return res.status(404).json({ success: false, error: 'Item not found' });
+    }
+
+    // Helper: get trade info for an inventory item
+    const getTradeContext = async (invId, direction) => {
+      const rows = await query(
+        `SELECT ti.*, t.customer_name, t.trade_date, t.trade_percentage, t.id as trade_id
+         FROM trade_items ti
+         JOIN trades t ON ti.trade_id = t.id
+         WHERE ti.inventory_id = $1 AND ti.direction = $2`,
+        [invId, direction]
+      );
+      return rows;
+    };
+
+    // Helper: get sibling items from the same trade
+    const getTradeSiblings = async (tradeId, direction, excludeId) => {
+      return query(
+        `SELECT ti.inventory_id, ti.card_name, ti.set_name, ti.card_value, ti.trade_value,
+                i.status, i.image_url, i.front_label_price, i.purchase_price, i.purchase_date, i.card_type, i.grade, i.condition, i.barcode_id, i.created_at
+         FROM trade_items ti
+         LEFT JOIN inventory i ON ti.inventory_id = i.id
+         WHERE ti.trade_id = $1 AND ti.direction = $2 AND ti.inventory_id != $3`,
+        [tradeId, direction, excludeId]
+      );
+    };
+
+    // Helper: get sale/transaction info
+    const getSaleInfo = async (invId) => {
+      const rows = await query(
+        `SELECT t.sale_price, t.payment_method, t.sale_date, cs.show_name
+         FROM transactions t
+         LEFT JOIN card_shows cs ON t.show_id = cs.id
+         WHERE t.inventory_id = $1
+         ORDER BY t.sale_date DESC LIMIT 1`,
+        [invId]
+      );
+      return rows[0] || null;
+    };
+
+    // Build the lineage tree with depth limit to prevent infinite loops
+    const MAX_DEPTH = 10;
+    const visited = new Set();
+
+    const buildNode = async (invId, depth = 0) => {
+      if (depth > MAX_DEPTH || visited.has(invId)) return null;
+      visited.add(invId);
+
+      const [card] = await query(
+        `SELECT id, card_name, set_name, card_number, game, card_type, condition, grade, grade_qualifier,
+                purchase_price, front_label_price, purchase_date, sale_price, sale_date, status, image_url, barcode_id, notes, created_at
+         FROM inventory WHERE id = $1 AND user_id = $2`,
+        [invId, userId]
+      );
+      if (!card) return null;
+
+      const node = {
+        id: card.id,
+        card_name: card.card_name,
+        set_name: card.set_name,
+        card_number: card.card_number,
+        game: card.game,
+        card_type: card.card_type,
+        condition: card.condition,
+        grade: card.grade,
+        grade_qualifier: card.grade_qualifier,
+        purchase_price: card.purchase_price,
+        front_label_price: card.front_label_price,
+        purchase_date: card.purchase_date,
+        sale_price: card.sale_price,
+        sale_date: card.sale_date,
+        status: card.status,
+        image_url: card.image_url,
+        barcode_id: card.barcode_id,
+        created_at: card.created_at,
+        origin: null,     // how this card entered inventory
+        destination: null, // how this card left inventory (if it did)
+        ancestors: [],     // cards traded OUT to get this card (what we gave up)
+        descendants: [],   // cards traded IN when this card was traded out (what we got)
+      };
+
+      // === ORIGIN: How did this card enter inventory? ===
+      const tradeInRecords = await getTradeContext(invId, 'in');
+      if (tradeInRecords.length > 0) {
+        const ti = tradeInRecords[0];
+        node.origin = {
+          type: 'trade_in',
+          trade_id: ti.trade_id,
+          customer_name: ti.customer_name,
+          trade_date: ti.trade_date,
+          trade_percentage: ti.trade_percentage,
+          card_value: ti.card_value,
+          trade_value: ti.trade_value,
+        };
+
+        // Find what was traded OUT in that same trade (ancestors)
+        const tradedOutItems = await getTradeSiblings(ti.trade_id, 'out', invId);
+        for (const outItem of tradedOutItems) {
+          if (outItem.inventory_id) {
+            const ancestorNode = await buildNode(outItem.inventory_id, depth + 1);
+            if (ancestorNode) {
+              node.ancestors.push(ancestorNode);
+            }
+          }
+        }
+
+        // Also include sibling trade-in items (other cards that came in with this one)
+        const siblingInItems = await getTradeSiblings(ti.trade_id, 'in', invId);
+        node.origin.siblings = siblingInItems.map(s => ({
+          inventory_id: s.inventory_id,
+          card_name: s.card_name,
+          set_name: s.set_name,
+          card_value: s.card_value,
+          status: s.status,
+          image_url: s.image_url,
+        }));
+      } else {
+        // Card was directly purchased (no trade-in record)
+        node.origin = {
+          type: 'purchase',
+          purchase_price: card.purchase_price,
+          purchase_date: card.purchase_date,
+        };
+      }
+
+      // === DESTINATION: How did this card leave inventory? ===
+      if (card.status === 'TRADED') {
+        const tradeOutRecords = await getTradeContext(invId, 'out');
+        if (tradeOutRecords.length > 0) {
+          const to = tradeOutRecords[0];
+          node.destination = {
+            type: 'trade_out',
+            trade_id: to.trade_id,
+            customer_name: to.customer_name,
+            trade_date: to.trade_date,
+            card_value: to.card_value,
+          };
+
+          // Find what was traded IN in that same trade (descendants)
+          const tradedInItems = await getTradeSiblings(to.trade_id, 'in', invId);
+          for (const inItem of tradedInItems) {
+            if (inItem.inventory_id) {
+              const descendantNode = await buildNode(inItem.inventory_id, depth + 1);
+              if (descendantNode) {
+                node.descendants.push(descendantNode);
+              }
+            }
+          }
+        }
+      } else if (card.status === 'SOLD') {
+        const saleInfo = await getSaleInfo(invId);
+        node.destination = {
+          type: 'sold',
+          sale_price: card.sale_price || saleInfo?.sale_price,
+          sale_date: card.sale_date || saleInfo?.sale_date,
+          payment_method: saleInfo?.payment_method,
+          show_name: saleInfo?.show_name,
+        };
+      }
+
+      return node;
+    };
+
+    const lineage = await buildNode(itemId);
+
+    res.json({ success: true, lineage });
+  } catch (err) {
+    console.error('Lineage error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Delete inventory item
 router.delete('/:id', async (req, res) => {
   try {
