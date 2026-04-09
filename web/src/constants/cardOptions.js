@@ -11,6 +11,7 @@ export const GAMES = [
 
 export const CARD_TYPES = [
   { id: 'raw', label: 'Raw' },
+  { id: 'sealed', label: 'Sealed' },
   { id: 'psa', label: 'PSA' },
   { id: 'bgs', label: 'BGS' },
   { id: 'cgc', label: 'CGC' },

@@ -5,7 +5,10 @@ ALTER TABLE card_shows ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users
 ALTER TABLE card_shows DROP CONSTRAINT IF EXISTS card_shows_show_date_key;
 
 -- Add a composite unique constraint on (user_id, show_date) so each user can have their own shows
-ALTER TABLE card_shows ADD CONSTRAINT card_shows_user_date_unique UNIQUE (user_id, show_date);
+DO $$ BEGIN
+  ALTER TABLE card_shows ADD CONSTRAINT card_shows_user_date_unique UNIQUE (user_id, show_date);
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- Create index on user_id for performance
 CREATE INDEX IF NOT EXISTS idx_card_shows_user_id ON card_shows(user_id);

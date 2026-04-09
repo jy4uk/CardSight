@@ -173,6 +173,13 @@ async function runMigration() {
     await query(`CREATE INDEX IF NOT EXISTS idx_users_reset_token_hash ON users(reset_token_hash)`);
     console.log('✅ Password reset fields completed!');
 
+    // ── Step 10: Collection type (personal collection vs inventory) ──
+    console.log('\nRunning collection type migration...');
+    const collectionTypePath = path.join(__dirname, 'migrations', 'add_collection_type.sql');
+    const collectionTypeSQL = fs.readFileSync(collectionTypePath, 'utf8');
+    await query(collectionTypeSQL);
+    console.log('✅ Collection type migration completed!');
+
     console.log('\n🎉 All migrations completed successfully!');
   } catch (err) {
     console.error('❌ Migration failed:', err);

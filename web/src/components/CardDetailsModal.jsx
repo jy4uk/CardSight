@@ -24,9 +24,9 @@ function getTimeInInventory(purchaseDate) {
 
 export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDelete, onFetchImage, onSell }) {
   const [activeTab, setActiveTab] = useState('details');
+  const { isAuthenticated } = useAuth();
   if (!isOpen || !item) return null;
-  const { isAdminMode } = useAuth();
-  const timeInInventory = getTimeInInventory(item.purchase_date || item.created_at);
+  const timeInInventory = getTimeInInventory(item.purchase_date);
   const renderDetails = () => {
     return (
       <div className="space-y-4">
@@ -57,7 +57,12 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
               <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 text-xs rounded-full">
                 {item.game?.toUpperCase() || 'UNKNOWN'}
               </span>
-              {item.card_type && item.card_type !== 'raw' && (
+              {item.card_type === 'sealed' && (
+                <span className="px-2 py-1 bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-400 text-xs rounded-full">
+                  SEALED
+                </span>
+              )}
+              {item.card_type && item.card_type !== 'raw' && item.card_type !== 'sealed' && (
                 <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 text-xs rounded-full">
                   {item.card_type?.toUpperCase()}
                 </span>
@@ -86,13 +91,15 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
             <div>
               <p className="text-gray-500 dark:text-slate-400">Grade/Condition</p>
               <p className="font-medium text-gray-900 dark:text-slate-100">
-                {item.card_type && item.card_type !== 'raw' && item.grade 
-                  ? `${item.grade}${item.grade_qualifier || ''} (${item.card_type.toUpperCase()})`
-                  : item.condition || 'NM'
+                {item.card_type === 'sealed'
+                  ? 'Sealed Product'
+                  : item.card_type && item.card_type !== 'raw' && item.grade 
+                    ? `${item.grade}${item.grade_qualifier || ''} (${item.card_type.toUpperCase()})`
+                    : item.condition || 'NM'
                 }
               </p>
             </div>
-            {isAdminMode && (
+            {isAuthenticated && (
               <>
                 <div>
                   <p className="text-gray-500 dark:text-slate-400">Purchase Date</p>
@@ -117,7 +124,7 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
             )}
           </div>
 
-          {isAdminMode && item.notes && (
+          {isAuthenticated && item.notes && (
             <div>
               <p className="text-gray-500 dark:text-slate-400 text-sm mb-1">Notes</p>
               <p className="text-gray-700 dark:text-slate-300 text-sm">{item.notes}</p>
@@ -141,7 +148,7 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
           )}
 
           {/* Action Buttons */}
-          {isAdminMode && (
+          {isAuthenticated && (
             <div className="flex gap-2 pt-4 flex-wrap">
               {onSell && (
                 <button
@@ -182,7 +189,7 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-slate-700 sticky top-0 bg-white dark:bg-slate-800 z-10">
           <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-slate-100">Card Details</h2>
-          {isAdminMode && (
+          {isAuthenticated && (
             <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 rounded-lg p-0.5">
               <button
                 onClick={() => setActiveTab('details')}

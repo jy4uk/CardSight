@@ -124,8 +124,8 @@ export class InventoryService {
       `INSERT INTO inventory (
         user_id, card_name, set_name, card_number, game, card_type,
         purchase_price, front_label_price, condition, quantity,
-        barcode_id, cert_number, grade, image_url, status, purchase_date
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        barcode_id, cert_number, grade, image_url, status, purchase_date, collection_type
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *`,
       [
         userId,
@@ -144,6 +144,7 @@ export class InventoryService {
         data.image_url || null,
         data.status || 'IN_STOCK',
         data.purchase_date || null,
+        (data as any).collection_type || 'inventory',
       ]
     );
 

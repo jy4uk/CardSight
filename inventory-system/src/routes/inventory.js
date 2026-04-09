@@ -24,9 +24,9 @@ router.get('/public', async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Fetch user's inventory
+    // Fetch user's inventory (public view only shows inventory items, not personal collection)
     const items = await query(
-      `SELECT * FROM inventory WHERE user_id = $1 AND status = 'IN_STOCK' AND hidden = FALSE ORDER BY id DESC`,
+      `SELECT * FROM inventory WHERE user_id = $1 AND status = 'IN_STOCK' AND hidden = FALSE AND (collection_type = 'inventory' OR collection_type IS NULL) ORDER BY id DESC`,
       [user.id]
     );
 
@@ -51,10 +51,18 @@ router.get('/', async (req, res) => {
   try {
     // Filter inventory by authenticated user's ID
     const userId = req.user.userId;
-    const items = await query(
-      `SELECT * FROM inventory WHERE user_id = $1 AND status = 'IN_STOCK' ORDER BY id DESC`,
-      [userId]
-    );
+    const collectionType = req.query.collection_type; // 'inventory', 'collection', or undefined (all)
+    
+    let sql = `SELECT * FROM inventory WHERE user_id = $1 AND status = 'IN_STOCK'`;
+    const params = [userId];
+    
+    if (collectionType === 'inventory' || collectionType === 'collection') {
+      sql += ` AND (collection_type = $2 OR ($2 = 'inventory' AND collection_type IS NULL))`;
+      params.push(collectionType);
+    }
+    
+    sql += ` ORDER BY id DESC`;
+    const items = await query(sql, params);
     res.json({ success: true, items });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -314,7 +322,7 @@ router.get('/:id/lineage', async (req, res) => {
     // Verify the card belongs to this user
     const [rootCard] = await query(
       `SELECT id, card_name, set_name, card_number, game, card_type, condition, grade, grade_qualifier,
-              purchase_price, front_label_price, purchase_date, sale_price, sale_date, status, image_url, barcode_id, notes, created_at
+              purchase_price, front_label_price, purchase_date, sale_price, sale_date, status, image_url, barcode_id, notes
        FROM inventory WHERE id = $1 AND user_id = $2`,
       [itemId, userId]
     );
@@ -322,10 +330,11 @@ router.get('/:id/lineage', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Item not found' });
     }
 
-    // Helper: get trade info for an inventory item
+    // Helper: get trade info for an inventory item (includes cash fields)
     const getTradeContext = async (invId, direction) => {
       const rows = await query(
-        `SELECT ti.*, t.customer_name, t.trade_date, t.trade_percentage, t.id as trade_id
+        `SELECT ti.*, t.customer_name, t.trade_date, t.trade_percentage, t.id as trade_id,
+                t.cash_to_customer, t.cash_from_customer, t.trade_in_total, t.trade_in_value, t.trade_out_total
          FROM trade_items ti
          JOIN trades t ON ti.trade_id = t.id
          WHERE ti.inventory_id = $1 AND ti.direction = $2`,
@@ -334,15 +343,16 @@ router.get('/:id/lineage', async (req, res) => {
       return rows;
     };
 
-    // Helper: get sibling items from the same trade
-    const getTradeSiblings = async (tradeId, direction, excludeId) => {
+    // Helper: get sibling items from the same trade (optionally exclude multiple IDs)
+    const getTradeSiblings = async (tradeId, direction, excludeIds) => {
+      const ids = Array.isArray(excludeIds) ? excludeIds : [excludeIds];
       return query(
         `SELECT ti.inventory_id, ti.card_name, ti.set_name, ti.card_value, ti.trade_value,
-                i.status, i.image_url, i.front_label_price, i.purchase_price, i.purchase_date, i.card_type, i.grade, i.condition, i.barcode_id, i.created_at
+                i.status, i.image_url, i.front_label_price, i.purchase_price, i.purchase_date, i.card_type, i.grade, i.condition, i.barcode_id
          FROM trade_items ti
          LEFT JOIN inventory i ON ti.inventory_id = i.id
-         WHERE ti.trade_id = $1 AND ti.direction = $2 AND ti.inventory_id != $3`,
-        [tradeId, direction, excludeId]
+         WHERE ti.trade_id = $1 AND ti.direction = $2 AND ti.inventory_id != ALL($3::int[])`,
+        [tradeId, direction, ids]
       );
     };
 
@@ -363,13 +373,15 @@ router.get('/:id/lineage', async (req, res) => {
     const MAX_DEPTH = 10;
     const visited = new Set();
 
-    const buildNode = async (invId, depth = 0) => {
+    // excludeFromDescendants: IDs to skip when building descendant trees
+    // (prevents siblings from appearing deep in ancestor trees)
+    const buildNode = async (invId, depth = 0, excludeFromDescendants = []) => {
       if (depth > MAX_DEPTH || visited.has(invId)) return null;
       visited.add(invId);
 
       const [card] = await query(
         `SELECT id, card_name, set_name, card_number, game, card_type, condition, grade, grade_qualifier,
-                purchase_price, front_label_price, purchase_date, sale_price, sale_date, status, image_url, barcode_id, notes, created_at
+                purchase_price, front_label_price, purchase_date, sale_price, sale_date, status, image_url, barcode_id, notes
          FROM inventory WHERE id = $1 AND user_id = $2`,
         [invId, userId]
       );
@@ -393,7 +405,6 @@ router.get('/:id/lineage', async (req, res) => {
         status: card.status,
         image_url: card.image_url,
         barcode_id: card.barcode_id,
-        created_at: card.created_at,
         origin: null,     // how this card entered inventory
         destination: null, // how this card left inventory (if it did)
         ancestors: [],     // cards traded OUT to get this card (what we gave up)
@@ -412,29 +423,38 @@ router.get('/:id/lineage', async (req, res) => {
           trade_percentage: ti.trade_percentage,
           card_value: ti.card_value,
           trade_value: ti.trade_value,
+          cash_to_customer: ti.cash_to_customer,
+          cash_from_customer: ti.cash_from_customer,
+          trade_in_total: ti.trade_in_total,
+          trade_in_value: ti.trade_in_value,
+          trade_out_total: ti.trade_out_total,
         };
 
-        // Find what was traded OUT in that same trade (ancestors)
-        const tradedOutItems = await getTradeSiblings(ti.trade_id, 'out', invId);
-        for (const outItem of tradedOutItems) {
-          if (outItem.inventory_id) {
-            const ancestorNode = await buildNode(outItem.inventory_id, depth + 1);
-            if (ancestorNode) {
-              node.ancestors.push(ancestorNode);
-            }
-          }
-        }
-
-        // Also include sibling trade-in items (other cards that came in with this one)
-        const siblingInItems = await getTradeSiblings(ti.trade_id, 'in', invId);
+        // Get sibling trade-in items (other cards that came in with this one)
+        const siblingInItems = await getTradeSiblings(ti.trade_id, 'in', [invId]);
         node.origin.siblings = siblingInItems.map(s => ({
           inventory_id: s.inventory_id,
           card_name: s.card_name,
           set_name: s.set_name,
           card_value: s.card_value,
+          trade_value: s.trade_value,
           status: s.status,
           image_url: s.image_url,
         }));
+
+        // Collect IDs of all trade-in items (this card + siblings) to exclude from ancestor descendant trees
+        const allTradeInIds = [invId, ...siblingInItems.map(s => s.inventory_id).filter(Boolean)];
+
+        // Find what was traded OUT in that same trade (ancestors - what we gave up)
+        const tradedOutItems = await getTradeSiblings(ti.trade_id, 'out', [invId]);
+        for (const outItem of tradedOutItems) {
+          if (outItem.inventory_id) {
+            const ancestorNode = await buildNode(outItem.inventory_id, depth + 1, allTradeInIds);
+            if (ancestorNode) {
+              node.ancestors.push(ancestorNode);
+            }
+          }
+        }
       } else {
         // Card was directly purchased (no trade-in record)
         node.origin = {
@@ -455,13 +475,16 @@ router.get('/:id/lineage', async (req, res) => {
             customer_name: to.customer_name,
             trade_date: to.trade_date,
             card_value: to.card_value,
+            cash_to_customer: to.cash_to_customer,
+            cash_from_customer: to.cash_from_customer,
           };
 
           // Find what was traded IN in that same trade (descendants)
-          const tradedInItems = await getTradeSiblings(to.trade_id, 'in', invId);
+          // Exclude items already in the excludeFromDescendants list
+          const tradedInItems = await getTradeSiblings(to.trade_id, 'in', [...excludeFromDescendants, invId]);
           for (const inItem of tradedInItems) {
             if (inItem.inventory_id) {
-              const descendantNode = await buildNode(inItem.inventory_id, depth + 1);
+              const descendantNode = await buildNode(inItem.inventory_id, depth + 1, excludeFromDescendants);
               if (descendantNode) {
                 node.descendants.push(descendantNode);
               }

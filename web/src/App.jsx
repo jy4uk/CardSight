@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart, Sun, Moon, Settings, MessageSquare, DollarSign } from 'lucide-react';
+import { Plus, Package, RefreshCw, BarChart3, CheckSquare, Square, X, LogOut, Lock, ArrowLeftRight, Scan, Menu, ArrowUpDown, FileText, ShoppingCart, Sun, Moon, Settings, MessageSquare, DollarSign, Heart } from 'lucide-react';
 import InventoryCard from './components/InventoryCard';
 import AddItemModal from './components/AddItemModal';
 import SellModal from './components/SellModal';
@@ -153,6 +153,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
   const [resumedTradeDeal, setResumedTradeDeal] = useState(null);
   const [inventorySubView, setInventorySubView] = useState('grid'); // 'grid' or 'pending'
   const [inventorySort, setInventorySort] = useState('price_high'); // 'newest', 'oldest', 'price_high', 'price_low'
+  const [collectionView, setCollectionView] = useState('inventory'); // 'inventory' or 'collection'
   const [showSettings, setShowSettings] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
@@ -204,7 +205,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
       
       // If user is authenticated, always fetch their own inventory
       if (isAuthenticated) {
-        const data = await fetchInventory();
+        const data = await fetchInventory(collectionView);
         setInventory(data.items || []);
       } 
       // If not authenticated but viewing a public profile, fetch that user's inventory
@@ -221,7 +222,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, isViewingProfile, urlUsername]);
+  }, [isAuthenticated, isViewingProfile, urlUsername, collectionView]);
 
   const loadTrades = async () => {
     try {
@@ -258,7 +259,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
   useEffect(() => {
     loadInventory();
     loadTrades();
-  }, [loadInventory, isAuthenticated, urlUsername]); // Reload when auth state or URL param changes
+  }, [loadInventory, isAuthenticated, urlUsername, collectionView]); // Reload when auth state, URL param, or collection view changes
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -333,7 +334,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
 
   const handleAddItem = async (item) => {
     try {
-      await addInventoryItem(item);
+      await addInventoryItem({ ...item, collection_type: collectionView });
       setShowAddModal(false);
       loadInventory();
     } catch (err) {
@@ -810,6 +811,34 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
       {/* Main Content */}
       {currentView === 'inventory' ? (
         <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
+              {/* Inventory / Collection Toggle */}
+              {isAuthenticated && (
+                <div className="mb-4 flex items-center gap-1 bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-lg border border-slate-200/50 dark:border-slate-700/50 w-fit">
+                  <button
+                    onClick={() => setCollectionView('inventory')}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-1.5 ${
+                      collectionView === 'inventory'
+                        ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                    Inventory
+                  </button>
+                  <button
+                    onClick={() => setCollectionView('collection')}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-1.5 ${
+                      collectionView === 'collection'
+                        ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-white/50 dark:hover:bg-slate-700/50'
+                    }`}
+                  >
+                    <Heart className="w-4 h-4" />
+                    Collection
+                  </button>
+                </div>
+              )}
+
               {/* Search & Filters */}
               <div data-tutorial="search-filter" className="mb-4">
                 <SearchFilter
@@ -825,7 +854,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
               {/* Results Count & Sort */}
               <div className="mb-3 flex items-center justify-between">
                 <span className="text-sm text-slate-500 dark:text-slate-400">
-                  {filteredInventory.length} {filteredInventory.length === 1 ? 'card' : 'cards'} available
+                  {filteredInventory.length} {collectionView === 'collection' ? (filteredInventory.length === 1 ? 'item' : 'items') : (filteredInventory.length === 1 ? 'card' : 'cards')} {collectionView === 'collection' ? 'in collection' : 'available'}
                 </span>
                 <div className="flex items-center gap-2">
                   <ArrowUpDown className="w-4 h-4 text-slate-400 dark:text-slate-500" />
@@ -860,13 +889,27 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
               {/* Empty State */}
               {!loading && filteredInventory.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-slate-500 dark:text-slate-400">
-                  <Package className="w-12 h-12 mb-3 text-slate-300 dark:text-slate-600" />
-                  <p className="font-medium">No cards found</p>
-                  <p className="text-sm">
-                    {inventory.length === 0 
-                      ? 'Add your first card to get started' 
-                      : 'Try adjusting your search or filters'}
-                  </p>
+                  {collectionView === 'collection' ? (
+                    <>
+                      <Heart className="w-12 h-12 mb-3 text-slate-300 dark:text-slate-600" />
+                      <p className="font-medium">No collection items</p>
+                      <p className="text-sm">
+                        {inventory.length === 0 
+                          ? 'Add items to your personal collection' 
+                          : 'Try adjusting your search or filters'}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Package className="w-12 h-12 mb-3 text-slate-300 dark:text-slate-600" />
+                      <p className="font-medium">No cards found</p>
+                      <p className="text-sm">
+                        {inventory.length === 0 
+                          ? 'Add your first card to get started' 
+                          : 'Try adjusting your search or filters'}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
 

@@ -773,6 +773,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
 
   const getConditionOrGrade = (item) => {
     if (item.card_type === 'raw') return item.condition || 'NM';
+    if (item.card_type === 'sealed') return 'Sealed';
     return `${item.card_type?.toUpperCase()} ${item.grade || ''}${item.grade_qualifier || ''}`;
   };
 
@@ -1198,6 +1199,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                         </button>
                       ))}
                     </div>
+                  ) : tradeInForm.card_type === 'sealed' ? (
+                    <p className="text-xs text-violet-600 dark:text-violet-400 font-medium px-2 py-1">Sealed Product</p>
                   ) : (
                     <div className="flex items-center gap-2">
                       <select

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Tag, Package, MoreVertical, DollarSign, Edit, Trash2, ImageIcon, CheckSquare, Square } from 'lucide-react';
+import { Tag, Package, MoreVertical, DollarSign, Edit, Trash2, ImageIcon, CheckSquare, Square, Heart } from 'lucide-react';
 import AlertModal from './AlertModal';
 import CardDetailsModal from './CardDetailsModal';
 
@@ -15,6 +15,7 @@ const gradeColors = {
   'psa': 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-sm shadow-red-500/30',
   'bgs': 'bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-sm shadow-slate-800/30',
   'cgc': 'bg-gradient-to-r from-amber-400 to-amber-500 text-amber-950 shadow-sm shadow-amber-400/30',
+  'sealed': 'bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-sm shadow-violet-500/30',
 };
 
 const gameLabels = {
@@ -97,9 +98,12 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
     <>
       <div
         onClick={handleCardClick}
-        className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden 
-                   hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-600 transition-all cursor-pointer
+        className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border overflow-hidden 
+                   hover:shadow-md transition-all cursor-pointer
                    active:scale-[0.98] touch-manipulation relative
+                   ${item.collection_type === 'collection' 
+                     ? 'border-rose-200 dark:border-rose-800/50 hover:border-rose-300 dark:hover:border-rose-700' 
+                     : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600'}
                    ${isMultiSelectMode && isSelected ? 'ring-2 ring-indigo-500' : ''}`}
       >
       {/* Card Image */}
@@ -118,8 +122,14 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
         
         {/* Top Left Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {/* Sealed Badge */}
+          {item.card_type === 'sealed' && (
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColors['sealed']}`}>
+              SEALED
+            </span>
+          )}
           {/* Grading Badge (for slabs) */}
-          {item.card_type && item.card_type !== 'raw' && (
+          {item.card_type && item.card_type !== 'raw' && item.card_type !== 'sealed' && (
             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColors[item.card_type] || 'bg-slate-600 text-white'}`}>
               {item.card_type.toUpperCase()} {item.grade ? item.grade + (item.grade_qualifier || '') : ''}
             </span>
@@ -134,6 +144,13 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
           {item.game && (
             <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-300 shadow-sm">
               {gameLabels[item.game] || item.game.toUpperCase()}
+            </span>
+          )}
+          {/* Collection Badge */}
+          {item.collection_type === 'collection' && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/90 text-white shadow-sm flex items-center gap-0.5">
+              <Heart className="w-3 h-3 fill-current" />
+              PC
             </span>
           )}
         </div>
@@ -222,7 +239,7 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
               #{item.card_number}
             </p>
           )}
-          {item.card_type && item.card_type !== 'raw' && item.cert_number && (
+          {item.card_type && item.card_type !== 'raw' && item.card_type !== 'sealed' && item.cert_number && (
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {item.card_type.toUpperCase()} {item.cert_number}
             </p>

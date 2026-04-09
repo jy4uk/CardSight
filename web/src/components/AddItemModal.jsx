@@ -9,6 +9,7 @@ const GRADE_QUALIFIERS = ['', '.5', '10'];
 
 const CARD_TYPES = [
   { id: 'raw', label: 'Raw' },
+  { id: 'sealed', label: 'Sealed' },
   { id: 'psa', label: 'PSA Slab' },
   { id: 'bgs', label: 'BGS Slab' },
   { id: 'cgc', label: 'CGC Slab' },
@@ -809,8 +810,8 @@ export default function AddItemModal({ isOpen, onClose, onAdd, inventoryItems = 
             </div>
           )}
 
-          {/* Grade (only for slabs) */}
-          {formData.card_type !== 'raw' && (
+          {/* Grade (only for slabs, not raw or sealed) */}
+          {formData.card_type !== 'raw' && formData.card_type !== 'sealed' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Grade

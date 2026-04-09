@@ -5,8 +5,9 @@ import apiClient from './utils/apiClient.js';
 const API_BASE = import.meta.env.VITE_API_URL || 
   (import.meta.env.MODE === 'production' ? '/api' : 'http://localhost:3000/api');
 
-export async function fetchInventory() {
-  const res = await apiClient.get('/inventory');
+export async function fetchInventory(collectionType) {
+  const params = collectionType ? `?collection_type=${collectionType}` : '';
+  const res = await apiClient.get(`/inventory${params}`);
   return res.data;
 }
 

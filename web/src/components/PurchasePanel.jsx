@@ -926,6 +926,11 @@ export default function PurchasePanel({ inventoryItems = [], onPurchaseComplete 
                             ))}
                           </select>
                         </div>
+                      ) : item.card_type === 'sealed' ? (
+                        <div>
+                          <label className="block text-xs text-gray-500 mb-1">Type</label>
+                          <p className="px-2 py-1 text-sm text-violet-600 font-medium">Sealed Product</p>
+                        </div>
                       ) : (
                         <div>
                           <label className="block text-xs text-gray-500 mb-1">Grade</label>
@@ -973,8 +978,8 @@ export default function PurchasePanel({ inventoryItems = [], onPurchaseComplete 
                         {item.set_name} {item.card_number && `#${item.card_number}`}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs px-1.5 py-0.5 bg-gray-200 rounded">
-                          {item.card_type === 'raw' ? item.condition : `${item.card_type.toUpperCase()} ${item.grade}`}
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${item.card_type === 'sealed' ? 'bg-violet-100 text-violet-700' : 'bg-gray-200'}`}>
+                          {item.card_type === 'raw' ? item.condition : item.card_type === 'sealed' ? 'Sealed' : `${item.card_type.toUpperCase()} ${item.grade}`}
                         </span>
                         <span className="text-xs font-medium text-green-600">
                           ${Number(item.purchase_price || 0).toFixed(2)}
