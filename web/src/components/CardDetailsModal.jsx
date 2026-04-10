@@ -62,7 +62,12 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
                   SEALED
                 </span>
               )}
-              {item.card_type && item.card_type !== 'raw' && item.card_type !== 'sealed' && (
+              {item.grading_status === 'submitted' && (
+                <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-xs rounded-full font-bold animate-pulse">
+                  AT {item.card_type?.toUpperCase()}
+                </span>
+              )}
+              {item.grading_status !== 'submitted' && item.card_type && item.card_type !== 'raw' && item.card_type !== 'sealed' && (
                 <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 text-xs rounded-full">
                   {item.card_type?.toUpperCase()}
                 </span>
@@ -120,6 +125,24 @@ export default function CardDetailsModal({ isOpen, onClose, item, onEdit, onDele
                   <Clock className="w-3.5 h-3.5 text-indigo-500" />
                   {timeInInventory}
                 </p>
+              </div>
+            )}
+            {isAuthenticated && item.grading_cost > 0 && (
+              <div>
+                <p className="text-gray-500 dark:text-slate-400">Grading Cost</p>
+                <p className="font-medium text-gray-900 dark:text-slate-100">${Number(item.grading_cost).toFixed(2)}</p>
+              </div>
+            )}
+            {isAuthenticated && item.grading_cost > 0 && item.purchase_price && (
+              <div>
+                <p className="text-gray-500 dark:text-slate-400">Total Cost Basis</p>
+                <p className="font-medium text-emerald-700 dark:text-emerald-400">${(Number(item.purchase_price) + Number(item.grading_cost)).toFixed(2)}</p>
+              </div>
+            )}
+            {isAuthenticated && item.grading_date_submitted && (
+              <div>
+                <p className="text-gray-500 dark:text-slate-400">Sent for Grading</p>
+                <p className="font-medium text-gray-900 dark:text-slate-100">{new Date(item.grading_date_submitted).toLocaleDateString()}</p>
               </div>
             )}
           </div>

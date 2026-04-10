@@ -123,21 +123,78 @@ router.get('/', authenticateToken, async (req, res) => {
       ORDER BY count DESC
     `, [userId]);
 
-    // Get card shows data
+    // Get card shows data with comprehensive P&L breakdown
     const cardShows = await query(`
       SELECT 
         cs.id,
         cs.show_date,
         cs.show_name,
         cs.location,
-        COUNT(t.id) as cards_sold,
-        COALESCE(SUM(t.sale_price), 0) as total_revenue,
-        COALESCE(SUM(t.sale_price - i.purchase_price), 0) as total_profit
+        -- Sales metrics
+        COALESCE(sales.cards_sold, 0) as cards_sold,
+        COALESCE(sales.total_revenue, 0) as total_revenue,
+        COALESCE(sales.total_cost_basis, 0) as sales_cost_basis,
+        COALESCE(sales.total_revenue, 0) - COALESCE(sales.total_cost_basis, 0) as sales_profit,
+        -- Purchase metrics
+        COALESCE(purchases.cards_purchased, 0) as cards_purchased,
+        COALESCE(purchases.total_purchase_cost, 0) as total_purchase_cost,
+        COALESCE(purchases.purchase_label_value, 0) as purchase_label_value,
+        -- Trade metrics
+        COALESCE(trade_data.trade_count, 0) as trade_count,
+        COALESCE(trade_data.trade_in_total, 0) as trade_in_total,
+        COALESCE(trade_data.trade_in_value, 0) as trade_in_value,
+        COALESCE(trade_data.trade_out_total, 0) as trade_out_total,
+        COALESCE(trade_data.cash_to_customer, 0) as cash_to_customer,
+        COALESCE(trade_data.cash_from_customer, 0) as cash_from_customer,
+        -- Inventory value of trade-in items (current front_label_price)
+        COALESCE(trade_in_inv.trade_in_label_value, 0) as trade_in_label_value,
+        -- Cash P&L: sales revenue + cash from customers - purchase cost - cash to customers
+        COALESCE(sales.total_revenue, 0) 
+          + COALESCE(trade_data.cash_from_customer, 0) 
+          - COALESCE(purchases.total_purchase_cost, 0) 
+          - COALESCE(trade_data.cash_to_customer, 0) as cash_profit,
+        -- Inventory value change: label value of purchased cards + label value of trade-ins - label value of traded-out cards
+        COALESCE(purchases.purchase_label_value, 0) 
+          + COALESCE(trade_in_inv.trade_in_label_value, 0) 
+          - COALESCE(trade_data.trade_out_total, 0) as inventory_value_change
       FROM card_shows cs
-      LEFT JOIN transactions t ON cs.id = t.show_id AND t.user_id = $1
-      LEFT JOIN inventory i ON t.inventory_id = i.id AND i.user_id = $1
+      LEFT JOIN LATERAL (
+        SELECT 
+          COUNT(t.id) as cards_sold,
+          SUM(t.sale_price) as total_revenue,
+          SUM(COALESCE(i.purchase_price, 0)) as total_cost_basis
+        FROM transactions t
+        JOIN inventory i ON t.inventory_id = i.id
+        WHERE t.show_id = cs.id AND t.user_id = $1
+      ) sales ON true
+      LEFT JOIN LATERAL (
+        SELECT 
+          COUNT(i.id) as cards_purchased,
+          SUM(COALESCE(i.purchase_price, 0)) as total_purchase_cost,
+          SUM(COALESCE(i.front_label_price, 0)) as purchase_label_value
+        FROM inventory i
+        WHERE i.purchase_show_id = cs.id AND i.user_id = $1
+      ) purchases ON true
+      LEFT JOIN LATERAL (
+        SELECT 
+          COUNT(tr.id) as trade_count,
+          SUM(COALESCE(tr.trade_in_total, 0)) as trade_in_total,
+          SUM(COALESCE(tr.trade_in_value, 0)) as trade_in_value,
+          SUM(COALESCE(tr.trade_out_total, 0)) as trade_out_total,
+          SUM(COALESCE(tr.cash_to_customer, 0)) as cash_to_customer,
+          SUM(COALESCE(tr.cash_from_customer, 0)) as cash_from_customer
+        FROM trades tr
+        WHERE tr.show_id = cs.id AND tr.user_id = $1
+      ) trade_data ON true
+      LEFT JOIN LATERAL (
+        SELECT 
+          SUM(COALESCE(i.front_label_price, 0)) as trade_in_label_value
+        FROM trade_items ti
+        JOIN trades tr ON ti.trade_id = tr.id
+        JOIN inventory i ON ti.inventory_id = i.id
+        WHERE tr.show_id = cs.id AND ti.direction = 'in' AND tr.user_id = $1
+      ) trade_in_inv ON true
       WHERE cs.user_id = $1
-      GROUP BY cs.id, cs.show_date, cs.show_name, cs.location
       ORDER BY cs.show_date DESC
     `, [userId]);
 
@@ -310,9 +367,26 @@ router.get('/', authenticateToken, async (req, res) => {
         showDate: row.show_date,
         showName: row.show_name,
         location: row.location,
+        // Sales
         cardsSold: Number(row.cards_sold),
         totalRevenue: Number(row.total_revenue),
-        totalProfit: Number(row.total_profit)
+        salesCostBasis: Number(row.sales_cost_basis),
+        salesProfit: Number(row.sales_profit),
+        // Purchases
+        cardsPurchased: Number(row.cards_purchased),
+        totalPurchaseCost: Number(row.total_purchase_cost),
+        purchaseLabelValue: Number(row.purchase_label_value),
+        // Trades
+        tradeCount: Number(row.trade_count),
+        tradeInTotal: Number(row.trade_in_total),
+        tradeInValue: Number(row.trade_in_value),
+        tradeOutTotal: Number(row.trade_out_total),
+        cashToCustomer: Number(row.cash_to_customer),
+        cashFromCustomer: Number(row.cash_from_customer),
+        tradeInLabelValue: Number(row.trade_in_label_value),
+        // Summary
+        cashProfit: Number(row.cash_profit),
+        inventoryValueChange: Number(row.inventory_value_change),
       }))
     };
 
@@ -363,6 +437,10 @@ router.post('/card-shows', authenticateToken, async (req, res) => {
     }
     
     const newShow = result[0];
+
+    // Auto-link purchases, sales, and trades on the show date
+    await associateTransactionsWithShow(newShow.id, newShow.show_date, req.user.userId);
+
     res.json({
       success: true,
       data: newShow
@@ -374,7 +452,7 @@ router.post('/card-shows', authenticateToken, async (req, res) => {
 });
 
 // Helper function to associate transactions with a show
-async function associateTransactionsWithShow(showId, showDate) {
+async function associateTransactionsWithShow(showId, showDate, userId) {
   try {
     // Associate sales on the same date
     await query(`
@@ -382,7 +460,8 @@ async function associateTransactionsWithShow(showId, showDate) {
       SET show_id = $1
       WHERE DATE(sale_date) = DATE($2) 
         AND show_id IS NULL
-    `, [showId, showDate]);
+        AND user_id = $3
+    `, [showId, showDate, userId]);
 
     // Update inventory items purchased on the same date
     await query(`
@@ -390,9 +469,19 @@ async function associateTransactionsWithShow(showId, showDate) {
       SET purchase_show_id = $1
       WHERE DATE(purchase_date) = DATE($2) 
         AND purchase_show_id IS NULL
-    `, [showId, showDate]);
+        AND user_id = $3
+    `, [showId, showDate, userId]);
 
-    console.log(`Associated transactions with show ${showId} for date ${showDate}`);
+    // Associate trades on the same date
+    await query(`
+      UPDATE trades 
+      SET show_id = $1
+      WHERE DATE(trade_date) = DATE($2) 
+        AND show_id IS NULL
+        AND user_id = $3
+    `, [showId, showDate, userId]);
+
+    console.log(`Associated transactions/trades with show ${showId} for date ${showDate}`);
   } catch (error) {
     console.error('Error associating transactions with show:', error);
   }
@@ -424,6 +513,9 @@ router.delete('/card-shows/:id', authenticateToken, async (req, res) => {
 
     // Remove associations from inventory
     await query(`UPDATE inventory SET purchase_show_id = NULL WHERE purchase_show_id = $1 AND user_id = $2`, [id, req.user.userId]);
+
+    // Remove associations from trades
+    await query(`UPDATE trades SET show_id = NULL WHERE show_id = $1 AND user_id = $2`, [id, req.user.userId]);
 
     res.json({
       success: true,

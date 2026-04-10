@@ -343,13 +343,38 @@ export const isPSACertNumber = (value) => {
 // Card Lineage API
 export const fetchCardLineage = async (inventoryId) => {
   try {
-    const response = await apiClient.get(`/inventory/${inventoryId}/lineage`);
+    // Add cache-busting to bypass CDN stale cache
+    const cacheBuster = `_t=${Date.now()}`;
+    const response = await apiClient.get(`/inventory/${inventoryId}/lineage?${cacheBuster}`);
     if (!response.data.success) throw new Error(response.data.error || 'Failed to fetch card lineage');
     return response.data;
   } catch (error) {
     console.error('Error fetching card lineage:', error);
     throw error;
   }
+};
+
+// Grading Workflow API
+export const sendForGrading = async (inventoryId, { grading_company, grading_cost }) => {
+  const res = await apiClient.put(`/inventory/${inventoryId}/grading`, {
+    action: 'send',
+    grading_company,
+    grading_cost,
+  });
+  if (!res.data.success) throw new Error(res.data.error || 'Failed to send for grading');
+  return res.data;
+};
+
+export const receiveGrade = async (inventoryId, { grade, grade_qualifier, front_label_price, cert_number }) => {
+  const res = await apiClient.put(`/inventory/${inventoryId}/grading`, {
+    action: 'receive',
+    grade,
+    grade_qualifier,
+    front_label_price,
+    cert_number,
+  });
+  if (!res.data.success) throw new Error(res.data.error || 'Failed to receive grade');
+  return res.data;
 };
 
 // TCG Product Search API

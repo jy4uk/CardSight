@@ -27,7 +27,8 @@ import { useCart } from './context/CartContext';
 import { useTheme } from './context/ThemeContext';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { useTutorial } from './hooks/useTutorial';
-import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode } from './api';
+import GradingModal from './components/modals/GradingModal';
+import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode, sendForGrading, receiveGrade } from './api';
 import { Toaster } from 'react-hot-toast';
 
 // Redirect component for backward compatibility with query params
@@ -141,12 +142,14 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSellModal, setShowSellModal] = useState(false);
+  const [showGradingModal, setShowGradingModal] = useState(false);
+  const [gradingItem, setGradingItem] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [alertModal, setAlertModal] = useState({ isOpen: false, type: 'error', message: '' });
   const [currentView, setCurrentView] = useState('inventory'); // 'inventory', 'insights', 'intake', 'reprice', or 'barcodes'
-  const [filters, setFilters] = useState({ condition: null, minPrice: '', maxPrice: '', game: null, cardType: null });
+  const [filters, setFilters] = useState({ condition: null, minPrice: '', maxPrice: '', game: null, cardType: null, gradingStatus: null });
   const [showFilters, setShowFilters] = useState(false);
   const [trades, setTrades] = useState([]);
   const [showTradeModal, setShowTradeModal] = useState(false);
@@ -347,6 +350,28 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
     setShowSellModal(true);
   };
 
+  const openGradingModal = (item) => {
+    setGradingItem(item);
+    setShowGradingModal(true);
+  };
+
+  const closeGradingModal = () => {
+    setShowGradingModal(false);
+    setGradingItem(null);
+  };
+
+  const handleSendForGrading = async (itemId, data) => {
+    await sendForGrading(itemId, data);
+    loadInventory();
+    showAlert('success', `Card sent to ${data.grading_company.toUpperCase()} for grading`);
+  };
+
+  const handleReceiveGrade = async (itemId, data) => {
+    await receiveGrade(itemId, data);
+    loadInventory();
+    showAlert('success', `Grade received: ${data.grade}${data.grade_qualifier || ''}`);
+  };
+
   const closeSellModal = () => {
     setShowSellModal(false);
     setSelectedItem(null);
@@ -460,6 +485,10 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
       if (filters.cardType && item.card_type !== filters.cardType) {
         return false;
       }
+
+      // Grading status filter
+      if (filters.gradingStatus === 'at_grading' && item.grading_status !== 'submitted') return false;
+      if (filters.gradingStatus === 'not_grading' && item.grading_status === 'submitted') return false;
 
       // Price filters
       const price = Number(item.front_label_price) || 0;
@@ -963,6 +992,8 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
                     onEdit={hasFeature(FEATURES.EDIT_ITEM) ? openEditModal : null}
                     onFetchImage={hasFeature(FEATURES.EDIT_ITEM) ? handleFetchImage : null}
                     onDelete={hasFeature(FEATURES.DELETE_ITEM) ? handleDeleteItem : null}
+                    onSendForGrading={isAuthenticated ? openGradingModal : null}
+                    onReceiveGrade={isAuthenticated ? openGradingModal : null}
                     isMultiSelectMode={isMultiSelectMode}
                     isSelected={selectedItems.has(item.id)}
                     onToggleSelect={toggleItemSelection}
@@ -1019,6 +1050,15 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
         item={selectedItem}
         onClose={closeSellModal}
         onSell={handleSell}
+      />
+
+      {/* Grading Modal */}
+      <GradingModal
+        isOpen={showGradingModal}
+        item={gradingItem}
+        onClose={closeGradingModal}
+        onSendForGrading={handleSendForGrading}
+        onReceiveGrade={handleReceiveGrade}
       />
 
       {/* Alert Modal */}

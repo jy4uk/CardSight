@@ -180,6 +180,13 @@ async function runMigration() {
     await query(collectionTypeSQL);
     console.log('✅ Collection type migration completed!');
 
+    // ── Step 11: Grading workflow ──
+    console.log('\nRunning grading workflow migration...');
+    const gradingWorkflowPath = path.join(__dirname, 'migrations', 'add_grading_workflow.sql');
+    const gradingWorkflowSQL = fs.readFileSync(gradingWorkflowPath, 'utf8');
+    await query(gradingWorkflowSQL);
+    console.log('✅ Grading workflow migration completed!');
+
     console.log('\n🎉 All migrations completed successfully!');
   } catch (err) {
     console.error('❌ Migration failed:', err);

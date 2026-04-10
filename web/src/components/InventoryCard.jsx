@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Tag, Package, MoreVertical, DollarSign, Edit, Trash2, ImageIcon, CheckSquare, Square, Heart } from 'lucide-react';
+import { Tag, Package, MoreVertical, DollarSign, Edit, Trash2, ImageIcon, CheckSquare, Square, Heart, Send, ArrowDownToLine } from 'lucide-react';
 import AlertModal from './AlertModal';
 import CardDetailsModal from './CardDetailsModal';
 
@@ -25,7 +25,7 @@ const gameLabels = {
   'yugioh': 'YGO',
 };
 
-export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchImage, onDelete, isMultiSelectMode, isSelected, onToggleSelect, isAuthenticated = false }) {
+export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchImage, onDelete, onSendForGrading, onReceiveGrade, isMultiSelectMode, isSelected, onToggleSelect, isAuthenticated = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [fetchingImage, setFetchingImage] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -89,6 +89,18 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
     setShowDeleteModal(true);
   };
 
+  const handleGrading = (e) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    if (item.grading_status === 'submitted') {
+      onReceiveGrade?.(item);
+    } else {
+      onSendForGrading?.(item);
+    }
+  };
+
+  const isAtGrading = item.grading_status === 'submitted';
+
   const confirmDelete = () => {
     setShowDeleteModal(false);
     onDelete?.(item);
@@ -128,8 +140,14 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
               SEALED
             </span>
           )}
-          {/* Grading Badge (for slabs) */}
-          {item.card_type && item.card_type !== 'raw' && item.card_type !== 'sealed' && (
+          {/* At Grading Badge */}
+          {isAtGrading && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-400 text-amber-950 shadow-sm animate-pulse">
+              AT {item.card_type?.toUpperCase()}
+            </span>
+          )}
+          {/* Grading Badge (for slabs - not at grading) */}
+          {!isAtGrading && item.card_type && item.card_type !== 'raw' && item.card_type !== 'sealed' && (
             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${gradeColors[item.card_type] || 'bg-slate-600 text-white'}`}>
               {item.card_type.toUpperCase()} {item.grade ? item.grade + (item.grade_qualifier || '') : ''}
             </span>
@@ -211,6 +229,25 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
                 >
                   <ImageIcon className="w-5 h-5" />
                   Fetch Image
+                </button>
+              )}
+              {/* Grading actions */}
+              {isAtGrading && onReceiveGrade && (
+                <button
+                  onClick={handleGrading}
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-emerald-600 dark:text-emerald-400 font-medium min-h-[44px]"
+                >
+                  <ArrowDownToLine className="w-5 h-5" />
+                  Received Grade
+                </button>
+              )}
+              {!isAtGrading && item.card_type === 'raw' && onSendForGrading && (
+                <button
+                  onClick={handleGrading}
+                  className="w-full px-4 py-3 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-3 text-indigo-600 dark:text-indigo-400 min-h-[44px]"
+                >
+                  <Send className="w-5 h-5" />
+                  Send for Grading
                 </button>
               )}
               {onDelete && (

@@ -290,9 +290,14 @@ export default function Insights() {
         {metrics.cardShows?.length || 0}
       </div>
       <div className="text-sm text-slate-500 dark:text-slate-400">Card Shows</div>
-      <div className="flex items-center gap-1 mt-2 text-xs text-green-600 dark:text-green-400">
-        <span>+1.2%</span>
-      </div>
+      {metrics.cardShows?.length > 0 && (() => {
+        const totalCashPL = (metrics.cardShows || []).reduce((sum, s) => sum + (s.cashProfit || 0), 0);
+        return (
+          <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${totalCashPL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            <span>{totalCashPL >= 0 ? '+' : '-'}${Math.abs(totalCashPL).toFixed(2)} cash P&L</span>
+          </div>
+        );
+      })()}
     </div>
         </div>
 

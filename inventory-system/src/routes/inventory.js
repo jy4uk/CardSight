@@ -24,9 +24,9 @@ router.get('/public', async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    // Fetch user's inventory (public view only shows inventory items, not personal collection)
+    // Fetch user's inventory (public view excludes personal collection and cards at grading)
     const items = await query(
-      `SELECT * FROM inventory WHERE user_id = $1 AND status = 'IN_STOCK' AND hidden = FALSE AND (collection_type = 'inventory' OR collection_type IS NULL) ORDER BY id DESC`,
+      `SELECT * FROM inventory WHERE user_id = $1 AND status = 'IN_STOCK' AND hidden = FALSE AND (collection_type = 'inventory' OR collection_type IS NULL) AND grading_status IS NULL ORDER BY id DESC`,
       [user.id]
     );
 
@@ -507,9 +507,75 @@ router.get('/:id/lineage', async (req, res) => {
 
     const lineage = await buildNode(itemId);
 
+    // Prevent CDN caching of this endpoint
+    res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.json({ success: true, lineage });
   } catch (err) {
     console.error('Lineage error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /inventory/:id/grading - Send for grading or receive grade
+router.put('/:id/grading', async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const itemId = parseInt(req.params.id, 10);
+    const { action } = req.body; // 'send' or 'receive'
+
+    if (isNaN(itemId)) {
+      return res.status(400).json({ success: false, error: 'Invalid item ID' });
+    }
+
+    // Verify item belongs to user
+    const [item] = await query('SELECT * FROM inventory WHERE id = $1 AND user_id = $2', [itemId, userId]);
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Item not found' });
+    }
+
+    if (action === 'send') {
+      const { grading_company, grading_cost } = req.body;
+      if (!grading_company || !['psa', 'bgs', 'cgc'].includes(grading_company)) {
+        return res.status(400).json({ success: false, error: 'Valid grading company required (psa, bgs, cgc)' });
+      }
+
+      const rows = await query(
+        `UPDATE inventory SET 
+          card_type = $1,
+          grading_status = 'submitted',
+          grading_cost = $2,
+          grading_date_submitted = NOW()
+        WHERE id = $3 AND user_id = $4
+        RETURNING *`,
+        [grading_company, grading_cost || 0, itemId, userId]
+      );
+      return res.json({ success: true, item: rows[0] });
+
+    } else if (action === 'receive') {
+      const { grade, grade_qualifier, front_label_price, cert_number } = req.body;
+      if (!grade) {
+        return res.status(400).json({ success: false, error: 'Grade is required' });
+      }
+
+      const rows = await query(
+        `UPDATE inventory SET 
+          grade = $1,
+          grade_qualifier = $2,
+          grading_status = NULL,
+          front_label_price = COALESCE($3, front_label_price),
+          cert_number = COALESCE($4, cert_number)
+        WHERE id = $5 AND user_id = $6
+        RETURNING *`,
+        [grade, grade_qualifier || null, front_label_price || null, cert_number || null, itemId, userId]
+      );
+      return res.json({ success: true, item: rows[0] });
+
+    } else {
+      return res.status(400).json({ success: false, error: 'Action must be "send" or "receive"' });
+    }
+  } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
