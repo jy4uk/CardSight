@@ -575,9 +575,10 @@ router.post('/link-existing-to-shows', authenticateToken, async (req, res) => {
     const salesResult = await query(`
       UPDATE transactions t
       SET show_id = cs.id
-      FROM inventory i
-      JOIN card_shows cs ON DATE(t.sale_date) = DATE(cs.show_date) AND i.user_id = cs.user_id
+      FROM inventory i, card_shows cs
       WHERE t.inventory_id = i.id
+        AND DATE(t.sale_date) = DATE(cs.show_date)
+        AND i.user_id = cs.user_id
         AND i.user_id = $1
         AND t.show_id IS NULL
       RETURNING t.id
