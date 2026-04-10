@@ -1,7 +1,7 @@
 import express from 'express';
 import { query } from '../services/db.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { getShowIdByDate } from './insights';
+import { getShowIdByDate } from './insights.js';
 
 const router = express.Router();
 
