@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { X, Package, DollarSign, Calendar, Trash2, TrendingUp, TrendingDown, ShoppingCart, ArrowLeftRight, ChevronDown, ChevronRight, MapPin, Banknote } from 'lucide-react';
+import { X, Package, DollarSign, Calendar, Trash2, TrendingUp, TrendingDown, ShoppingCart, ArrowLeftRight, ChevronDown, ChevronRight, MapPin, Banknote, Link2, Loader2 } from 'lucide-react';
 import AlertModal from '../AlertModal';
+import { linkExistingToShows } from '../../api';
 
 function fmt(val) {
   const n = Number(val) || 0;
@@ -31,10 +32,12 @@ function StatRow({ icon: Icon, label, value, color = 'text-slate-700 dark:text-s
   );
 }
 
-export default function CardShowDetailsModal({ isOpen, onClose, cardShows, recentSales, onDeleteShow }) {
+export default function CardShowDetailsModal({ isOpen, onClose, cardShows, recentSales, onDeleteShow, onRefresh }) {
   const [expandedShows, setExpandedShows] = useState(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, showId: null, showName: '' });
   const [alertModal, setAlertModal] = useState({ isOpen: false, type: 'error', message: '' });
+  const [linking, setLinking] = useState(false);
+  const [linkResult, setLinkResult] = useState(null);
 
   if (!isOpen) return null;
 
@@ -63,6 +66,22 @@ export default function CardShowDetailsModal({ isOpen, onClose, cardShows, recen
     }
   };
 
+  const handleLinkExisting = async () => {
+    setLinking(true);
+    setLinkResult(null);
+    try {
+      const result = await linkExistingToShows();
+      setLinkResult(result.linked);
+      onRefresh?.(); // Refresh the shows data
+      setAlertModal({ isOpen: true, type: 'success', message: `Linked ${result.linked.trades} trades, ${result.linked.inventory} purchases, ${result.linked.sales} sales` });
+    } catch (error) {
+      console.error('Error linking existing transactions:', error);
+      setAlertModal({ isOpen: true, type: 'error', message: 'Failed to link transactions: ' + error.message });
+    } finally {
+      setLinking(false);
+    }
+  };
+
   // Totals across all shows
   const totals = (cardShows || []).reduce((acc, s) => ({
     cashProfit: acc.cashProfit + (s.cashProfit || 0),
@@ -84,9 +103,22 @@ export default function CardShowDetailsModal({ isOpen, onClose, cardShows, recen
             <h2 className="text-lg font-bold">Card Shows</h2>
             <span className="px-2 py-0.5 bg-white/20 rounded-full text-xs font-medium">{cardShows?.length || 0}</span>
           </div>
-          <button onClick={onClose} className="text-white/80 hover:text-white">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {cardShows?.length > 0 && (
+              <button
+                onClick={handleLinkExisting}
+                disabled={linking}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                title="Link existing transactions to shows by date"
+              >
+                {linking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
+                {linking ? 'Linking...' : 'Link Existing'}
+              </button>
+            )}
+            <button onClick={onClose} className="text-white/80 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Summary Totals */}

@@ -354,6 +354,13 @@ export const fetchCardLineage = async (inventoryId) => {
   }
 };
 
+// Card Shows backfill API
+export const linkExistingToShows = async () => {
+  const res = await apiClient.post('/insights/link-existing-to-shows');
+  if (!res.data.success) throw new Error(res.data.error || 'Failed to link transactions');
+  return res.data;
+};
+
 // Grading Workflow API
 export const sendForGrading = async (inventoryId, { grading_company, grading_cost }) => {
   const res = await apiClient.put(`/inventory/${inventoryId}/grading`, {

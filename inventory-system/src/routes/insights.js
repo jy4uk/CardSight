@@ -451,6 +451,20 @@ router.post('/card-shows', authenticateToken, async (req, res) => {
   }
 });
 
+// Helper function to get show_id by date (for auto-linking new transactions)
+export async function getShowIdByDate(date, userId) {
+  try {
+    const result = await query(
+      `SELECT id FROM card_shows WHERE DATE(show_date) = DATE($1) AND user_id = $2 LIMIT 1`,
+      [date, userId]
+    );
+    return result.length > 0 ? result[0].id : null;
+  } catch (error) {
+    console.error('Error looking up show by date:', error);
+    return null;
+  }
+}
+
 // Helper function to associate transactions with a show
 async function associateTransactionsWithShow(showId, showDate, userId) {
   try {
@@ -523,6 +537,63 @@ router.delete('/card-shows/:id', authenticateToken, async (req, res) => {
     });
   } catch (err) {
     console.error('Error deleting card show:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /insights/link-existing-to-shows - Backfill existing transactions to card shows
+router.post('/link-existing-to-shows', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Link existing trades
+    const tradesResult = await query(`
+      UPDATE trades t
+      SET show_id = cs.id
+      FROM card_shows cs
+      WHERE DATE(t.trade_date) = DATE(cs.show_date)
+        AND t.user_id = cs.user_id
+        AND t.user_id = $1
+        AND t.show_id IS NULL
+      RETURNING t.id
+    `, [userId]);
+    
+    // Link existing inventory purchases
+    const inventoryResult = await query(`
+      UPDATE inventory i
+      SET purchase_show_id = cs.id
+      FROM card_shows cs
+      WHERE DATE(i.purchase_date) = DATE(cs.show_date)
+        AND i.user_id = cs.user_id
+        AND i.user_id = $1
+        AND i.purchase_show_id IS NULL
+        AND i.purchase_date IS NOT NULL
+      RETURNING i.id
+    `, [userId]);
+    
+    // Link existing sales
+    const salesResult = await query(`
+      UPDATE transactions t
+      SET show_id = cs.id
+      FROM inventory i
+      JOIN card_shows cs ON DATE(t.sale_date) = DATE(cs.show_date) AND i.user_id = cs.user_id
+      WHERE t.inventory_id = i.id
+        AND i.user_id = $1
+        AND t.show_id IS NULL
+      RETURNING t.id
+    `, [userId]);
+    
+    res.json({
+      success: true,
+      message: 'Existing transactions linked to card shows',
+      linked: {
+        trades: tradesResult.length,
+        inventory: inventoryResult.length,
+        sales: salesResult.length
+      }
+    });
+  } catch (err) {
+    console.error('Error linking existing transactions:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

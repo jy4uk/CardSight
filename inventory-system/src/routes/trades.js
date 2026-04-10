@@ -1,6 +1,7 @@
 import express from 'express';
 import { query } from '../services/db.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { getShowIdByDate } from './insights';
 
 const router = express.Router();
 
@@ -152,6 +153,15 @@ router.post('/', authenticateToken, async (req, res) => {
     const trade_in_value = trade_in_total * (trade_percentage / 100);
     const trade_out_total = trade_out_items.reduce((sum, item) => sum + (parseFloat(item.card_value) || 0), 0);
 
+    // Auto-link to card show by date if show_id not provided
+    let linkedShowId = show_id || null;
+    if (!linkedShowId && trade_date) {
+      linkedShowId = await getShowIdByDate(trade_date, req.user.userId);
+      if (linkedShowId) {
+        console.log(`[Trade] Auto-linked to show ${linkedShowId} for date ${trade_date}`);
+      }
+    }
+
     // Create the trade record
     const [trade] = await query(`
       INSERT INTO trades (user_id, customer_name, trade_percentage, trade_in_total, trade_in_value, trade_out_total, cash_to_customer, cash_from_customer, notes, show_id, trade_date)
@@ -167,7 +177,7 @@ router.post('/', authenticateToken, async (req, res) => {
       cash_to_customer,
       cash_from_customer,
       notes,
-      show_id || null,
+      linkedShowId,
       trade_date || new Date()
     ]);
 

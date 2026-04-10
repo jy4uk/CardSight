@@ -1,19 +1,31 @@
 import { query } from './db.js';
+import { getShowIdByDate } from '../routes/insights.js';
 
 export async function addInventoryItem(data) {
   const { 
     barcode_id, card_name, set_name, series = null, condition, purchase_price, front_label_price, notes,
     game = 'pokemon', card_type = 'raw', cert_number = null, card_number = null, image_url = null,
     tcg_product_id = null, hidden = false, grade = null, grade_qualifier = null, user_id,
-    collection_type = 'inventory'
+    collection_type = 'inventory', purchase_date = null, purchase_show_id = null
   } = data;
+
+  // Auto-link to card show by purchase date if purchase_show_id not provided
+  let linkedShowId = purchase_show_id;
+  const effectivePurchaseDate = purchase_date || new Date().toISOString();
+  if (!linkedShowId) {
+    linkedShowId = await getShowIdByDate(effectivePurchaseDate, user_id);
+    if (linkedShowId) {
+      console.log(`[Inventory] Auto-linked purchase to show ${linkedShowId} for date ${effectivePurchaseDate}`);
+    }
+  }
+
   // Convert empty barcode to NULL
   const cleanBarcodeId = barcode_id?.trim() || null;
   const rows = await query(
-    `INSERT INTO inventory (barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, purchase_date, front_label_price, status, notes, image_url, tcg_product_id, hidden, grade, grade_qualifier, user_id, collection_type)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, now(), $11, 'IN_STOCK', $12, $13, $14, $15, $16, $17, $18, $19)
+    `INSERT INTO inventory (barcode_id, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, purchase_date, front_label_price, status, notes, image_url, tcg_product_id, hidden, grade, grade_qualifier, user_id, collection_type, purchase_show_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, COALESCE($20, now()), $11, 'IN_STOCK', $12, $13, $14, $15, $16, $17, $18, $19, $21)
      RETURNING *`,
-    [cleanBarcodeId, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, tcg_product_id, hidden, grade, grade_qualifier, user_id, collection_type]
+    [cleanBarcodeId, card_name, set_name, series, game, card_type, cert_number, card_number, condition, purchase_price, front_label_price, notes, image_url, tcg_product_id, hidden, grade, grade_qualifier, user_id, collection_type, purchase_date, linkedShowId]
   );
   return rows[0];
 }

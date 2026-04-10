@@ -462,6 +462,7 @@ export default function Insights() {
           cardShows={modalState.data}
           recentSales={(metrics.recentTransactions || []).filter(t => t.transactionType === 'sale')}
           onDeleteShow={handleDeleteCardShow}
+          onRefresh={loadInsights}
         />
       )}
       <AddCardShowModal
