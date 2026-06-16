@@ -256,6 +256,39 @@ export const createTrade = async (tradeData) => {
   }
 };
 
+export const updateTrade = async (tradeId, updates) => {
+  try {
+    const response = await apiClient.put(`/trades/${tradeId}`, updates);
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to update trade');
+    return response.data;
+  } catch (error) {
+    console.error('Error updating trade:', error);
+    throw error;
+  }
+};
+
+export const addTradeItem = async (tradeId, itemData) => {
+  try {
+    const response = await apiClient.post(`/trades/${tradeId}/items`, itemData);
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to add trade item');
+    return response.data;
+  } catch (error) {
+    console.error('Error adding trade item:', error);
+    throw error;
+  }
+};
+
+export const removeTradeItem = async (itemId) => {
+  try {
+    const response = await apiClient.delete(`/trades/items/${itemId}`);
+    if (!response.data.success) throw new Error(response.data.error || 'Failed to remove trade item');
+    return response.data;
+  } catch (error) {
+    console.error('Error removing trade item:', error);
+    throw error;
+  }
+};
+
 export const deleteTrade = async (tradeId) => {
   try {
     const response = await apiClient.delete(`/trades/${tradeId}`);
@@ -304,31 +337,32 @@ export const updateTradeItem = async (itemId, field, value) => {
   }
 };
 
-// PSA Lookup API
-export const fetchPSAData = async (certNumber) => {
+// Cert Lookup API — backed by CardLadder's cert cache, not PSA's API
+export const fetchPSAData = async (certNumber, grader = 'psa') => {
   try {
-    const response = await fetch(`${API_BASE}/psa-lookup/${certNumber}`);
+    const params = grader !== 'psa' ? `?grader=${grader}` : '';
+    const response = await fetch(`${API_BASE}/psa-lookup/${certNumber}${params}`);
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.error || 'Failed to fetch PSA data');
+      throw new Error(data.error || 'Failed to fetch cert data');
     }
     return await response.json();
   } catch (error) {
-    console.error('Error fetching PSA data:', error);
+    console.error('Error fetching cert data:', error);
     throw error;
   }
 };
 
-export const fetchPSAPopulationReport = async (specId) => {
+export const fetchCardLadderSales = async (certNumber, specId, cardName, grade) => {
   try {
-    const response = await fetch(`${API_BASE}/psa-lookup/pop/${specId}`);
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to fetch PSA population');
-    }
-    return await response.json();
+    const params = new URLSearchParams({ certNumber, cardName });
+    if (specId) params.append('specId', specId);
+    if (grade) params.append('grade', grade);
+    const response = await fetch(`${API_BASE}/card-ladder/search?${params}`);
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error('Error fetching PSA population:', error);
+    console.error('Error fetching CardLadder data:', error);
     throw error;
   }
 };

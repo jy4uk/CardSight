@@ -5,6 +5,17 @@ import { getShowIdByDate } from './insights.js';
 
 const router = express.Router();
 
+// Recompute a trade's aggregate totals from its current items
+async function recomputeTradeTotals(tradeId) {
+  const items = await query(`SELECT direction, card_value, trade_value FROM trade_items WHERE trade_id = $1`, [tradeId]);
+  const trade_in_total = items.filter(i => i.direction === 'in').reduce((sum, i) => sum + (parseFloat(i.card_value) || 0), 0);
+  const trade_in_value = items.filter(i => i.direction === 'in').reduce((sum, i) => sum + (parseFloat(i.trade_value) || 0), 0);
+  const trade_out_total = items.filter(i => i.direction === 'out').reduce((sum, i) => sum + (parseFloat(i.card_value) || 0), 0);
+  await query(`
+    UPDATE trades SET trade_in_total = $1, trade_in_value = $2, trade_out_total = $3 WHERE id = $4
+  `, [trade_in_total, trade_in_value, trade_out_total, tradeId]);
+}
+
 // Get all trades
 router.get('/', authenticateToken, async (req, res) => {
   try {
@@ -72,35 +83,228 @@ router.put('/items/:itemId', authenticateToken, async (req, res) => {
   try {
     const { itemId } = req.params;
     const { field, value } = req.body;
-    
+
     // Only allow updating specific fields
     const allowedFields = ['card_value', 'trade_value'];
     if (!allowedFields.includes(field)) {
       return res.status(400).json({ success: false, error: 'Invalid field' });
     }
-    
+
     // Verify the trade item belongs to a trade owned by this user
     const [item] = await query(`
-      SELECT ti.*, t.user_id 
+      SELECT ti.*, t.user_id
       FROM trade_items ti
       JOIN trades t ON ti.trade_id = t.id
       WHERE ti.id = $1
     `, [itemId]);
-    
+
     if (!item) {
       return res.status(404).json({ success: false, error: 'Trade item not found' });
     }
-    
+
     if (item.user_id !== req.user.userId) {
       return res.status(403).json({ success: false, error: 'Not authorized' });
     }
-    
+
     // Update the field
     await query(`UPDATE trade_items SET ${field} = $1 WHERE id = $2`, [value, itemId]);
-    
+
+    // Keep the linked inventory record's cost basis / sale price in sync
+    if (item.inventory_id) {
+      if (item.direction === 'in' && field === 'trade_value') {
+        await query(`UPDATE inventory SET purchase_price = $1 WHERE id = $2 AND user_id = $3`, [value, item.inventory_id, req.user.userId]);
+      } else if (item.direction === 'out' && field === 'card_value') {
+        await query(`UPDATE inventory SET sale_price = $1 WHERE id = $2 AND user_id = $3`, [value, item.inventory_id, req.user.userId]);
+      }
+    }
+
+    // Recompute the parent trade's aggregate totals from its items
+    await recomputeTradeTotals(item.trade_id);
+
     res.json({ success: true });
   } catch (err) {
     console.error('Update trade item error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Add an item to an existing trade retroactively (trade-in or trade-out)
+router.post('/:id/items', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      direction,
+      card_name,
+      set_name,
+      game,
+      card_type,
+      condition,
+      grade,
+      grade_qualifier,
+      cert_number,
+      card_number,
+      image_url,
+      tcg_product_id,
+      barcode_id,
+      card_value,
+      trade_value,
+      inventory_id, // required for direction 'out'
+    } = req.body;
+
+    if (!['in', 'out'].includes(direction)) {
+      return res.status(400).json({ success: false, error: 'direction must be "in" or "out"' });
+    }
+
+    const [trade] = await query(`SELECT * FROM trades WHERE id = $1 AND user_id = $2`, [id, req.user.userId]);
+    if (!trade) {
+      return res.status(404).json({ success: false, error: 'Trade not found' });
+    }
+
+    let newTradeItem;
+
+    if (direction === 'in') {
+      if (!card_name?.trim()) {
+        return res.status(400).json({ success: false, error: 'card_name is required' });
+      }
+      const tradePct = parseFloat(trade.trade_percentage) || 80;
+      const itemTradeValue = trade_value !== undefined && trade_value !== null && trade_value !== ''
+        ? parseFloat(trade_value) || 0
+        : (parseFloat(card_value) || 0) * (tradePct / 100);
+
+      const hasBarcode = barcode_id && barcode_id.trim();
+      const status = hasBarcode ? 'IN_STOCK' : 'PENDING_BARCODE';
+
+      const [newInventoryItem] = await query(`
+        INSERT INTO inventory (user_id, barcode_id, card_name, set_name, game, card_type, condition, purchase_price, purchase_date, front_label_price, status, notes, cert_number, card_number, grade, grade_qualifier, image_url, tcg_product_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        RETURNING *
+      `, [
+        req.user.userId,
+        hasBarcode ? barcode_id.trim() : null,
+        card_name,
+        set_name || null,
+        game || 'pokemon',
+        card_type || 'raw',
+        condition || 'NM',
+        itemTradeValue,
+        trade.trade_date,
+        card_value || null,
+        status,
+        `Trade-in from ${trade.customer_name || 'customer'} @ ${tradePct}% (added retroactively)`,
+        cert_number || null,
+        card_number || null,
+        grade || null,
+        grade_qualifier || null,
+        image_url || null,
+        tcg_product_id || null,
+      ]);
+
+      const [item] = await query(`
+        INSERT INTO trade_items (trade_id, inventory_id, direction, card_name, set_name, card_value, trade_value)
+        VALUES ($1, $2, 'in', $3, $4, $5, $6)
+        RETURNING *
+      `, [trade.id, newInventoryItem.id, card_name, set_name || null, parseFloat(card_value) || 0, itemTradeValue]);
+      newTradeItem = item;
+    } else {
+      if (!inventory_id) {
+        return res.status(400).json({ success: false, error: 'inventory_id is required for trade-out items' });
+      }
+      const [invItem] = await query(`SELECT * FROM inventory WHERE id = $1 AND user_id = $2`, [inventory_id, req.user.userId]);
+      if (!invItem) {
+        return res.status(404).json({ success: false, error: 'Inventory item not found' });
+      }
+      if (invItem.status !== 'IN_STOCK') {
+        return res.status(400).json({ success: false, error: 'Item is not in stock' });
+      }
+      const price = parseFloat(card_value) || 0;
+
+      await query(`UPDATE inventory SET status = 'TRADED', sale_date = $1, sale_price = $2 WHERE id = $3 AND user_id = $4`, [trade.trade_date, price, inventory_id, req.user.userId]);
+
+      const [item] = await query(`
+        INSERT INTO trade_items (trade_id, inventory_id, direction, card_name, set_name, card_value, trade_value)
+        VALUES ($1, $2, 'out', $3, $4, $5, $5)
+        RETURNING *
+      `, [trade.id, inventory_id, invItem.card_name, invItem.set_name, price]);
+      newTradeItem = item;
+    }
+
+    await recomputeTradeTotals(trade.id);
+
+    res.json({ success: true, item: newTradeItem });
+  } catch (err) {
+    console.error('Add trade item error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Remove an item from a trade (reverses its inventory effect)
+router.delete('/items/:itemId', authenticateToken, async (req, res) => {
+  try {
+    const { itemId } = req.params;
+
+    const [item] = await query(`
+      SELECT ti.*, t.user_id
+      FROM trade_items ti
+      JOIN trades t ON ti.trade_id = t.id
+      WHERE ti.id = $1
+    `, [itemId]);
+
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Trade item not found' });
+    }
+    if (item.user_id !== req.user.userId) {
+      return res.status(403).json({ success: false, error: 'Not authorized' });
+    }
+
+    await query(`DELETE FROM trade_items WHERE id = $1`, [itemId]);
+
+    if (item.inventory_id) {
+      if (item.direction === 'in') {
+        await query(`DELETE FROM inventory WHERE id = $1 AND user_id = $2`, [item.inventory_id, req.user.userId]);
+      } else {
+        await query(`UPDATE inventory SET status = 'IN_STOCK', sale_date = NULL, sale_price = NULL WHERE id = $1 AND user_id = $2`, [item.inventory_id, req.user.userId]);
+      }
+    }
+
+    await recomputeTradeTotals(item.trade_id);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Remove trade item error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Update trade-level details (customer, date, cash, notes, percentage)
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { customer_name, trade_date, notes, cash_to_customer, cash_from_customer, trade_percentage } = req.body;
+
+    const [existing] = await query(`SELECT * FROM trades WHERE id = $1 AND user_id = $2`, [id, req.user.userId]);
+    if (!existing) {
+      return res.status(404).json({ success: false, error: 'Trade not found' });
+    }
+
+    const [updated] = await query(`
+      UPDATE trades
+      SET customer_name = $1, trade_date = $2, notes = $3, cash_to_customer = $4, cash_from_customer = $5, trade_percentage = $6
+      WHERE id = $7 AND user_id = $8
+      RETURNING *
+    `, [
+      customer_name !== undefined ? customer_name : existing.customer_name,
+      trade_date !== undefined ? trade_date : existing.trade_date,
+      notes !== undefined ? notes : existing.notes,
+      cash_to_customer !== undefined ? cash_to_customer : existing.cash_to_customer,
+      cash_from_customer !== undefined ? cash_from_customer : existing.cash_from_customer,
+      trade_percentage !== undefined ? trade_percentage : existing.trade_percentage,
+      id,
+      req.user.userId,
+    ]);
+
+    res.json({ success: true, trade: updated });
+  } catch (err) {
+    console.error('Update trade error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

@@ -11,7 +11,15 @@
  */
 
 /**
- * PSA Service - Fetches certification data from PSA's public API
+ * PSA Service — DEPRECATED
+ *
+ * PSA's public unauthenticated API is hard-capped at 100 calls/day (account/IP-wide), making it
+ * unusable for any bulk or automated flow. CardLadder's httpcertlookup endpoint now handles all
+ * cert resolution (cert number → profileId/grade/card data) without touching PSA directly —
+ * see cardLadderService.fetchCertLookup(). This file is kept as a reference and for the
+ * isPSACertNumber() format-check utility, which has no PSA dependency.
+ *
+ * Do not add new callers. Remove this file once isPSACertNumber() is moved to a shared util.
  */
 
 const PSA_API_BASE = 'https://api.psacard.com/publicapi/cert/GetByCertNumber';
@@ -22,6 +30,21 @@ const PSA_POP_BASE = 'https://api.psacard.com/publicapi/pop/GetPSASpecPopulation
 
 const MAX_RETRIES = 3;
 const INITIAL_DELAY_MS = 1000;
+
+// PSA's public API (no PSA_API_TOKEN configured here) rate-limits hard. Without this, concurrent
+// callers (e.g. pricing the whole graded inventory at once) each retry independently and pile
+// requests on top of each other, making 429s worse instead of backing off. This serializes every
+// PSA request — across all callers, cert and population alike — with a minimum gap between them.
+const MIN_REQUEST_INTERVAL_MS = 1100;
+let nextAvailableTime = 0;
+
+function throttle() {
+  const now = Date.now();
+  const start = Math.max(now, nextAvailableTime);
+  nextAvailableTime = start + MIN_REQUEST_INTERVAL_MS;
+  const wait = start - now;
+  return wait > 0 ? sleep(wait) : Promise.resolve();
+}
 
 /**
  * Sleep for a given number of milliseconds
@@ -35,6 +58,8 @@ export async function fetchPSASpecPopulation(specId) {
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      await throttle();
+
       const headers = {
         'Accept': 'application/json',
       };
@@ -80,15 +105,17 @@ export async function fetchPSACert(certNumber) {
   
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      await throttle();
+
       const headers = {
           'Accept': 'application/json',
         };
-      
+
       // Add authorization if token is available
       if (PSA_API_TOKEN) {
         headers['Authorization'] = `Bearer ${PSA_API_TOKEN}`;
       }
-      
+
       const response = await fetch(`${PSA_API_BASE}/${certNumber}`, { headers });
 
       if (!response.ok) {

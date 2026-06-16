@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { X, Plus, Trash2, ArrowRight, ArrowLeft, DollarSign, Percent, User, Calendar, Search, Loader2, Scan, Bookmark, AlertTriangle, Pencil, Check, HelpCircle } from 'lucide-react';
-import { fetchPSAData, isPSACertNumber, searchTCGProducts } from '../../api';
+import { fetchPSAData, isPSACertNumber, searchTCGProducts, fetchCardLadderSales } from '../../api';
 import { useSavedDeals } from '../../context/SavedDealsContext';
 import { useTradeTutorial } from '../../hooks/useTutorial';
-import PSAMarketData from '../PSAMarketData';
+import UnifiedMarketPanel from '../UnifiedMarketPanel';
 import { CONDITIONS, GRADES, GAMES, CARD_TYPES } from '../../constants';
 
 const DEFAULT_TRADE_PERCENTAGE = 80;
@@ -54,7 +54,7 @@ const detectGameFromProduct = (product) => {
 export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems = [], resumedDeal = null }) {
   const { saveDeal, deleteDeal } = useSavedDeals();
   const { startTutorial: startTradeTutorial } = useTradeTutorial();
-  
+
   const [customerName, setCustomerName] = useState('');
   const [tradeDate, setTradeDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -63,19 +63,19 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   const [cashToCustomer, setCashToCustomer] = useState(0);
   const [cashFromCustomer, setCashFromCustomer] = useState(0);
   const [loading, setLoading] = useState(false);
-  
+
   // Save for later state
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [saveCustomerNote, setSaveCustomerNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [resumedDealId, setResumedDealId] = useState(null);
   const [unavailableItems, setUnavailableItems] = useState([]);
-  
+
   // Trade-out search state
   const [tradeOutSearch, setTradeOutSearch] = useState('');
   const [showTradeOutDropdown, setShowTradeOutDropdown] = useState(false);
   const tradeOutSearchRef = useRef(null);
-  
+
   // Trade-in form state (integrated add card form)
   const [showAddTradeInForm, setShowAddTradeInForm] = useState(false);
   const [tradeInForm, setTradeInForm] = useState({
@@ -103,7 +103,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   const [showAllTcgResults, setShowAllTcgResults] = useState(false);
   const [preSelectionFormData, setPreSelectionFormData] = useState(null);
   const tcgDebounceRef = useRef(null);
-  
+
   // PSA lookup state
   const [psaData, setPsaData] = useState(null);
   const [psaLoading, setPsaLoading] = useState(false);
@@ -111,7 +111,13 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   const psaDebounceRef = useRef(null);
   const psaFetchedRef = useRef(null);
   const barcodeInputRef = useRef(null);
-  
+
+  // CardLadder sales state
+  const [clData, setClData] = useState(null);
+  const [clLoading, setClLoading] = useState(false);
+  const [clError, setClError] = useState(null);
+  const clFetchedRef = useRef(null);
+
   // Editing staged trade-in items
   const [editingTradeInIndex, setEditingTradeInIndex] = useState(null);
   const [editingTradeInData, setEditingTradeInData] = useState({});
@@ -126,7 +132,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   const filteredTradeOutItems = useMemo(() => {
     if (!tradeOutSearch.trim()) return availableItems.slice(0, 10);
     const search = tradeOutSearch.toLowerCase();
-    return availableItems.filter(item => 
+    return availableItems.filter(item =>
       item.card_name?.toLowerCase().includes(search) ||
       item.set_name?.toLowerCase().includes(search) ||
       item.barcode_id?.toLowerCase().includes(search)
@@ -136,12 +142,12 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   // Auto-add item when barcode is scanned (exact barcode match)
   useEffect(() => {
     if (!tradeOutSearch.trim()) return;
-    
+
     // Check for exact barcode match
     const exactMatch = availableItems.find(
       item => item.barcode_id && item.barcode_id.toLowerCase() === tradeOutSearch.toLowerCase()
     );
-    
+
     if (exactMatch) {
       // Add item and clear search
       if (!tradeOutItems.find(item => item.inventory_id === exactMatch.id)) {
@@ -169,7 +175,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   const difference = tradeInValue - tradeOutTotal;
 
   // Calculate weighted average trade percentage for display
-  const avgTradePercentage = tradeInTotal > 0 
+  const avgTradePercentage = tradeInTotal > 0
     ? (tradeInValue / tradeInTotal * 100).toFixed(1)
     : DEFAULT_TRADE_PERCENTAGE;
 
@@ -211,7 +217,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       setTradeInForm({
         barcode_id: '', card_name: '', set_name: '', card_number: '', game: 'pokemon',
         card_type: 'raw', condition: 'NM', grade: '', grade_qualifier: '',
-        card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null, 
+        card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null,
         image_url: '', cert_number: '', tcg_product_id: null, notes: ''
       });
       setShowAddTradeInForm(false);
@@ -236,6 +242,11 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         clearTimeout(tcgDebounceRef.current);
         tcgDebounceRef.current = null;
       }
+      // Reset CL state
+      setClData(null);
+      setClLoading(false);
+      setClError(null);
+      clFetchedRef.current = null;
       // Reset save for later state
       setShowSaveDialog(false);
       setSaveCustomerNote('');
@@ -250,15 +261,15 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   // Hydrate from resumed deal
   useEffect(() => {
     if (isOpen && resumedDeal && resumedDeal.deal_data) {
-      const dealData = typeof resumedDeal.deal_data === 'string' 
-        ? JSON.parse(resumedDeal.deal_data) 
+      const dealData = typeof resumedDeal.deal_data === 'string'
+        ? JSON.parse(resumedDeal.deal_data)
         : resumedDeal.deal_data;
-      
+
       // Set customer info
       if (resumedDeal.customer_name) setCustomerName(resumedDeal.customer_name);
       if (resumedDeal.customer_note) setSaveCustomerNote(resumedDeal.customer_note);
       if (dealData.notes) setNotes(dealData.notes);
-      
+
       // Set trade items
       if (dealData.tradeInItems) setTradeInItems(dealData.tradeInItems);
       if (dealData.tradeOutItems) {
@@ -275,11 +286,11 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         setTradeOutItems(validTradeOutItems);
         setUnavailableItems(unavailable);
       }
-      
+
       // Set cash values
       if (dealData.cashToCustomer !== undefined) setCashToCustomer(dealData.cashToCustomer);
       if (dealData.cashFromCustomer !== undefined) setCashFromCustomer(dealData.cashFromCustomer);
-      
+
       // Track resumed deal ID
       setResumedDealId(resumedDeal.id);
     }
@@ -292,19 +303,37 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     }
   }, [showAddTradeInForm]);
 
+  const handleCardLadderLookup = async (certNumber, specId, cardName, grade) => {
+    const cacheKey = `${certNumber}:${specId || cardName}:${grade}`;
+    if (clFetchedRef.current === cacheKey) return;
+    clFetchedRef.current = cacheKey;
+    setClLoading(true);
+    setClError(null);
+    setClData(null);
+    try {
+      const result = await fetchCardLadderSales(certNumber, specId, cardName, grade);
+      setClData(result);
+      if (!result.success && result.error && !result.notConfigured) setClError(result.error);
+    } catch (err) {
+      setClError(err.message || 'Failed to fetch CardLadder data');
+    } finally {
+      setClLoading(false);
+    }
+  };
+
   const handlePSALookup = async (certNumber) => {
     if (psaFetchedRef.current === certNumber) return;
-    
+
     setPsaLoading(true);
     setPsaError(null);
     psaFetchedRef.current = certNumber;
 
     try {
       const result = await fetchPSAData(certNumber);
-      
+
       if (result.success && result.psa) {
         setPsaData(result);
-        
+
         // Extract numeric grade from PSA grade (e.g., "GEM MT 10" -> "10")
         const extractNumericGrade = (psaGrade) => {
           if (!psaGrade) return '';
@@ -334,7 +363,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         // Parse set name: extract game prefix, series, set code, and true set name
         const parseSetName = (rawSet) => {
           if (!rawSet) return { game: null, series: '', setName: '', tcgSetName: '' };
-          
+
           let setName = rawSet;
           let detectedGame = null;
 
@@ -352,8 +381,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
             if (onePieceMatch) {
               const setCode = onePieceMatch[1].toUpperCase();
               const lexicalName = toTitleCase(onePieceMatch[2].trim());
-              return { 
-                game: 'onepiece', 
+              return {
+                game: 'onepiece',
                 setName: `${lexicalName} - ${setCode}`,
                 tcgSetName: lexicalName
               };
@@ -400,6 +429,11 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         if (cardName && cardName.trim().length >= 2) {
           handleTCGSearch(cardName, tcgSetName || parsedSetName, cardNumber);
         }
+
+        // Trigger CardLadder lookup
+        if (cardName) {
+          handleCardLadderLookup(certNumber, result.psa.specId, cardName, extractNumericGrade(result.psa.grade));
+        }
       } else {
         setPsaError(result.error || 'PSA certification not found');
       }
@@ -413,13 +447,13 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   const handleBarcodeChange = (value) => {
     const certNumber = tradeInForm.card_type !== 'raw' ? value : '';
     setTradeInForm(prev => ({ ...prev, barcode_id: value, cert_number: certNumber }));
-    
+
     // Debounce PSA lookup
     if (psaDebounceRef.current) {
       clearTimeout(psaDebounceRef.current);
     }
     setPsaError(null);
-    
+
     if (isPSACertNumber(value)) {
       psaDebounceRef.current = setTimeout(() => {
         handlePSALookup(value);
@@ -427,6 +461,9 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     } else {
       setPsaData(null);
       psaFetchedRef.current = null;
+      setClData(null);
+      setClError(null);
+      clFetchedRef.current = null;
     }
   };
 
@@ -436,27 +473,27 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       setTcgProducts([]);
       return;
     }
-    
+
     setTcgLoading(true);
     try {
       // First try with original card name
       let result = await searchTCGProducts(cardName, setName, cardNumber, 9);
-      
+
       // If no results and name contains periods or multiple words, try cleaned version (One Piece style)
-      if ((!result.success || !result.products || result.products.length === 0) && 
+      if ((!result.success || !result.products || result.products.length === 0) &&
           (cardName.includes('.') || cardName.includes(' '))) {
         const cleanedName = cleanForCardLookup(cardName);
         if (cleanedName !== cardName) {
           result = await searchTCGProducts(cleanedName, setName, cardNumber, 9);
         }
       }
-      
+
       // If still no results and set name was provided, try without set name
       if ((!result.success || !result.products || result.products.length === 0) && setName) {
         result = await searchTCGProducts(cardName, '', cardNumber, 9);
-        
+
         // Also try cleaned name without set name
-        if ((!result.success || !result.products || result.products.length === 0) && 
+        if ((!result.success || !result.products || result.products.length === 0) &&
             (cardName.includes('.') || cardName.includes(' '))) {
           const cleanedName = cleanForCardLookup(cardName);
           if (cleanedName !== cardName) {
@@ -464,7 +501,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
           }
         }
       }
-      
+
       if (result.success && result.products) {
         setTcgProducts(result.products);
         setShowAllTcgResults(false);
@@ -485,14 +522,14 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     // Save current form state before making changes (for restore on deselect)
     setPreSelectionFormData({ ...tradeInForm });
     setSelectedTcgProduct(product);
-    
+
     const formattedCardName = toTitleCase(cleanCardName(product.cleanName || product.name || ''));
     const formattedSetName = toTitleCase(cleanSetName(product.setName || ''));
     const detectedGame = detectGameFromProduct(product);
-    
+
     setTradeInForm(prev => {
       const isGradedCard = prev.card_type !== 'raw';
-      
+
       // For graded cards, only update image and game - preserve PSA data for other fields
       if (isGradedCard) {
         return {
@@ -520,16 +557,16 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
   // Handle card name/set/number changes with TCG search
   const handleTradeInFieldChange = (field, value) => {
     setTradeInForm(prev => ({ ...prev, [field]: value }));
-    
+
     if (field === 'card_name' || field === 'set_name' || field === 'card_number') {
       if (tcgDebounceRef.current) {
         clearTimeout(tcgDebounceRef.current);
       }
-      
+
       const newCardName = field === 'card_name' ? value : tradeInForm.card_name;
       const newSetName = field === 'set_name' ? value : tradeInForm.set_name;
       const newCardNumber = field === 'card_number' ? value : tradeInForm.card_number;
-      
+
       if (newCardName && newCardName.trim().length >= 2) {
         tcgDebounceRef.current = setTimeout(() => {
           handleTCGSearch(newCardName, newSetName, newCardNumber);
@@ -558,7 +595,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     const tradeValue = tradeInForm.trade_value_override !== null && tradeInForm.trade_value_override !== ''
       ? parseFloat(tradeInForm.trade_value_override) || 0
       : cardValue * tradePct / 100;
-    
+
     setTradeInItems([...tradeInItems, {
       id: Date.now(),
       ...tradeInForm,
@@ -572,7 +609,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     setTradeInForm({
       barcode_id: '', card_name: '', set_name: '', card_number: '', game: tradeInForm.game,
       card_type: 'raw', condition: 'NM', grade: '', grade_qualifier: '',
-      card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null, 
+      card_value: '', trade_percentage: DEFAULT_TRADE_PERCENTAGE, trade_value_override: null,
       image_url: '', cert_number: '', tcg_product_id: null, notes: ''
     });
     // Reset PSA state for next card
@@ -583,7 +620,11 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     setTcgProducts([]);
     setSelectedTcgProduct(null);
     setPreSelectionFormData(null);
-    
+    // Reset CL state for next card
+    setClData(null);
+    setClError(null);
+    clFetchedRef.current = null;
+
     // Focus barcode input for next scan
     if (barcodeInputRef.current) {
       barcodeInputRef.current.focus();
@@ -683,12 +724,12 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         notes,
         trade_date: tradeDate
       });
-      
+
       // If this was a resumed deal, delete the saved deal
       if (resumedDealId) {
         await deleteDeal(resumedDealId);
       }
-      
+
       // Reset form
       setCustomerName('');
       setTradeInItems([]);
@@ -710,18 +751,18 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
       alert('Please add at least one trade-in or trade-out item');
       return;
     }
-    
+
     setSaving(true);
     try {
       // Calculate totals for display
       const totalItems = tradeInItems.length + tradeOutItems.length;
       const totalValue = tradeInValue + tradeOutTotal;
-      
+
       // Get inventory IDs of trade-out items for availability checking
       const tradeOutInventoryIds = tradeOutItems
         .filter(item => item.inventory_id)
         .map(item => item.inventory_id);
-      
+
       const dealData = {
         tradeInItems,
         tradeOutItems,
@@ -734,7 +775,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         tradeOutTotal,
         avgTradePercentage
       };
-      
+
       const result = await saveDeal({
         deal_type: 'trade',
         customer_name: customerName.trim() || null,
@@ -744,13 +785,13 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         total_value: totalValue,
         trade_out_inventory_ids: tradeOutInventoryIds
       });
-      
+
       if (result.success) {
         // If we resumed from an existing deal, delete the old one
         if (resumedDealId) {
           await deleteDeal(resumedDealId);
         }
-        
+
         // Reset form
         setCustomerName('');
         setTradeInItems([]);
@@ -783,15 +824,15 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={onClose}>
       <div className="bg-white dark:bg-slate-800 w-full sm:max-w-6xl sm:rounded-xl rounded-t-2xl shadow-xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-indigo-600">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-indigo-600 flex-shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-xl font-semibold text-white flex items-center gap-2">
               <ArrowRight className="w-5 h-5" />
               Record Trade
               <ArrowLeft className="w-5 h-5" />
             </h2>
-            <button 
-              onClick={() => startTradeTutorial(true)} 
+            <button
+              onClick={() => startTradeTutorial(true)}
               className="p-1 hover:bg-white/20 rounded-full transition-colors"
               title="Show tutorial"
             >
@@ -805,55 +846,27 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Trade Info Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                <User className="w-4 h-4 inline mr-1" />
-                Customer Name
-              </label>
-              <input
-                type="text"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Optional"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500"
-              />
+          {/* Meta row — compact flex instead of 4-col grid */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
+              <User className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Customer name"
+                className="flex-1 px-2.5 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                <Percent className="w-4 h-4 inline mr-1" />
-                Avg Trade %
-              </label>
-              <input
-                type="text"
-                value={`${avgTradePercentage}%`}
-                disabled
-                className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-slate-400"
-                title="Calculated from individual card percentages"
-              />
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              <input type="date" value={tradeDate} onChange={(e) => setTradeDate(e.target.value)}
+                className="px-2.5 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Trade Date
-              </label>
-              <input
-                type="date"
-                value={tradeDate}
-                onChange={(e) => setTradeDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500"
-              />
+            <div className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-100 dark:bg-slate-700 px-2.5 py-1.5 rounded-lg">
+              <Percent className="w-3.5 h-3.5" />
+              Avg {avgTradePercentage}%
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Notes</label>
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional notes"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500"
-              />
+            <div className="flex-1 min-w-[120px]">
+              <input type="text" value={notes} onChange={(e) => setNotes(e.target.value)}
+                placeholder="Notes (optional)"
+                className="w-full px-2.5 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100" />
             </div>
           </div>
 
@@ -877,7 +890,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
 
               {/* Inline Add Card Form */}
               {showAddTradeInForm && (
-                <div className="bg-white dark:bg-slate-800 border border-green-300 dark:border-green-700 rounded-lg p-3 mb-3 space-y-3">
+                <div className="bg-white dark:bg-slate-800 border border-green-300 dark:border-green-700 rounded-lg p-3 mb-3 space-y-2">
                   {/* Barcode Input for PSA lookup */}
                   <div data-tutorial="trade-barcode-field" className="relative">
                     <input
@@ -892,15 +905,23 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     <Scan className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   </div>
 
-                  {/* PSA Market Data Panel */}
+                  {/* PSA + CardLadder Market Data Panel */}
                   {(psaData || psaLoading || psaError) && (
                     <div data-tutorial="trade-psa-panel">
-                    <PSAMarketData
-                      data={psaData}
-                      loading={psaLoading}
-                      error={psaError}
-                      onRetry={() => tradeInForm.barcode_id && handlePSALookup(tradeInForm.barcode_id)}
-                    />
+                      <UnifiedMarketPanel
+                        psaData={psaData}
+                        psaLoading={psaLoading}
+                        psaError={psaError}
+                        onRetryPSA={() => tradeInForm.barcode_id && handlePSALookup(tradeInForm.barcode_id)}
+                        clData={tradeInForm.card_type !== 'raw' ? clData : null}
+                        clLoading={tradeInForm.card_type !== 'raw' && clLoading}
+                        clError={tradeInForm.card_type !== 'raw' ? clError : null}
+                        onRetryCL={() => {
+                          clFetchedRef.current = null;
+                          handleCardLadderLookup(tradeInForm.barcode_id.trim(), psaData?.psa?.specId, tradeInForm.card_name, tradeInForm.grade);
+                        }}
+                        certNumber={tradeInForm.barcode_id?.trim()}
+                      />
                     </div>
                   )}
 
@@ -946,7 +967,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                           </button>
                         )}
                       </div>
-                      
+
                       {/* Carousel view when expanded and more than 3 results */}
                       {showAllTcgResults && tcgProducts.length > 3 ? (
                         <div className="overflow-x-auto pb-2 -mx-1">
@@ -1040,7 +1061,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     </div>
                   </div>
 
-                  {/* Selected card preview - moved below card number/price row */}
+                  {/* Selected card preview */}
                   {selectedTcgProduct && tcgProducts.length === 0 && (
                     <div className="flex items-center gap-3 p-2 bg-green-50 rounded-lg border border-green-200">
                       {selectedTcgProduct.imageUrl && (
@@ -1106,22 +1127,6 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     </a>
                   )}
 
-                  {/* Card Ladder Link - for graded cards */}
-                  {tradeInForm.card_type !== 'raw' && tradeInForm.barcode_id && (
-                    <a
-                      data-tutorial="trade-cardladder-link"
-                      href="https://app.cardladder.com/sales-history"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => {
-                        navigator.clipboard.writeText(tradeInForm.barcode_id);
-                      }}
-                      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:underline"
-                    >
-                      Search on Card Ladder (cert # copied) →
-                    </a>
-                  )}
-
                   {/* Live Trade Value Calculation with Override */}
                   {tradeInForm.card_value && (
                     <div className="bg-green-100 border border-green-200 rounded-lg p-2 flex items-center justify-between">
@@ -1145,7 +1150,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     </div>
                   )}
 
-                  {/* Game Selection */}
+                  {/* Game Selection pills */}
                   <div className="flex gap-1 flex-wrap">
                     {GAMES.map((g) => (
                       <button
@@ -1163,7 +1168,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     ))}
                   </div>
 
-                  {/* Card Type */}
+                  {/* Card Type pills */}
                   <div className="flex gap-1 flex-wrap">
                     {CARD_TYPES.map((t) => (
                       <button
@@ -1215,8 +1220,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                       </select>
                       <button
                         type="button"
-                        onClick={() => setTradeInForm(prev => ({ 
-                          ...prev, 
+                        onClick={() => setTradeInForm(prev => ({
+                          ...prev,
                           grade_qualifier: prev.grade_qualifier === '.5' ? '' : '.5'
                         }))}
                         className={`px-2 py-1 border rounded text-xs font-medium transition-colors
@@ -1252,8 +1257,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
               {/* Trade-In Items List */}
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {tradeInItems.map((item, index) => (
-                  <div 
-                    key={item.id} 
+                  <div
+                    key={item.id}
                     className={`rounded-lg p-2 ${editingTradeInIndex === index ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700' : 'bg-white dark:bg-slate-700 border border-green-200 dark:border-green-700'}`}
                   >
                     {editingTradeInIndex === index ? (
@@ -1340,8 +1345,8 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                           <div className="flex items-center gap-2 text-green-700">
                             <span>Value: ${parseFloat(item.card_value).toFixed(2)}</span>
                             <span className="text-xs text-green-600">
-                              ({parseFloat(item.card_value) > 0 
-                                ? ((parseFloat(item.trade_value) / parseFloat(item.card_value)) * 100).toFixed(0) 
+                              ({parseFloat(item.card_value) > 0
+                                ? ((parseFloat(item.trade_value) / parseFloat(item.card_value)) * 100).toFixed(0)
                                 : 0}%)
                             </span>
                           </div>
@@ -1401,7 +1406,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                
+
                 {/* Dropdown */}
                 {showTradeOutDropdown && filteredTradeOutItems.length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg shadow-lg max-h-64 overflow-y-auto">
@@ -1470,30 +1475,30 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
             </div>
           </div>
 
-          {/* Summary Section */}
+          {/* Summary Section — compact flex row */}
           <div className="bg-gray-100 dark:bg-slate-700 rounded-lg p-4">
             <h3 className="font-semibold text-gray-800 dark:text-slate-100 mb-3 flex items-center gap-2">
               <DollarSign className="w-4 h-4" />
               Trade Summary
             </h3>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
+            <div className="flex flex-wrap gap-3 sm:gap-6 text-sm mb-3">
               <div>
-                <span className="text-gray-600 dark:text-slate-400">Customer Trade Value:</span>
-                <div className="font-bold text-green-600 dark:text-green-400">${tradeInValue.toFixed(2)}</div>
+                <span className="text-gray-600 dark:text-slate-400 text-xs block">Customer Trade Value</span>
+                <span className="font-bold text-green-600 dark:text-green-400">${tradeInValue.toFixed(2)}</span>
               </div>
               <div>
-                <span className="text-gray-600 dark:text-slate-400">Your Cards Value:</span>
-                <div className="font-bold text-blue-600 dark:text-blue-400">${tradeOutTotal.toFixed(2)}</div>
+                <span className="text-gray-600 dark:text-slate-400 text-xs block">Your Cards Value</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400">${tradeOutTotal.toFixed(2)}</span>
               </div>
               <div>
-                <span className="text-gray-600 dark:text-slate-400">Difference:</span>
-                <div className={`font-bold ${difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span className="text-gray-600 dark:text-slate-400 text-xs block">Difference</span>
+                <span className={`font-bold ${difference >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {difference >= 0 ? '+' : ''}{difference.toFixed(2)}
-                </div>
+                </span>
               </div>
               <div>
-                <span className="text-gray-600 dark:text-slate-400">Cash Settlement:</span>
-                <div className="font-bold">
+                <span className="text-gray-600 dark:text-slate-400 text-xs block">Cash Settlement</span>
+                <span className="font-bold">
                   {difference > 0 ? (
                     <span className="text-orange-600 dark:text-orange-400">Pay customer ${cashToCustomer.toFixed(2)}</span>
                   ) : difference < 0 ? (
@@ -1501,12 +1506,12 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
                   ) : (
                     <span className="text-gray-600 dark:text-slate-400">Even trade</span>
                   )}
-                </div>
+                </span>
               </div>
             </div>
 
             {/* Manual Cash Override */}
-            <div className="mt-3 pt-3 border-t border-gray-300 dark:border-slate-600 grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="pt-3 border-t border-gray-300 dark:border-slate-600 grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-xs text-gray-600 dark:text-slate-400">Cash to Customer (override)</label>
                 <input
@@ -1533,7 +1538,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
 
         {/* Unavailable Items Warning */}
         {unavailableItems.length > 0 && (
-          <div className="mx-4 mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="mx-4 mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg flex-shrink-0">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div>
@@ -1547,7 +1552,7 @@ export default function TradeModal({ isOpen, onClose, onSubmit, inventoryItems =
         )}
 
         {/* Footer - with safe area padding for bottom nav on mobile */}
-        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom)+4rem)] sm:pb-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 space-y-2">
+        <div className="p-4 pb-[calc(1rem+env(safe-area-inset-bottom)+4rem)] sm:pb-4 border-t border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800 space-y-2 flex-shrink-0">
           {/* Save Dialog */}
           {showSaveDialog ? (
             <div className="space-y-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">

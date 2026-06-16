@@ -5,6 +5,7 @@ import { searchCardImage, searchPokemonCards } from '../services/imageService.js
 import { query } from '../services/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { UserService } from '../auth/user-service.js';
+import { suggestPrice } from '../services/pricingEngine.js';
 
 const router = express.Router();
 const userService = new UserService();
@@ -53,7 +54,7 @@ router.get('/', async (req, res) => {
     const userId = req.user.userId;
     const collectionType = req.query.collection_type; // 'inventory', 'collection', or undefined (all)
     
-    let sql = `SELECT * FROM inventory WHERE user_id = $1 AND status = 'IN_STOCK'`;
+    let sql = `SELECT * FROM inventory WHERE user_id = $1 AND status IN ('IN_STOCK', 'PENDING_BARCODE')`;
     const params = [userId];
     
     if (collectionType === 'inventory' || collectionType === 'collection') {
@@ -244,6 +245,7 @@ router.get('/reprice-preview', async (req, res) => {
         i.condition, i.front_label_price, i.purchase_price, i.image_url,
         i.tcg_product_id, i.grade, i.grade_qualifier, i.barcode_id, i.cert_number,
         p.url as tcg_product_url,
+        p.name as tcg_product_name,
         pr.market_price as tcg_market_price,
         pr.low_price as tcg_low_price,
         pr.mid_price as tcg_mid_price,
@@ -260,6 +262,28 @@ router.get('/reprice-preview', async (req, res) => {
       ORDER BY i.front_label_price DESC NULLS LAST`,
       [userId]
     );
+
+    // Compute suggested prices (raw: TCGCSV passthrough, graded: CardLadder algorithm).
+    // Capped concurrency since graded items trigger live PSA/CardLadder API calls.
+    const CONCURRENCY = 5;
+    let cursor = 0;
+    async function worker() {
+      while (cursor < items.length) {
+        const item = items[cursor++];
+        try {
+          const suggestion = await suggestPrice(item);
+          item.suggested_price = suggestion.suggestedPrice;
+          item.suggested_confidence = suggestion.confidence;
+          item.suggested_price_breakdown = suggestion.breakdown;
+        } catch (err) {
+          item.suggested_price = null;
+          item.suggested_confidence = 'none';
+          item.suggested_price_breakdown = { reason: 'error', message: err.message };
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
     res.json({ success: true, items });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

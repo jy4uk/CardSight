@@ -171,6 +171,12 @@ export default function InventoryCard({ item, onSelect, onSell, onEdit, onFetchI
               PC
             </span>
           )}
+          {/* Pending Barcode Badge */}
+          {item.status === 'PENDING_BARCODE' && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-400/90 text-orange-950 shadow-sm">
+              NO BARCODE
+            </span>
+          )}
         </div>
 
         {/* Multi-select Checkbox */}

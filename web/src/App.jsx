@@ -28,7 +28,7 @@ import { useTheme } from './context/ThemeContext';
 import { useBarcodeScanner } from './hooks/useBarcodeScanner';
 import { useTutorial } from './hooks/useTutorial';
 import GradingModal from './components/modals/GradingModal';
-import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, deleteTrade, fetchInventoryByBarcode, sendForGrading, receiveGrade } from './api';
+import { fetchInventory, fetchPublicInventory, addInventoryItem, sellDirectly, initiateStripeSale, listReaders, processPayment, updateItemImage, updateInventoryItem, deleteInventoryItem, fetchTrades, createTrade, updateTrade, deleteTrade, fetchInventoryByBarcode, sendForGrading, receiveGrade } from './api';
 import { Toaster } from 'react-hot-toast';
 
 // Redirect component for backward compatibility with query params
@@ -245,6 +245,16 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
     } catch (err) {
       showAlert('error', 'Failed to create trade: ' + err.message);
       throw err;
+    }
+  };
+
+  const handleUpdateTrade = async (tradeId, updates) => {
+    try {
+      await updateTrade(tradeId, updates);
+      await loadTrades();
+      showAlert('success', 'Trade updated');
+    } catch (err) {
+      showAlert('error', 'Failed to update trade: ' + err.message);
     }
   };
 
@@ -1011,6 +1021,7 @@ function AppContent({ logout, hasFeature, isAuthenticated, user }) {
             setShowTradeModal(true);
           }}
           onDeleteTrade={handleDeleteTrade}
+          onUpdateTrade={handleUpdateTrade}
           onRefreshTrades={loadTrades}
           onPurchaseComplete={loadInventory}
         />

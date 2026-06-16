@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { ExternalLink, TrendingUp, ShoppingCart, Gavel, ChevronDown, ChevronUp, Loader2, AlertCircle } from 'lucide-react';
-import { fetchPSAPopulationReport } from '../api';
 
 const CONFIDENCE_COLORS = {
   high: 'bg-green-100 text-green-700 border-green-200',
@@ -87,14 +86,11 @@ export default function PSAMarketData({ data, loading, error, onRetry }) {
   const [activeTab, setActiveTab] = useState('sold');
   const [isExpanded, setIsExpanded] = useState(false);
   const [showPopulation, setShowPopulation] = useState(false);
-  const [popLoading, setPopLoading] = useState(false);
-  const [popError, setPopError] = useState(null);
-  const [popReport, setPopReport] = useState(null);
 
   const { psa, sold = [], active = [], auctions = [], meta = {} } = data || {};
 
   const popSummary = psa?.population || null;
-  const hasSpecId = !!psa?.specId;
+  const hasPopData = !!psa?.population?.gradeBreakdown;
 
   const psaGradeKey = (() => {
     const g = psa?.grade?.toString();
@@ -111,95 +107,43 @@ export default function PSAMarketData({ data, loading, error, onRetry }) {
     return parts.join(' • ') || null;
   })();
 
+  // Population grade breakdown — now embedded in the cert lookup response (no separate fetch)
   const gradeRows = (() => {
-    const summary = popReport?.psaPop;
-    if (!summary) return [];
+    const breakdown = psa?.population?.gradeBreakdown;
+    if (!breakdown) return [];
 
-    const rows = [];
-    const direct = {
-      '1': summary.Grade1,
-      '1Q': summary.Grade1Q,
-      '1.5': summary.Grade1_5,
-      '1.5Q': summary.Grade1_5Q,
-      '2': summary.Grade2,
-      '2Q': summary.Grade2Q,
-      '2.5': summary.Grade2_5,
-      '2.5Q': summary.Grade2_5Q,
-      '3': summary.Grade3,
-      '3Q': summary.Grade3Q,
-      '3.5': summary.Grade3_5,
-      '3.5Q': summary.Grade3_5Q,
-      '4': summary.Grade4,
-      '4Q': summary.Grade4Q,
-      '4.5': summary.Grade4_5,
-      '4.5Q': summary.Grade4_5Q,
-      '5': summary.Grade5,
-      '5Q': summary.Grade5Q,
-      '5.5': summary.Grade5_5,
-      '5.5Q': summary.Grade5_5Q,
-      '6': summary.Grade6,
-      '6Q': summary.Grade6Q,
-      '6.5': summary.Grade6_5,
-      '6.5Q': summary.Grade6_5Q,
-      '7': summary.Grade7,
-      '7Q': summary.Grade7Q,
-      '7.5': summary.Grade7_5,
-      '7.5Q': summary.Grade7_5Q,
-      '8': summary.Grade8,
-      '8Q': summary.Grade8Q,
-      '8.5': summary.Grade8_5,
-      '8.5Q': summary.Grade8_5Q,
-      '9': summary.Grade9,
-      '9Q': summary.Grade9Q,
-      '9.5': summary.Grade9_5,
-      '9.5Q': summary.Grade9_5Q,
-      '10': summary.Grade10,
-      '10Q': summary.Grade10Q,
-      'Auth': summary.Auth,
+    const keyToLabel = (key) => {
+      if (key === 'auth') return 'Auth';
+      return key.replace(/^g/, '').replace('_', '.');
     };
 
-    for (const [label, count] of Object.entries(direct)) {
+    const rows = [];
+    for (const [key, count] of Object.entries(breakdown)) {
       if (typeof count === 'number' && count > 0) {
-        rows.push({ label, count });
+        rows.push({ label: keyToLabel(key), count });
+      }
+    }
+    const qualBreakdown = psa?.population?.qualifierGrades;
+    if (qualBreakdown) {
+      for (const [key, count] of Object.entries(qualBreakdown)) {
+        if (typeof count === 'number' && count > 0) {
+          rows.push({ label: keyToLabel(key) + 'Q', count });
+        }
       }
     }
 
     rows.sort((a, b) => {
       const toKey = (l) => {
-        if (l === 'Auth') return -1; // Auth goes first
+        if (l === 'Auth') return -1;
         const q = l.endsWith('Q') ? 0.1 : 0;
         const base = parseFloat(l.replace('Q', ''));
         return (Number.isFinite(base) ? base : 0) + q;
       };
-      return toKey(b.label) - toKey(a.label); // Sort highest to lowest
+      return toKey(b.label) - toKey(a.label);
     });
 
     return rows;
   })();
-
-  const handleTogglePopulation = async () => {
-    if (showPopulation) {
-      setShowPopulation(false);
-      return;
-    }
-
-    setShowPopulation(true);
-
-    if (!hasSpecId) return;
-    if (popLoading) return;
-    if (popReport?.specId === psa?.specId) return;
-
-    try {
-      setPopLoading(true);
-      setPopError(null);
-      const resp = await fetchPSAPopulationReport(psa.specId);
-      setPopReport(resp);
-    } catch (e) {
-      setPopError(e?.message || 'Failed to fetch population report');
-    } finally {
-      setPopLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -207,8 +151,8 @@ export default function PSAMarketData({ data, loading, error, onRetry }) {
         <div className="flex items-center gap-3">
           <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
           <div>
-            <p className="text-sm font-medium text-blue-900">Fetching PSA & Market Data...</p>
-            <p className="text-xs text-blue-700">Querying PSA database and eBay listings</p>
+            <p className="text-sm font-medium text-blue-900">Fetching Card & Market Data...</p>
+            <p className="text-xs text-blue-700">Querying CardLadder and eBay listings</p>
           </div>
         </div>
       </div>
@@ -341,35 +285,25 @@ export default function PSAMarketData({ data, loading, error, onRetry }) {
                         <span className="text-gray-500">Population: unavailable</span>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleTogglePopulation}
-                      disabled={!hasSpecId}
-                      className="text-[10px] sm:text-xs font-medium text-blue-700 hover:text-blue-800 disabled:text-gray-400"
-                      title={!hasSpecId ? 'Population report requires SpecID' : 'Toggle population report'}
-                    >
-                      {showPopulation ? 'Hide pop report' : 'Pop report'}
-                    </button>
+                    {hasPopData && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPopulation(v => !v)}
+                        className="text-[10px] sm:text-xs font-medium text-blue-700 hover:text-blue-800"
+                      >
+                        {showPopulation ? 'Hide pop report' : 'Pop report'}
+                      </button>
+                    )}
                   </div>
 
-                  {showPopulation && (
+                  {showPopulation && hasPopData && (
                     <div className="mt-2 border border-gray-200 rounded-lg bg-white">
                       <div className="px-3 py-2 border-b border-gray-100">
                         <p className="text-xs font-semibold text-gray-900">Population Report</p>
-                        {popReport?.description && (
-                          <p className="text-[10px] text-gray-500 truncate">{popReport.description}</p>
-                        )}
                       </div>
 
                       <div className="max-h-40 overflow-y-auto">
-                        {popLoading ? (
-                          <div className="p-3 flex items-center gap-2 text-xs text-gray-600">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Loading population report...
-                          </div>
-                        ) : popError ? (
-                          <div className="p-3 text-xs text-red-700">{popError}</div>
-                        ) : gradeRows.length > 0 ? (
+                        {gradeRows.length > 0 ? (
                           <div className="divide-y divide-gray-100">
                             {gradeRows.map((r) => (
                               <div
