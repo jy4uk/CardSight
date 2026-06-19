@@ -377,6 +377,12 @@ export const connectCardLadderEmail = (email, password) =>
 export const connectCardLadderToken = (refreshToken) =>
   apiClient.post('/cardladder/connect/token', { refreshToken }).then(r => r.data);
 
+export const connectCardLadderGoogle = async () => {
+  const { signInWithGoogleForCardLadder } = await import('./lib/cardLadderFirebase.js');
+  const refreshToken = await signInWithGoogleForCardLadder();
+  return apiClient.post('/cardladder/connect/token', { refreshToken }).then(r => r.data);
+};
+
 export const disconnectCardLadder = () =>
   apiClient.delete('/cardladder/connect').then(r => r.data);
 
