@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { X, User, Upload, Trash2, AlertTriangle, Save, Loader2, HelpCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, User, Upload, Trash2, AlertTriangle, Save, Loader2, HelpCircle, Link, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContextNew';
 import toast from 'react-hot-toast';
 import Papa from 'papaparse';
 import apiClient from '../utils/apiClient';
+import { fetchCardLadderStatus, connectCardLadderEmail, connectCardLadderToken, disconnectCardLadder } from '../api';
 
 export default function AccountSettings({ onClose, onRestartTutorial }) {
   const { user, setUser, logout } = useAuth();
@@ -27,6 +28,69 @@ export default function AccountSettings({ onClose, onRestartTutorial }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // CardLadder integration state
+  const [clStatus, setClStatus] = useState(null); // { connected, valid, source, connectedAt }
+  const [clStatusLoading, setClStatusLoading] = useState(false);
+  const [clEmail, setClEmail] = useState('');
+  const [clPassword, setClPassword] = useState('');
+  const [clToken, setClToken] = useState('');
+  const [clConnecting, setClConnecting] = useState(false);
+  const [clShowManual, setClShowManual] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'integrations' && !clStatus) {
+      setClStatusLoading(true);
+      fetchCardLadderStatus()
+        .then(setClStatus)
+        .catch(() => {})
+        .finally(() => setClStatusLoading(false));
+    }
+  }, [activeTab, clStatus]);
+
+  const handleClConnect = async (e) => {
+    e.preventDefault();
+    setClConnecting(true);
+    try {
+      await connectCardLadderEmail(clEmail, clPassword);
+      toast.success('CardLadder connected!');
+      setClEmail(''); setClPassword('');
+      setClStatus(null); // refetch status
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Connection failed';
+      toast.error(msg);
+      if (msg.toLowerCase().includes('google') || msg.toLowerCase().includes('invalid credentials')) {
+        setClShowManual(true);
+      }
+    } finally {
+      setClConnecting(false);
+    }
+  };
+
+  const handleClConnectToken = async (e) => {
+    e.preventDefault();
+    setClConnecting(true);
+    try {
+      await connectCardLadderToken(clToken.trim());
+      toast.success('CardLadder connected!');
+      setClToken('');
+      setClStatus(null);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Invalid token');
+    } finally {
+      setClConnecting(false);
+    }
+  };
+
+  const handleClDisconnect = async () => {
+    try {
+      await disconnectCardLadder();
+      toast.success('CardLadder disconnected');
+      setClStatus(null);
+    } catch {
+      toast.error('Failed to disconnect');
+    }
+  };
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
@@ -215,6 +279,20 @@ Pikachu,Base Set,58,pokemon,psa,25.00,75.00,PSA 10,1,,12345678,10,"2024-01-01"`;
             Bulk Upload
           </button>
           */}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'integrations'}
+            onClick={() => setActiveTab('integrations')}
+            className={`px-6 py-3 font-medium transition-colors touch-target ${
+              activeTab === 'integrations'
+                ? 'text-blue-600 border-b-2 border-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Link className="w-4 h-4 inline mr-2" aria-hidden="true" />
+            Integrations
+          </button>
           <button
             type="button"
             role="tab"
@@ -420,6 +498,137 @@ Pikachu,Base Set,58,pokemon,psa,25.00,75.00,PSA 10,1,,12345678,10,"2024-01-01"`;
             </div>
           )}
           */}
+
+          {/* Integrations Tab */}
+          {activeTab === 'integrations' && (
+            <div className="space-y-6">
+              <div className="border border-gray-200 rounded-lg p-5">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-semibold text-gray-900">CardLadder</h3>
+                  {clStatusLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  ) : clStatus?.valid ? (
+                    <span className="flex items-center gap-1 text-xs font-medium text-green-700">
+                      <CheckCircle className="w-4 h-4" /> Connected
+                    </span>
+                  ) : clStatus?.connected ? (
+                    <span className="flex items-center gap-1 text-xs font-medium text-yellow-700">
+                      <XCircle className="w-4 h-4" /> Token invalid
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs font-medium text-gray-500">
+                      <XCircle className="w-4 h-4" /> Not connected
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500 mb-4">
+                  Powers exact-match pricing lookups on the Reprice page. Requires a CardLadder account.
+                </p>
+
+                {clStatus?.valid ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-500">
+                      Source: <span className="font-medium">{clStatus.source === 'env' ? 'Environment variable' : 'Database'}</span>
+                      {clStatus.connectedAt && ` · Connected ${new Date(clStatus.connectedAt).toLocaleDateString()}`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleClDisconnect}
+                      className="text-sm text-red-600 hover:text-red-700 font-medium"
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Email/password form */}
+                    <form onSubmit={handleClConnect} className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">CardLadder email</label>
+                        <input
+                          type="email"
+                          value={clEmail}
+                          onChange={e => setClEmail(e.target.value)}
+                          placeholder="you@example.com"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Password</label>
+                        <input
+                          type="password"
+                          value={clPassword}
+                          onChange={e => setClPassword(e.target.value)}
+                          placeholder="CardLadder password"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={clConnecting}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {clConnecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Connect
+                      </button>
+                    </form>
+
+                    {/* Manual token fallback */}
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setClShowManual(v => !v)}
+                        className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+                      >
+                        {clShowManual ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                        Signed up via Google? Use manual token instead
+                      </button>
+
+                      {clShowManual && (
+                        <div className="mt-3 space-y-3">
+                          <div className="bg-gray-50 rounded-lg p-3 text-xs">
+                            <p className="font-medium text-gray-700 mb-2">Run this in DevTools on <a href="https://app.cardladder.com" target="_blank" rel="noreferrer" className="text-blue-600 underline">app.cardladder.com</a> (Console tab):</p>
+                            <pre className="bg-white border border-gray-200 rounded p-2 overflow-x-auto text-[10px] leading-relaxed text-gray-800">{`const req = indexedDB.open('firebaseLocalStorageDb');
+req.onsuccess = () => {
+  const tx = req.result.transaction('firebaseLocalStorage', 'readonly');
+  tx.objectStore('firebaseLocalStorage').getAll().onsuccess = (e) => {
+    const token = e.target.result[0]?.value?.stsTokenManager?.refreshToken;
+    navigator.clipboard.writeText(token);
+    console.log('Copied to clipboard!');
+  };
+};`}</pre>
+                          </div>
+                          <form onSubmit={handleClConnectToken} className="space-y-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Paste refresh token</label>
+                              <textarea
+                                value={clToken}
+                                onChange={e => setClToken(e.target.value)}
+                                rows={3}
+                                placeholder="Paste the token here..."
+                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                                required
+                              />
+                            </div>
+                            <button
+                              type="submit"
+                              disabled={clConnecting || !clToken.trim()}
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              {clConnecting && <Loader2 className="w-4 h-4 animate-spin" />}
+                              Save token
+                            </button>
+                          </form>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Danger Zone Tab */}
           {activeTab === 'danger' && (

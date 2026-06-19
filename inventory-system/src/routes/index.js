@@ -14,6 +14,7 @@ import usersRoutes from './users.js';
 import settingsRoutes from './settings.js';
 import feedbackRoutes from './feedback.js';
 import cardLadderRoutes from './cardLadder.js';
+import cardLadderAuthRoutes from './cardLadderAuth.js';
 
 const router = express.Router();
 // Legacy admin mode auth (preserved for backward compatibility)
@@ -33,5 +34,6 @@ router.use('/tcg', tcgRoutes);
 router.use('/saved-deals', savedDealsRoutes);
 router.use('/feedback', feedbackRoutes);
 router.use('/card-ladder', cardLadderRoutes);
+router.use('/cardladder', cardLadderAuthRoutes);
 
 export default router;

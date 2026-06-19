@@ -187,6 +187,17 @@ async function runMigration() {
     await query(gradingWorkflowSQL);
     console.log('✅ Grading workflow migration completed!');
 
+    // ── Step 12: App settings (key/value store for integration credentials) ──
+    console.log('\nRunning app settings migration...');
+    await query(`
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ App settings migration completed!');
+
     console.log('\n🎉 All migrations completed successfully!');
   } catch (err) {
     console.error('❌ Migration failed:', err);

@@ -367,6 +367,19 @@ export const fetchCardLadderSales = async (certNumber, specId, cardName, grade) 
   }
 };
 
+// CardLadder integration management
+export const fetchCardLadderStatus = () =>
+  apiClient.get('/cardladder/status').then(r => r.data);
+
+export const connectCardLadderEmail = (email, password) =>
+  apiClient.post('/cardladder/connect', { email, password }).then(r => r.data);
+
+export const connectCardLadderToken = (refreshToken) =>
+  apiClient.post('/cardladder/connect/token', { refreshToken }).then(r => r.data);
+
+export const disconnectCardLadder = () =>
+  apiClient.delete('/cardladder/connect').then(r => r.data);
+
 // Check if a value looks like a PSA cert number (7-9 digit numeric)
 export const isPSACertNumber = (value) => {
   if (!value || typeof value !== 'string') return false;
