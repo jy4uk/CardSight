@@ -4,7 +4,7 @@
  * Auth is handled automatically by cardLadderTokenManager — no manual token refresh needed.
  */
 
-import { getToken, isConfigured } from './cardLadderTokenManager.js';
+// Token is passed explicitly by callers (per-user, from user_integrations table)
 
 const CARDLADDER_SEARCH_BASE = 'https://search-zzvl7ri3bq-uc.a.run.app/search';
 const CARDLADDER_CERT_LOOKUP_URL = 'https://us-central1-cardladder-71d53.cloudfunctions.net/httpcertlookup';
@@ -71,12 +71,11 @@ function normalizeHit(hit) {
  * @param {number} limit
  * @param {string} grader         - 'psa' | 'bgs' | 'cgc' (default 'psa')
  */
-export async function fetchCardLadderSales(specId, searchText, grade, limit = 10, grader = 'psa') {
-  if (!isConfigured()) {
+export async function fetchCardLadderSales(specId, searchText, grade, limit = 10, grader = 'psa', token = null) {
+  if (!token) {
     return { hits: [], total: 0, notConfigured: true };
   }
 
-  const token = await getToken();
   const graderLower = (grader || 'psa').toLowerCase();
 
   let query = '';
@@ -135,10 +134,8 @@ export async function fetchCardLadderSales(specId, searchText, grade, limit = 10
  * @param {string} grader - 'psa' | 'bgs' | 'cgc' (default 'psa')
  * @returns {Promise<Object|null>} { cert, grader, grade, graderId, profileId, hasQualifier, qualifierType, label, ... } or null if not found
  */
-export async function fetchCertLookup(certNumber, grader = 'psa') {
-  if (!isConfigured()) return null;
-
-  const token = await getToken();
+export async function fetchCertLookup(certNumber, grader = 'psa', token = null) {
+  if (!token) return null;
 
   const response = await fetch(CARDLADDER_CERT_LOOKUP_URL, {
     method: 'POST',

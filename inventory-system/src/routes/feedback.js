@@ -5,8 +5,8 @@ const router = express.Router();
 
 // Discord webhook function
 async function sendDiscordWebhook(feedbackData) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL || 'https://discord.com/api/webhooks/1468455119233220752/kRPFzqOrSAe4uiI3-JCE8JuQcDVRs9WLsS-tG-TufRK975H4fs49fW7he9O3viN7MDff';
-  
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+
   if (!webhookUrl) {
     console.warn('DISCORD_WEBHOOK_URL not configured, skipping Discord notification');
     throw new Error('Discord webhook not configured');

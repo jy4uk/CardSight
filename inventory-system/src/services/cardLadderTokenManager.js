@@ -2,49 +2,45 @@
  * CardLadder Token Manager
  *
  * CardLadder uses Firebase Auth (project: cardladder-71d53).
- * Firebase ID tokens expire every ~1 hour, but refresh tokens are permanent.
+ * Firebase ID tokens expire every ~1 hour; refresh tokens are permanent.
  *
- * Refresh token source priority:
- *   1. CARDLADDER_REFRESH_TOKEN env var (legacy, still works)
- *   2. app_settings DB table (set via /api/cardladder/connect — preferred for prod)
+ * Tokens are stored per-user in the user_integrations table.
+ * Each user connects their own CardLadder Pro account via the Integrations
+ * settings page; without a connection, pricing features are unavailable.
  *
- * Only CARDLADDER_FIREBASE_API_KEY is required in env — the refresh token can
- * live entirely in the DB after initial setup via the Integrations settings page.
+ * CARDLADDER_FIREBASE_API_KEY must be set in env — it's the Firebase project
+ * identifier used to exchange refresh tokens for ID tokens.
  */
 
 import { query } from './db.js';
 
 const FIREBASE_TOKEN_URL = 'https://securetoken.googleapis.com/v1/token';
+const REFRESH_TOKEN_CACHE_MS = 5 * 60 * 1000;
 
-// In-memory caches
-let cachedIdToken = null;
-let tokenExpiresAt = 0;
-let cachedRefreshToken = null;
-let refreshTokenLoadedAt = 0;
-const REFRESH_TOKEN_CACHE_MS = 5 * 60 * 1000; // re-check DB at most every 5 min
+// Per-user caches: userId -> { idToken, expiresAt } / { token, loadedAt }
+const idTokenCache = new Map();
+const refreshTokenCache = new Map();
 
-// Resolves the refresh token from env → DB (in that order)
-async function getRefreshToken() {
-  if (process.env.CARDLADDER_REFRESH_TOKEN) return process.env.CARDLADDER_REFRESH_TOKEN;
-
-  const now = Date.now();
-  if (cachedRefreshToken && now - refreshTokenLoadedAt < REFRESH_TOKEN_CACHE_MS) {
-    return cachedRefreshToken;
+async function getRefreshTokenForUser(userId) {
+  const cached = refreshTokenCache.get(userId);
+  if (cached && Date.now() - cached.loadedAt < REFRESH_TOKEN_CACHE_MS) {
+    return cached.token;
   }
 
   try {
     const result = await query(
-      "SELECT value FROM app_settings WHERE key = 'cardladder_refresh_token'"
+      "SELECT refresh_token FROM user_integrations WHERE user_id = $1 AND provider = 'cardladder'",
+      [userId]
     );
-    cachedRefreshToken = result.rows?.[0]?.value || null;
-    refreshTokenLoadedAt = now;
-    return cachedRefreshToken;
+    const token = result[0]?.refresh_token || null;
+    refreshTokenCache.set(userId, { token, loadedAt: Date.now() });
+    return token;
   } catch {
     return null;
   }
 }
 
-async function refreshIdToken(refreshToken) {
+async function refreshIdTokenForUser(userId, refreshToken) {
   const apiKey = process.env.CARDLADDER_FIREBASE_API_KEY;
 
   const response = await fetch(`${FIREBASE_TOKEN_URL}?key=${apiKey}`, {
@@ -60,34 +56,38 @@ async function refreshIdToken(refreshToken) {
 
   const data = await response.json();
   const expiresInMs = (parseInt(data.expires_in, 10) || 3600) * 1000;
+  const idToken = data.id_token;
 
-  cachedIdToken = data.id_token;
-  tokenExpiresAt = Date.now() + expiresInMs - 5 * 60 * 1000;
-
-  console.log(`[CardLadder] Token refreshed, valid for ${Math.round(expiresInMs / 60000)} min`);
-  return cachedIdToken;
+  idTokenCache.set(userId, { idToken, expiresAt: Date.now() + expiresInMs - 5 * 60 * 1000 });
+  return idToken;
 }
 
-// Call this after storing a new refresh token in the DB so the next getToken() picks it up
-export function invalidateTokenCache() {
-  cachedIdToken = null;
-  tokenExpiresAt = 0;
-  cachedRefreshToken = null;
-  refreshTokenLoadedAt = 0;
+export function invalidateUserTokenCache(userId) {
+  idTokenCache.delete(userId);
+  refreshTokenCache.delete(userId);
 }
 
 export function isConfigured() {
-  // Only the API key needs to be in env — refresh token can come from DB
   return !!process.env.CARDLADDER_FIREBASE_API_KEY;
 }
 
-export async function getToken() {
+/**
+ * Returns a valid Firebase ID token for the given user, or null if they haven't
+ * connected their CardLadder account.
+ */
+export async function getTokenForUser(userId) {
   if (!process.env.CARDLADDER_FIREBASE_API_KEY) return null;
 
-  if (cachedIdToken && Date.now() < tokenExpiresAt) return cachedIdToken;
+  const cached = idTokenCache.get(userId);
+  if (cached && Date.now() < cached.expiresAt) return cached.idToken;
 
-  const refreshToken = await getRefreshToken();
+  const refreshToken = await getRefreshTokenForUser(userId);
   if (!refreshToken) return null;
 
-  return refreshIdToken(refreshToken);
+  try {
+    return await refreshIdTokenForUser(userId, refreshToken);
+  } catch (err) {
+    console.error(`[CardLadder] Token refresh failed for user ${userId}:`, err.message);
+    return null;
+  }
 }

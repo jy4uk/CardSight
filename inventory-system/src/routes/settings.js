@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../services/db.js';
+import { query, pool } from '../services/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import bcrypt from 'bcrypt';
 
@@ -167,33 +167,24 @@ router.delete('/user/account', authenticateToken, async (req, res) => {
       });
     }
 
-    // Delete all user data in a transaction
-    // This will cascade delete due to foreign key constraints
-    // Order matters: delete dependent records first
-    
-    // Delete trade items
-    await query('DELETE FROM trade_items WHERE trade_id IN (SELECT id FROM trades WHERE user_id = $1)', [userId]);
-    
-    // Delete trades
-    await query('DELETE FROM trades WHERE user_id = $1', [userId]);
-    
-    // Delete saved deals
-    await query('DELETE FROM saved_deals WHERE user_id = $1', [userId]);
-    
-    // Delete transactions
-    await query('DELETE FROM transactions WHERE user_id = $1', [userId]);
-    
-    // Delete card shows
-    await query('DELETE FROM card_shows WHERE user_id = $1', [userId]);
-    
-    // Delete inventory
-    await query('DELETE FROM inventory WHERE user_id = $1', [userId]);
-    
-    // Mark beta code as unused if applicable
-    await query('UPDATE beta_codes SET is_used = FALSE, used_by_user_id = NULL, used_at = NULL WHERE used_by_user_id = $1', [userId]);
-    
-    // Finally, delete the user
-    await query('DELETE FROM users WHERE id = $1', [userId]);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM trade_items WHERE trade_id IN (SELECT id FROM trades WHERE user_id = $1)', [userId]);
+      await client.query('DELETE FROM trades WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM saved_deals WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM transactions WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM card_shows WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM inventory WHERE user_id = $1', [userId]);
+      await client.query('UPDATE beta_codes SET is_used = FALSE, used_by_user_id = NULL, used_at = NULL WHERE used_by_user_id = $1', [userId]);
+      await client.query('DELETE FROM users WHERE id = $1', [userId]);
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
 
     // Clear the refresh token cookie
     res.clearCookie('refreshToken', {

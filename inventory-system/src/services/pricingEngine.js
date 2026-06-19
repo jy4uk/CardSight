@@ -141,12 +141,12 @@ function extractVariantQualifiers(productName) {
 
 // Resolves a cert number to its CardLadder graderId via CardLadder's own cert cache (not PSA).
 // Cached for a month since this mapping never changes.
-async function resolveCertProfile(certNumber, grader) {
+async function resolveCertProfile(certNumber, grader, token) {
   const cacheKey = `pricing:certlookup:${grader}:${certNumber}`;
   let profile = cache.get(cacheKey);
   if (profile === null) {
     try {
-      profile = await fetchCertLookup(certNumber, grader);
+      profile = await fetchCertLookup(certNumber, grader, token);
       if (profile) cache.set(cacheKey, profile, CERT_LOOKUP_CACHE_TTL);
     } catch {
       profile = null;
@@ -155,12 +155,20 @@ async function resolveCertProfile(certNumber, grader) {
   return profile;
 }
 
-export async function suggestGradedPrice(item) {
+export async function suggestGradedPrice(item, token) {
+  if (!token) {
+    return {
+      suggestedPrice: null,
+      confidence: 'none',
+      breakdown: { reason: 'cardladder_not_connected' },
+    };
+  }
+
   const grader = (item.card_type || '').toLowerCase();
 
   let specId = null;
   if (item.cert_number) {
-    const certProfile = await resolveCertProfile(item.cert_number, grader);
+    const certProfile = await resolveCertProfile(item.cert_number, grader, token);
     specId = certProfile?.graderId ?? null;
   }
 
@@ -178,7 +186,7 @@ export async function suggestGradedPrice(item) {
   let salesResult = cache.get(salesCacheKey);
   if (salesResult === null) {
     try {
-      salesResult = await fetchCardLadderSales(specId, searchQuery, item.grade, 10, grader);
+      salesResult = await fetchCardLadderSales(specId, searchQuery, item.grade, 10, grader, token);
       cache.set(salesCacheKey, salesResult, SALES_CACHE_TTL);
     } catch (e) {
       salesResult = { hits: [], total: 0, error: e.message };
@@ -268,8 +276,8 @@ export function suggestRawPrice(item) {
   };
 }
 
-export async function suggestPrice(item) {
+export async function suggestPrice(item, token) {
   const isGraded = item.card_type && item.card_type !== 'raw' && item.card_type !== 'sealed';
-  if (isGraded) return suggestGradedPrice(item);
+  if (isGraded) return suggestGradedPrice(item, token);
   return suggestRawPrice(item);
 }

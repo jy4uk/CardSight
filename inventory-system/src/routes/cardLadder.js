@@ -1,13 +1,15 @@
 import express from 'express';
 import { fetchCardLadderSales } from '../services/cardLadderService.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { getTokenForUser } from '../services/cardLadderTokenManager.js';
 import * as cache from '../services/cacheService.js';
 
 const router = express.Router();
+router.use(authenticateToken);
 
 /**
  * GET /api/card-ladder/search?certNumber=...&cardName=...&grade=...
- * Returns recent PSA sales from CardLadder for a given card name + grade.
- * certNumber is used only as a cache key.
+ * Returns recent graded-card sales from CardLadder for a given card.
  */
 router.get('/search', async (req, res) => {
   const { certNumber, specId, cardName, grade } = req.query;
@@ -28,11 +30,18 @@ router.get('/search', async (req, res) => {
   }
 
   try {
-    const result = await fetchCardLadderSales(specId, cardName, grade, 10);
-
-    if (result.notConfigured) {
-      return res.json({ success: false, notConfigured: true, sales: [] });
+    const token = await getTokenForUser(req.user.userId);
+    if (!token) {
+      return res.status(403).json({
+        success: false,
+        notConfigured: true,
+        error: 'CardLadder not connected. Connect your CardLadder account in Account Settings → Integrations.',
+        code: 'cardladder_not_connected',
+        sales: [],
+      });
     }
+
+    const result = await fetchCardLadderSales(specId, cardName, grade, 10, 'psa', token);
 
     const response = {
       sales: result.hits,
@@ -46,7 +55,6 @@ router.get('/search', async (req, res) => {
     };
 
     cache.set(cacheKey, response, 2 * 60 * 60 * 1000);
-
     return res.json({ success: true, ...response });
   } catch (error) {
     console.error('CardLadder lookup error:', error);

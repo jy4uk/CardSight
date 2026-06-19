@@ -6,6 +6,7 @@ import { query } from '../services/db.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { UserService } from '../auth/user-service.js';
 import { suggestPrice } from '../services/pricingEngine.js';
+import { getTokenForUser } from '../services/cardLadderTokenManager.js';
 
 const router = express.Router();
 const userService = new UserService();
@@ -263,15 +264,19 @@ router.get('/reprice-preview', async (req, res) => {
       [userId]
     );
 
+    // Fetch the user's CardLadder token once — graded items need it for pricing.
+    // Raw/sealed items use TCG pricing and don't need it.
+    const clToken = await getTokenForUser(userId);
+
     // Compute suggested prices (raw: TCGCSV passthrough, graded: CardLadder algorithm).
-    // Capped concurrency since graded items trigger live PSA/CardLadder API calls.
+    // Capped concurrency since graded items trigger live CardLadder API calls.
     const CONCURRENCY = 5;
     let cursor = 0;
     async function worker() {
       while (cursor < items.length) {
         const item = items[cursor++];
         try {
-          const suggestion = await suggestPrice(item);
+          const suggestion = await suggestPrice(item, clToken);
           item.suggested_price = suggestion.suggestedPrice;
           item.suggested_confidence = suggestion.confidence;
           item.suggested_price_breakdown = suggestion.breakdown;

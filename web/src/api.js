@@ -160,57 +160,6 @@ export async function fetchInsights(timeRange = '30d') {
   return res.data;
 }
 
-// Pricing API functions
-export const fetchCardPricing = async (barcodeId) => {
-  try {
-    const response = await fetch(`${API_BASE}/pricing/card/${barcodeId}`);
-    if (!response.ok) throw new Error('Failed to fetch card pricing');
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching card pricing:', error);
-    throw error;
-  }
-};
-
-export const fetchBatchPricing = async (barcodeIds) => {
-  try {
-    const response = await fetch(`${API_BASE}/pricing/batch`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ barcodeIds })
-    });
-    if (!response.ok) throw new Error('Failed to fetch batch pricing');
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching batch pricing:', error);
-    throw error;
-  }
-};
-
-export const updateAllPricing = async () => {
-  try {
-    const response = await apiClient.post('/pricing/update');
-    if (!response.data.success) throw new Error(response.data.error || 'Failed to update pricing');
-    return response.data;
-  } catch (error) {
-    console.error('Error updating pricing:', error);
-    throw error;
-  }
-};
-
-export const fetchPricingAnalytics = async () => {
-  try {
-    const response = await fetch(`${API_BASE}/pricing/analytics`);
-    if (!response.ok) throw new Error('Failed to fetch pricing analytics');
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching pricing analytics:', error);
-    throw error;
-  }
-};
-
 export const addCardShow = async (cardShowData) => {
   try {
     const response = await apiClient.post('/insights/card-shows', cardShowData);
@@ -338,33 +287,25 @@ export const updateTradeItem = async (itemId, field, value) => {
 };
 
 // Cert Lookup API — backed by CardLadder's cert cache, not PSA's API
+// Requires the user to have connected their CardLadder account (Integrations settings).
 export const fetchPSAData = async (certNumber, grader = 'psa') => {
   try {
     const params = grader !== 'psa' ? `?grader=${grader}` : '';
-    const response = await fetch(`${API_BASE}/psa-lookup/${certNumber}${params}`);
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error || 'Failed to fetch cert data');
-    }
-    return await response.json();
+    const response = await apiClient.get(`/psa-lookup/${certNumber}${params}`);
+    return response.data;
   } catch (error) {
-    console.error('Error fetching cert data:', error);
-    throw error;
+    const data = error.response?.data;
+    throw new Error(data?.error || error.message || 'Failed to fetch cert data');
   }
 };
 
 export const fetchCardLadderSales = async (certNumber, specId, cardName, grade) => {
-  try {
-    const params = new URLSearchParams({ certNumber, cardName });
-    if (specId) params.append('specId', specId);
-    if (grade) params.append('grade', grade);
-    const response = await fetch(`${API_BASE}/card-ladder/search?${params}`);
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching CardLadder data:', error);
-    throw error;
-  }
+  const params = new URLSearchParams({ cardName });
+  if (certNumber) params.append('certNumber', certNumber);
+  if (specId) params.append('specId', specId);
+  if (grade) params.append('grade', grade);
+  const res = await apiClient.get(`/card-ladder/search?${params}`);
+  return res.data;
 };
 
 // CardLadder integration management

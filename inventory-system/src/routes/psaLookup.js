@@ -1,11 +1,18 @@
 import express from 'express';
 import { fetchCertLookup } from '../services/cardLadderService.js';
-import { isPSACertNumber } from '../services/psaService.js';
 import { fetchMarketData } from '../services/ebayService.js';
 import { scoreListings, getHighestConfidenceListing } from '../services/confidenceScoring.js';
 import * as cache from '../services/cacheService.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { getTokenForUser } from '../services/cardLadderTokenManager.js';
 
 const router = express.Router();
+router.use(authenticateToken);
+
+function isPSACertNumber(value) {
+  if (!value || typeof value !== 'string') return false;
+  return /^\d{7,9}$/.test(value.trim());
+}
 
 // CardLadder uses "beckett" as the profile key for BGS cards
 function graderProfileKey(grader) {
@@ -85,6 +92,15 @@ router.get('/:certNumber', async (req, res) => {
       });
     }
 
+    const token = await getTokenForUser(req.user.userId);
+    if (!token) {
+      return res.status(403).json({
+        success: false,
+        error: 'CardLadder not connected. Connect your CardLadder account in Account Settings → Integrations.',
+        code: 'cardladder_not_connected',
+      });
+    }
+
     const cacheKey = `certlookup:${grader}:${certNumber}`;
     const cached = cache.get(cacheKey);
     if (cached) {
@@ -95,7 +111,7 @@ router.get('/:certNumber', async (req, res) => {
       });
     }
 
-    const certResult = await fetchCertLookup(certNumber, grader);
+    const certResult = await fetchCertLookup(certNumber, grader, token);
 
     if (!certResult) {
       return res.status(404).json({

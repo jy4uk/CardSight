@@ -1,38 +1,40 @@
 import express from 'express';
 import { query } from '../services/db.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { getToken, invalidateTokenCache } from '../services/cardLadderTokenManager.js';
+import { getTokenForUser, invalidateUserTokenCache, isConfigured } from '../services/cardLadderTokenManager.js';
 
 const router = express.Router();
 
 const FIREBASE_SIGN_IN_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword';
 const FIREBASE_TOKEN_URL = 'https://securetoken.googleapis.com/v1/token';
 
-async function storeRefreshToken(refreshToken) {
+async function storeRefreshToken(userId, refreshToken) {
   await query(
-    `INSERT INTO app_settings (key, value, updated_at)
-     VALUES ('cardladder_refresh_token', $1, NOW())
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
-    [refreshToken]
+    `INSERT INTO user_integrations (user_id, provider, refresh_token, updated_at)
+     VALUES ($1, 'cardladder', $2, NOW())
+     ON CONFLICT (user_id, provider) DO UPDATE SET refresh_token = EXCLUDED.refresh_token, updated_at = NOW()`,
+    [userId, refreshToken]
   );
-  invalidateTokenCache();
+  invalidateUserTokenCache(userId);
 }
 
 /**
  * GET /api/cardladder/status
- * Returns whether a CardLadder refresh token is stored and currently valid.
+ * Returns whether the current user has a connected CardLadder account.
  */
 router.get('/status', authenticateToken, async (req, res) => {
   try {
+    const userId = req.user.userId;
     const result = await query(
-      "SELECT updated_at FROM app_settings WHERE key = 'cardladder_refresh_token'"
+      "SELECT updated_at FROM user_integrations WHERE user_id = $1 AND provider = 'cardladder'",
+      [userId]
     );
-    const hasStoredToken = result.rows.length > 0 || !!process.env.CARDLADDER_REFRESH_TOKEN;
+    const connected = result.length > 0;
 
     let valid = false;
-    if (hasStoredToken) {
+    if (connected) {
       try {
-        const token = await getToken();
+        const token = await getTokenForUser(userId);
         valid = !!token;
       } catch {
         valid = false;
@@ -41,10 +43,9 @@ router.get('/status', authenticateToken, async (req, res) => {
 
     res.json({
       success: true,
-      connected: hasStoredToken,
+      connected,
       valid,
-      source: process.env.CARDLADDER_REFRESH_TOKEN ? 'env' : (result.rows.length > 0 ? 'db' : null),
-      connectedAt: result.rows[0]?.updated_at || null,
+      connectedAt: result[0]?.updated_at || null,
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -53,8 +54,7 @@ router.get('/status', authenticateToken, async (req, res) => {
 
 /**
  * POST /api/cardladder/connect
- * Authenticate with CardLadder using email + password (if account uses email/password auth).
- * Stores the resulting Firebase refresh token in the DB.
+ * Authenticate with CardLadder using email + password.
  */
 router.post('/connect', authenticateToken, async (req, res) => {
   const { email, password } = req.body;
@@ -79,14 +79,13 @@ router.post('/connect', authenticateToken, async (req, res) => {
 
     if (!signInRes.ok) {
       const msg = data.error?.message || 'Authentication failed';
-      // INVALID_LOGIN_CREDENTIALS covers both wrong password and Google-only accounts
       const hint = msg.includes('INVALID_LOGIN_CREDENTIALS')
-        ? 'Invalid credentials. If you signed up via Google, use the manual token option instead.'
+        ? 'Invalid credentials. If you signed up via Google, use the Google sign-in option instead.'
         : msg;
       return res.status(401).json({ success: false, error: hint });
     }
 
-    await storeRefreshToken(data.refreshToken);
+    await storeRefreshToken(req.user.userId, data.refreshToken);
     res.json({ success: true });
   } catch (err) {
     console.error('[CardLadder] connect error:', err);
@@ -96,8 +95,8 @@ router.post('/connect', authenticateToken, async (req, res) => {
 
 /**
  * POST /api/cardladder/connect/token
- * Store a Firebase refresh token directly (for accounts that use Google OAuth).
- * The token is validated before saving by attempting to exchange it for an ID token.
+ * Store a Firebase refresh token (used by the Google OAuth flow on the frontend).
+ * The token is validated before saving.
  */
 router.post('/connect/token', authenticateToken, async (req, res) => {
   try {
@@ -112,7 +111,6 @@ router.post('/connect/token', authenticateToken, async (req, res) => {
       return res.status(500).json({ success: false, error: 'CARDLADDER_FIREBASE_API_KEY not configured' });
     }
 
-    // Validate by trying to exchange it for an ID token
     const verifyRes = await fetch(`${FIREBASE_TOKEN_URL}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -125,7 +123,7 @@ router.post('/connect/token', authenticateToken, async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid or expired refresh token' });
     }
 
-    await storeRefreshToken(refreshToken);
+    await storeRefreshToken(req.user.userId, refreshToken);
     res.json({ success: true });
   } catch (err) {
     console.error('[CardLadder] connect/token error:', err);
@@ -135,12 +133,15 @@ router.post('/connect/token', authenticateToken, async (req, res) => {
 
 /**
  * DELETE /api/cardladder/connect
- * Remove the stored CardLadder refresh token.
+ * Remove the current user's CardLadder connection.
  */
 router.delete('/connect', authenticateToken, async (req, res) => {
   try {
-    await query("DELETE FROM app_settings WHERE key = 'cardladder_refresh_token'");
-    invalidateTokenCache();
+    await query(
+      "DELETE FROM user_integrations WHERE user_id = $1 AND provider = 'cardladder'",
+      [req.user.userId]
+    );
+    invalidateUserTokenCache(req.user.userId);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

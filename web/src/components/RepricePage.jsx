@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { RefreshCw, Check, CheckCheck, Save, ArrowUpDown, ArrowUp, ArrowDown, Search, Package, Undo2, Loader2, DollarSign, TrendingUp, TrendingDown, Minus, Filter, ExternalLink, X } from 'lucide-react';
+import { RefreshCw, Check, CheckCheck, Save, ArrowUpDown, ArrowUp, ArrowDown, Search, Package, Undo2, Loader2, DollarSign, TrendingUp, TrendingDown, Minus, Filter, ExternalLink, X, AlertCircle } from 'lucide-react';
 import { fetchRepricePreview, bulkReprice } from '../api';
 import AlertModal from './AlertModal';
 
@@ -266,6 +266,12 @@ export default function RepricePage({ onComplete }) {
     return sorted;
   }, [items, searchQuery, filterMode, sortField, newPrices, rejectedIds]);
 
+  // True if the user has graded items but no CardLadder connection
+  const clNotConnected = useMemo(() =>
+    items.some(i =>
+      i.suggested_price_breakdown?.reason === 'cardladder_not_connected'
+    ), [items]);
+
   // Stats
   const stats = useMemo(() => {
     const withTCG = items.filter(i => i.suggested_price != null).length;
@@ -299,6 +305,16 @@ export default function RepricePage({ onComplete }) {
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 pb-32 sm:pb-4">
+      {/* CardLadder not connected banner */}
+      {clNotConnected && (
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <span>
+            CardLadder not connected — graded card pricing is unavailable.
+            Go to <strong>Account Settings → Integrations</strong> to connect your CardLadder Pro account.
+          </span>
+        </div>
+      )}
       {/* Header */}
       <div className="mb-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -489,6 +505,7 @@ function RepriceRow({ item, newPrice, needsApproval, isRejected, onPriceChange, 
           ? `TCGPlayer market price · synced ${breakdown.priceAgeHours != null ? `${breakdown.priceAgeHours}h ago` : 'unknown'} · confidence: ${confidence}`
           : breakdown.reason === 'no_sales_data' ? 'No CardLadder sales found for this grade'
           : breakdown.reason === 'no_tcg_match' ? 'No TCGPlayer product match'
+          : breakdown.reason === 'cardladder_not_connected' ? 'CardLadder not connected — go to Account Settings → Integrations'
           : breakdown.reason || '')
     : '';
   const effectiveNewPrice = newPrice !== null ? newPrice : currentPrice;

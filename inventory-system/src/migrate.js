@@ -198,6 +198,22 @@ async function runMigration() {
     `);
     console.log('✅ App settings migration completed!');
 
+    // ── Step 13: Per-user integration tokens ──
+    console.log('\nRunning user integrations migration...');
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_integrations (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+        provider TEXT NOT NULL,
+        refresh_token TEXT NOT NULL,
+        connected_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(user_id, provider)
+      )
+    `);
+    await query(`CREATE INDEX IF NOT EXISTS idx_user_integrations_user_provider ON user_integrations(user_id, provider)`);
+    console.log('✅ User integrations migration completed!');
+
     console.log('\n🎉 All migrations completed successfully!');
   } catch (err) {
     console.error('❌ Migration failed:', err);
